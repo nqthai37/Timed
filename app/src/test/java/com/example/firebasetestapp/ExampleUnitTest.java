@@ -1,4 +1,4 @@
-package com.timed;
+package com.example.firebasetestapp;
 
 import org.junit.Test;
 

@@ -1,15 +1,16 @@
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.google.gms.google.services)
 }
 
 android {
-    namespace = "com.timed"
+    namespace = "com.example.firebasetestapp"
     compileSdk {
         version = release(36)
     }
 
     defaultConfig {
-        applicationId = "com.timed"
+        applicationId = "com.mobile.timed"
         minSdk = 29
         targetSdk = 36
         versionCode = 1
@@ -38,6 +39,9 @@ dependencies {
     implementation(libs.material)
     implementation(libs.activity)
     implementation(libs.constraintlayout)
+    implementation(libs.firebase.firestore)
+    implementation(platform("com.google.firebase:firebase-bom:34.10.0"))
+    implementation("com.google.firebase:firebase-analytics")
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
