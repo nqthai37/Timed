@@ -5,17 +5,20 @@ import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.ImageView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.firebasetestapp.models.User;
 import com.example.firebasetestapp.repositories.UserRepository;
+import com.bumptech.glide.Glide;
 
 public class ProfileActivity extends AppCompatActivity {
 
     private ProgressBar progressBar;
     private LinearLayout profileDataContainer;
+    private ImageView ivAvatar;
     private TextView tvName, tvEmail, tvTheme, tvNotifications;
 
     private UserRepository userRepository;
@@ -27,6 +30,7 @@ public class ProfileActivity extends AppCompatActivity {
 
         progressBar = findViewById(R.id.progressBar);
         profileDataContainer = findViewById(R.id.profileDataContainer);
+        ivAvatar = findViewById(R.id.ivAvatar);
         tvName = findViewById(R.id.tvName);
         tvEmail = findViewById(R.id.tvEmail);
         tvTheme = findViewById(R.id.tvTheme);
@@ -49,6 +53,13 @@ public class ProfileActivity extends AppCompatActivity {
                 if (myUser != null) {
                     tvName.setText("Name: " + myUser.getName());
                     tvEmail.setText("Email: " + myUser.getEmail());
+
+                    if (myUser.getAvatar() != null && !myUser.getAvatar().isEmpty()) {
+                        Glide.with(this)
+                                .load(myUser.getAvatar())
+                                .circleCrop() // Pro-move: This automatically makes the avatar a perfect circle!
+                                .into(ivAvatar);
+                    }
 
                     if (myUser.getSettings() != null) {
                         tvTheme.setText("Theme: " + myUser.getSettings().getTheme());
