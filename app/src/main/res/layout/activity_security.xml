@@ -1,0 +1,518 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FFFFFFFF">
+
+    <!-- Frame: Security (360x800) -->
+
+    <!-- FRAME: div.frame -->
+    <LinearLayout
+        android:id="@+id/div_frame"
+        android:orientation="vertical"
+        android:layout_width="360dp"
+        android:layout_height="800dp"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="0dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:background="@drawable/bg_rounded" />
+
+    <!-- FRAME: div.frame -->
+    <LinearLayout
+        android:id="@+id/div_frame"
+        android:orientation="vertical"
+        android:layout_width="360dp"
+        android:layout_height="800dp"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="0dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:background="@drawable/bg_rounded">
+
+        <!-- FRAME: div.frame -->
+        <LinearLayout
+            android:id="@+id/div_frame"
+            android:orientation="vertical"
+        android:layout_width="360dp"
+        android:layout_height="800dp"
+            android:background="@drawable/bg_rounded" />
+    </LinearLayout>
+
+    <!-- FRAME: div.frame -->
+    <LinearLayout
+        android:id="@+id/div_frame"
+        android:orientation="vertical"
+        android:layout_width="356dp"
+        android:layout_height="800dp"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="0dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:background="#FFF8FAFC">
+
+        <!-- FRAME: div.header -->
+        <LinearLayout
+            android:id="@+id/div_header"
+            android:orientation="horizontal"
+        android:layout_width="356dp"
+        android:layout_height="40dp">
+
+            <!-- FRAME: div.icon-circle -->
+            <LinearLayout
+                android:id="@+id/div_icon_circle"
+                android:orientation="horizontal"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+                android:background="@drawable/bg_rounded">
+
+                <!-- INSTANCE: Component 1 -->
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:id="@+id/component_1"
+        android:layout_width="20dp"
+        android:layout_height="20dp">
+
+                    <!-- VECTOR: Vector -->
+                    <ImageView
+                        android:id="@+id/vector"
+                        android:src="@drawable/ic_r_arrow"
+                        android:scaleType="fitXY"
+        android:layout_width="13dp"
+        android:layout_height="17dp" />
+                </androidx.constraintlayout.widget.ConstraintLayout>
+            </LinearLayout>
+
+            <!-- FRAME: div -->
+            <LinearLayout
+                android:id="@+id/div"
+                android:orientation="vertical"
+        android:layout_width="128dp"
+        android:layout_height="38dp">
+
+                <!-- FRAME: h2 -->
+                <LinearLayout
+                    android:id="@+id/h2"
+                    android:orientation="vertical"
+        android:layout_width="128dp"
+        android:layout_height="22dp"
+                    android:paddingLeft="0dp"
+                    android:paddingTop="0dp"
+                    android:paddingRight="0dp"
+                    android:paddingBottom="1dp">
+
+                    <!-- TEXT: Security -->
+                    <TextView
+                        android:id="@+id/security"
+                        android:text="Security"
+                        android:textSize="17.299999237060547sp"
+                        android:textColor="#FF000000"
+                        android:gravity="start"
+                        android:textStyle="bold"
+                        android:fontFamily="Inter"
+        android:layout_width="72dp"
+        android:layout_height="21dp" />
+                </LinearLayout>
+
+                <!-- FRAME: p -->
+                <LinearLayout
+                    android:id="@+id/p"
+                    android:orientation="vertical"
+        android:layout_width="128dp"
+        android:layout_height="16dp">
+
+                    <!-- TEXT: Protect your account -->
+                    <TextView
+                        android:id="@+id/protect_your_account"
+                        android:text="Protect your account"
+                        android:textSize="12.899999618530273sp"
+                        android:textColor="#FF64748B"
+                        android:gravity="start"
+                        android:fontFamily="Inter"
+        android:layout_width="128dp"
+        android:layout_height="16dp" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- FRAME: div.card -->
+        <LinearLayout
+            android:id="@+id/div_card"
+            android:orientation="vertical"
+        android:layout_width="356dp"
+        android:layout_height="244dp"
+            android:background="@drawable/bg_rounded"
+            android:paddingLeft="21dp"
+            android:paddingTop="1dp"
+            android:paddingRight="21dp"
+            android:paddingBottom="1dp">
+
+            <!-- FRAME: div.row -->
+            <LinearLayout
+                android:id="@+id/div_row"
+                android:orientation="horizontal"
+        android:layout_width="314dp"
+        android:layout_height="81dp"
+                android:paddingLeft="0dp"
+                android:paddingTop="20dp"
+                android:paddingRight="0dp"
+                android:paddingBottom="21dp">
+
+                <!-- FRAME: div.info -->
+                <LinearLayout
+                    android:id="@+id/div_info"
+                    android:orientation="horizontal"
+        android:layout_width="217dp"
+        android:layout_height="40dp">
+
+                    <!-- FRAME: div.icon-box -->
+                    <LinearLayout
+                        android:id="@+id/div_icon_box"
+                        android:orientation="horizontal"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+                        android:background="@drawable/bg_rounded">
+
+                        <!-- INSTANCE: Component 1 -->
+                        <androidx.constraintlayout.widget.ConstraintLayout
+                            android:id="@+id/component_1"
+        android:layout_width="20dp"
+        android:layout_height="20dp">
+
+                            <!-- VECTOR: Vector -->
+                            <ImageView
+                                android:id="@+id/vector"
+                                android:src="@drawable/ic_r_arrow"
+                                android:scaleType="fitXY"
+        android:layout_width="12dp"
+        android:layout_height="17dp" />
+
+                            <!-- VECTOR: Vector -->
+                            <ImageView
+                                android:id="@+id/vector"
+                                android:src="@drawable/ic_r_arrow"
+                                android:scaleType="fitXY"
+        android:layout_width="0dp"
+        android:layout_height="0dp" />
+                        </androidx.constraintlayout.widget.ConstraintLayout>
+                    </LinearLayout>
+
+                    <!-- FRAME: div -->
+                    <LinearLayout
+                        android:id="@+id/div"
+                        android:orientation="vertical"
+        android:layout_width="161dp"
+        android:layout_height="36dp">
+
+                        <!-- FRAME: div.title -->
+                        <LinearLayout
+                            android:id="@+id/div_title"
+                            android:orientation="vertical"
+        android:layout_width="161dp"
+        android:layout_height="17dp">
+
+                            <!-- TEXT: Two-Factor Auth -->
+                            <TextView
+                                android:id="@+id/two_factor_auth"
+                                android:text="Two-Factor Auth"
+                                android:textSize="14.100000381469727sp"
+                                android:textColor="#FF0F172A"
+                                android:gravity="start"
+                                android:textStyle="bold"
+                                android:fontFamily="Inter"
+        android:layout_width="118dp"
+        android:layout_height="17dp" />
+                        </LinearLayout>
+
+                        <!-- FRAME: div.desc -->
+                        <LinearLayout
+                            android:id="@+id/div_desc"
+                            android:orientation="vertical"
+        android:layout_width="161dp"
+        android:layout_height="15dp">
+
+                            <!-- TEXT: Add extra security with OTP -->
+                            <TextView
+                                android:id="@+id/add_extra_security_with_otp"
+                                android:text="Add extra security with OTP"
+                                android:textSize="12.100000381469727sp"
+                                android:textColor="#FF64748B"
+                                android:gravity="start"
+                                android:fontFamily="Inter"
+        android:layout_width="161dp"
+        android:layout_height="15dp" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- FRAME: label.switch -->
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:id="@+id/label_switch"
+        android:layout_width="44dp"
+        android:layout_height="24dp">
+
+                    <!-- FRAME: span.slider -->
+                    <androidx.constraintlayout.widget.ConstraintLayout
+                        android:id="@+id/span_slider"
+        android:layout_width="44dp"
+        android:layout_height="24dp"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="0dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+                        android:background="@drawable/bg_rounded">
+
+                        <!-- RECTANGLE: ::before -->
+                        <LinearLayout
+                            android:id="@+id/__before"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:layout_marginStart="3dp"
+        android:layout_marginTop="3dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+                            android:background="@drawable/bg_rounded" />
+                    </androidx.constraintlayout.widget.ConstraintLayout>
+                </androidx.constraintlayout.widget.ConstraintLayout>
+            </LinearLayout>
+
+            <!-- FRAME: div.row -->
+            <LinearLayout
+                android:id="@+id/div_row"
+                android:orientation="horizontal"
+        android:layout_width="314dp"
+        android:layout_height="81dp"
+                android:paddingLeft="0dp"
+                android:paddingTop="20dp"
+                android:paddingRight="0dp"
+                android:paddingBottom="21dp">
+
+                <!-- FRAME: div.info -->
+                <LinearLayout
+                    android:id="@+id/div_info"
+                    android:orientation="horizontal"
+        android:layout_width="182dp"
+        android:layout_height="40dp">
+
+                    <!-- FRAME: div.icon-box -->
+                    <LinearLayout
+                        android:id="@+id/div_icon_box"
+                        android:orientation="horizontal"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+                        android:background="@drawable/bg_rounded">
+
+                        <!-- INSTANCE: Component 1 -->
+                        <androidx.constraintlayout.widget.ConstraintLayout
+                            android:id="@+id/component_1"
+        android:layout_width="20dp"
+        android:layout_height="20dp">
+
+                            <!-- VECTOR: Vector -->
+                            <ImageView
+                                android:id="@+id/vector"
+                                android:src="@drawable/ic_r_arrow"
+                                android:scaleType="fitXY"
+        android:layout_width="15dp"
+        android:layout_height="9dp" />
+
+                            <!-- VECTOR: Vector -->
+                            <ImageView
+                                android:id="@+id/vector"
+                                android:src="@drawable/ic_r_arrow"
+                                android:scaleType="fitXY"
+        android:layout_width="8dp"
+        android:layout_height="8dp" />
+                        </androidx.constraintlayout.widget.ConstraintLayout>
+                    </LinearLayout>
+
+                    <!-- FRAME: div -->
+                    <LinearLayout
+                        android:id="@+id/div"
+                        android:orientation="vertical"
+        android:layout_width="126dp"
+        android:layout_height="37dp">
+
+                        <!-- FRAME: div.title -->
+                        <LinearLayout
+                            android:id="@+id/div_title"
+                            android:orientation="vertical"
+        android:layout_width="126dp"
+        android:layout_height="18dp">
+
+                            <!-- TEXT: Biometric Login -->
+                            <TextView
+                                android:id="@+id/biometric_login"
+                                android:text="Biometric Login"
+                                android:textSize="14.899999618530273sp"
+                                android:textColor="#FF0F172A"
+                                android:gravity="start"
+                                android:textStyle="bold"
+                                android:fontFamily="Inter"
+        android:layout_width="115dp"
+        android:layout_height="18dp" />
+                        </LinearLayout>
+
+                        <!-- FRAME: div.desc -->
+                        <LinearLayout
+                            android:id="@+id/div_desc"
+                            android:orientation="vertical"
+        android:layout_width="126dp"
+        android:layout_height="15dp">
+
+                            <!-- TEXT: Fingerprint or Face ID -->
+                            <TextView
+                                android:id="@+id/fingerprint_or_face_id"
+                                android:text="Fingerprint or Face ID"
+                                android:textSize="12.300000190734863sp"
+                                android:textColor="#FF64748B"
+                                android:gravity="start"
+                                android:fontFamily="Inter"
+        android:layout_width="126dp"
+        android:layout_height="15dp" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- FRAME: label.switch -->
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:id="@+id/label_switch"
+        android:layout_width="44dp"
+        android:layout_height="24dp">
+
+                    <!-- FRAME: span.slider -->
+                    <androidx.constraintlayout.widget.ConstraintLayout
+                        android:id="@+id/span_slider"
+        android:layout_width="44dp"
+        android:layout_height="24dp"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="0dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+                        android:background="@drawable/bg_rounded">
+
+                        <!-- RECTANGLE: ::before -->
+                        <LinearLayout
+                            android:id="@+id/__before"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:layout_marginStart="23dp"
+        android:layout_marginTop="3dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+                            android:background="@drawable/bg_rounded" />
+                    </androidx.constraintlayout.widget.ConstraintLayout>
+                </androidx.constraintlayout.widget.ConstraintLayout>
+            </LinearLayout>
+
+            <!-- FRAME: div.row -->
+            <LinearLayout
+                android:id="@+id/div_row"
+                android:orientation="horizontal"
+        android:layout_width="314dp"
+        android:layout_height="80dp"
+                android:paddingLeft="0dp"
+                android:paddingTop="20dp"
+                android:paddingRight="0dp"
+                android:paddingBottom="20dp">
+
+                <!-- FRAME: div.info -->
+                <LinearLayout
+                    android:id="@+id/div_info"
+                    android:orientation="horizontal"
+        android:layout_width="207dp"
+        android:layout_height="40dp">
+
+                    <!-- FRAME: div.icon-box -->
+                    <LinearLayout
+                        android:id="@+id/div_icon_box"
+                        android:orientation="horizontal"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+                        android:background="@drawable/bg_rounded">
+
+                        <!-- INSTANCE: Component 1 -->
+                        <androidx.constraintlayout.widget.ConstraintLayout
+                            android:id="@+id/component_1"
+        android:layout_width="20dp"
+        android:layout_height="20dp">
+
+                            <!-- VECTOR: Vector -->
+                            <ImageView
+                                android:id="@+id/vector"
+                                android:src="@drawable/ic_r_arrow"
+                                android:scaleType="fitXY"
+        android:layout_width="17dp"
+        android:layout_height="16dp" />
+                        </androidx.constraintlayout.widget.ConstraintLayout>
+                    </LinearLayout>
+
+                    <!-- FRAME: div -->
+                    <LinearLayout
+                        android:id="@+id/div"
+                        android:orientation="vertical"
+        android:layout_width="151dp"
+        android:layout_height="37dp">
+
+                        <!-- FRAME: div.title -->
+                        <LinearLayout
+                            android:id="@+id/div_title"
+                            android:orientation="vertical"
+        android:layout_width="151dp"
+        android:layout_height="18dp">
+
+                            <!-- TEXT: Change Password -->
+                            <TextView
+                                android:id="@+id/change_password"
+                                android:text="Change Password"
+                                android:textSize="14.600000381469727sp"
+                                android:textColor="#FF0F172A"
+                                android:gravity="start"
+                                android:textStyle="bold"
+                                android:fontFamily="Inter"
+        android:layout_width="130dp"
+        android:layout_height="18dp" />
+                        </LinearLayout>
+
+                        <!-- FRAME: div.desc -->
+                        <LinearLayout
+                            android:id="@+id/div_desc"
+                            android:orientation="vertical"
+        android:layout_width="151dp"
+        android:layout_height="15dp">
+
+                            <!-- TEXT: Update account password -->
+                            <TextView
+                                android:id="@+id/update_account_password"
+                                android:text="Update account password"
+                                android:textSize="12.100000381469727sp"
+                                android:textColor="#FF64748B"
+                                android:gravity="start"
+                                android:fontFamily="Inter"
+        android:layout_width="151dp"
+        android:layout_height="15dp" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- INSTANCE: Component 1 -->
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:id="@+id/component_1"
+        android:layout_width="20dp"
+        android:layout_height="20dp">
+
+                    <!-- VECTOR: Vector -->
+                    <ImageView
+                        android:id="@+id/vector"
+                        android:src="@drawable/ic_r_arrow"
+                        android:scaleType="fitXY"
+        android:layout_width="5dp"
+        android:layout_height="10dp" />
+                </androidx.constraintlayout.widget.ConstraintLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

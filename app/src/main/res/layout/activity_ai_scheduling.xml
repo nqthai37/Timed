@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#FFF8FAFC"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:id="@+id/div_header"
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:id="@+id/iv_back"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/bg_rounded"
+            android:src="@drawable/ic_r_arrow"
+            android:padding="12dp"
+            android:layout_marginEnd="16dp" />
+
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:id="@+id/tv_header_title"
+                android:text="AI Scheduling"
+                android:textSize="18sp"
+                android:textColor="#FF000000"
+                android:textStyle="bold"
+                android:fontFamily="Inter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+
+            <TextView
+                android:id="@+id/tv_header_subtitle"
+                android:text="Natural language input"
+                android:textSize="13sp"
+                android:textColor="#FF64748B"
+                android:fontFamily="Inter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/div_chat_box"
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_rounded"
+        android:padding="8dp"
+        android:layout_marginTop="16dp"
+        android:gravity="center_vertical">
+
+        <EditText
+            android:id="@+id/et_input"
+            android:hint="Meeting tomorrow at 2pm on Meet"
+            android:textSize="14sp"
+            android:textColor="#FF000000"
+            android:background="@android:color/transparent"
+            android:fontFamily="Inter"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:padding="8dp"/>
+
+        <ImageView
+            android:id="@+id/btn_send"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="@drawable/bg_rounded"
+            android:src="@drawable/ic_r_arrow"
+            android:padding="8dp"/>
+    </LinearLayout>
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        android:layout_marginTop="16dp">
+
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:id="@+id/chip_1"
+                android:text="&quot;Lunch with John on Friday&quot;"
+                android:textSize="12sp"
+                android:textColor="#FF64748B"
+                android:background="@drawable/bg_rounded"
+                android:paddingLeft="12dp"
+                android:paddingTop="8dp"
+                android:paddingRight="12dp"
+                android:paddingBottom="8dp"
+                android:layout_marginEnd="8dp"
+                android:fontFamily="Inter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+
+            <TextView
+                android:id="@+id/chip_2"
+                android:text="&quot;Gym every Monday 7am&quot;"
+                android:textSize="12sp"
+                android:textColor="#FF64748B"
+                android:background="@drawable/bg_rounded"
+                android:paddingLeft="12dp"
+                android:paddingTop="8dp"
+                android:paddingRight="12dp"
+                android:paddingBottom="8dp"
+                android:fontFamily="Inter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+    </HorizontalScrollView>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_ai_schedule"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="8dp"
+        tools:listitem="@layout/ai_scheduling_item" />
+
+</LinearLayout>

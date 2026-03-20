@@ -1,0 +1,617 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FFFFFFFF">
+
+    <!-- Frame: Timezone Setting (360x800) -->
+
+    <!-- RECTANGLE: Rectangle 1 -->
+    <LinearLayout
+        android:id="@+id/rectangle_1"
+        android:layout_width="360dp"
+        android:layout_height="13dp"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="0dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:background="#FFD9D9D9" />
+
+    <!-- FRAME: div.container -->
+    <LinearLayout
+        android:id="@+id/div_container"
+        android:orientation="vertical"
+        android:layout_width="360dp"
+        android:layout_height="787dp"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="13dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <!-- FRAME: div.header -->
+        <LinearLayout
+            android:id="@+id/div_header"
+            android:orientation="horizontal"
+        android:layout_width="360dp"
+        android:layout_height="44dp">
+
+            <!-- FRAME: div.icon-globe-wrapper -->
+            <LinearLayout
+                android:id="@+id/div_icon_globe_wrapper"
+                android:orientation="horizontal"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+                android:background="@drawable/bg_rounded">
+
+                <!-- INSTANCE: Component 1 -->
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:id="@+id/component_1"
+        android:layout_width="20dp"
+        android:layout_height="20dp">
+
+                    <!-- VECTOR: Vector -->
+                    <ImageView
+                        android:id="@+id/vector"
+                        android:src="@drawable/ic_vector"
+                        android:scaleType="fitXY"
+        android:layout_width="17dp"
+        android:layout_height="17dp" />
+
+                    <!-- VECTOR: Vector -->
+                    <ImageView
+                        android:id="@+id/vector"
+                        android:src="@drawable/ic_vector"
+                        android:scaleType="fitXY"
+        android:layout_width="17dp"
+        android:layout_height="0dp" />
+
+                    <!-- VECTOR: Vector -->
+                    <ImageView
+                        android:id="@+id/vector"
+                        android:src="@drawable/ic_vector"
+                        android:scaleType="fitXY"
+        android:layout_width="7dp"
+        android:layout_height="17dp" />
+                </androidx.constraintlayout.widget.ConstraintLayout>
+            </LinearLayout>
+
+            <!-- FRAME: div -->
+            <LinearLayout
+                android:id="@+id/div"
+                android:orientation="vertical"
+        android:layout_width="216dp"
+        android:layout_height="44dp">
+
+                <!-- FRAME: h2 -->
+                <LinearLayout
+                    android:id="@+id/h2"
+                    android:orientation="vertical"
+        android:layout_width="216dp"
+        android:layout_height="25dp"
+                    android:paddingLeft="0dp"
+                    android:paddingTop="2dp"
+                    android:paddingRight="0dp"
+                    android:paddingBottom="2dp">
+
+                    <!-- TEXT: Timezone Settings -->
+                    <TextView
+                        android:id="@+id/timezone_settings"
+                        android:text="Timezone Settings"
+                        android:textSize="17.299999237060547sp"
+                        android:textColor="#FF0F172A"
+                        android:gravity="start"
+                        android:textStyle="bold"
+                        android:fontFamily="Inter"
+        android:layout_width="159dp"
+        android:layout_height="21dp" />
+                </LinearLayout>
+
+                <!-- FRAME: p -->
+                <LinearLayout
+                    android:id="@+id/p"
+                    android:orientation="vertical"
+        android:layout_width="216dp"
+        android:layout_height="19dp"
+                    android:paddingLeft="0dp"
+                    android:paddingTop="1dp"
+                    android:paddingRight="0dp"
+                    android:paddingBottom="2dp">
+
+                    <!-- TEXT: Manage time zones for your events -->
+                    <TextView
+                        android:id="@+id/manage_time_zones_for_your_events"
+                        android:text="Manage time zones for your events"
+                        android:textSize="13sp"
+                        android:textColor="#FF1A73E8"
+                        android:gravity="start"
+                        android:fontFamily="Inter"
+        android:layout_width="216dp"
+        android:layout_height="16dp" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- FRAME: div.card -->
+        <LinearLayout
+            android:id="@+id/div_card"
+            android:orientation="vertical"
+        android:layout_width="360dp"
+        android:layout_height="233dp"
+            android:background="@drawable/bg_rounded"
+            android:paddingLeft="17dp"
+            android:paddingTop="17dp"
+            android:paddingRight="17dp"
+            android:paddingBottom="17dp">
+
+            <!-- FRAME: div.setting-item -->
+            <LinearLayout
+                android:id="@+id/div_setting_item"
+                android:orientation="horizontal"
+        android:layout_width="326dp"
+        android:layout_height="35dp">
+
+                <!-- FRAME: div.setting-info -->
+                <LinearLayout
+                    android:id="@+id/div_setting_info"
+                    android:orientation="horizontal"
+        android:layout_width="236dp"
+        android:layout_height="35dp">
+
+                    <!-- INSTANCE: Component 1 -->
+                    <androidx.constraintlayout.widget.ConstraintLayout
+                        android:id="@+id/component_1"
+        android:layout_width="20dp"
+        android:layout_height="20dp">
+
+                        <!-- VECTOR: Vector -->
+                        <ImageView
+                            android:id="@+id/vector"
+                            android:src="@drawable/ic_vector"
+                            android:scaleType="fitXY"
+        android:layout_width="15dp"
+        android:layout_height="18dp" />
+
+                        <!-- VECTOR: Vector -->
+                        <ImageView
+                            android:id="@+id/vector"
+                            android:src="@drawable/ic_vector"
+                            android:scaleType="fitXY"
+        android:layout_width="5dp"
+        android:layout_height="5dp" />
+                    </androidx.constraintlayout.widget.ConstraintLayout>
+
+                    <!-- FRAME: div.setting-text -->
+                    <LinearLayout
+                        android:id="@+id/div_setting_text"
+                        android:orientation="vertical"
+        android:layout_width="204dp"
+        android:layout_height="35dp">
+
+                        <!-- FRAME: label -->
+                        <LinearLayout
+                            android:id="@+id/label"
+                            android:orientation="vertical"
+        android:layout_width="204dp"
+        android:layout_height="20dp"
+                            android:paddingLeft="0dp"
+                            android:paddingTop="1dp"
+                            android:paddingRight="0dp"
+                            android:paddingBottom="2dp">
+
+                            <!-- TEXT: Auto-detect timezone -->
+                            <TextView
+                                android:id="@+id/auto_detect_timezone"
+                                android:text="Auto-detect timezone"
+                                android:textSize="13.699999809265137sp"
+                                android:textColor="#FF0F172A"
+                                android:gravity="start"
+                                android:fontFamily="Inter"
+        android:layout_width="142dp"
+        android:layout_height="17dp" />
+                        </LinearLayout>
+
+                        <!-- FRAME: p -->
+                        <LinearLayout
+                            android:id="@+id/p"
+                            android:orientation="vertical"
+        android:layout_width="204dp"
+        android:layout_height="15dp"
+                            android:paddingLeft="0dp"
+                            android:paddingTop="1dp"
+                            android:paddingRight="0dp"
+                            android:paddingBottom="1dp">
+
+                            <!-- TEXT: Use GPS to set timezone automatically -->
+                            <TextView
+                                android:id="@+id/use_gps_to_set_timezone_automatically"
+                                android:text="Use GPS to set timezone automatically"
+                                android:textSize="11.100000381469727sp"
+                                android:textColor="#FF1A73E8"
+                                android:gravity="start"
+                                android:fontFamily="Inter"
+        android:layout_width="204dp"
+        android:layout_height="13dp" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- FRAME: label.switch -->
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:id="@+id/label_switch"
+        android:layout_width="44dp"
+        android:layout_height="24dp">
+
+                    <!-- FRAME: span.slider -->
+                    <androidx.constraintlayout.widget.ConstraintLayout
+                        android:id="@+id/span_slider"
+        android:layout_width="44dp"
+        android:layout_height="24dp"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="0dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+                        android:background="@drawable/bg_rounded">
+
+                        <!-- RECTANGLE: ::before -->
+                        <LinearLayout
+                            android:id="@+id/__before"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:layout_marginStart="23dp"
+        android:layout_marginTop="3dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+                            android:background="@drawable/bg_rounded" />
+                    </androidx.constraintlayout.widget.ConstraintLayout>
+                </androidx.constraintlayout.widget.ConstraintLayout>
+            </LinearLayout>
+
+            <!-- FRAME: div.select-wrapper -->
+            <LinearLayout
+                android:id="@+id/div_select_wrapper"
+                android:orientation="vertical"
+        android:layout_width="326dp"
+        android:layout_height="80dp"
+                android:paddingLeft="0dp"
+                android:paddingTop="17dp"
+                android:paddingRight="0dp"
+                android:paddingBottom="0dp">
+
+                <!-- FRAME: span.select-label -->
+                <LinearLayout
+                    android:id="@+id/span_select_label"
+                    android:orientation="vertical"
+        android:layout_width="326dp"
+        android:layout_height="19dp"
+                    android:paddingLeft="0dp"
+                    android:paddingTop="1dp"
+                    android:paddingRight="0dp"
+                    android:paddingBottom="2dp">
+
+                    <!-- TEXT: Primary timezone -->
+                    <TextView
+                        android:id="@+id/primary_timezone"
+                        android:text="Primary timezone"
+                        android:textSize="13.199999809265137sp"
+                        android:textColor="#FF1A73E8"
+                        android:gravity="start"
+                        android:fontFamily="Inter"
+        android:layout_width="326dp"
+        android:layout_height="16dp" />
+                </LinearLayout>
+
+                <!-- FRAME: select -->
+                <LinearLayout
+                    android:id="@+id/select"
+                    android:orientation="vertical"
+        android:layout_width="326dp"
+        android:layout_height="36dp"
+                    android:background="@drawable/bg_rounded"
+                    android:paddingLeft="16dp"
+                    android:paddingTop="8dp"
+                    android:paddingRight="28dp"
+                    android:paddingBottom="8dp">
+
+                    <!-- FRAME: div -->
+                    <LinearLayout
+                        android:id="@+id/div"
+                        android:orientation="vertical"
+        android:layout_width="280dp"
+        android:layout_height="18dp"
+                        android:paddingLeft="0dp"
+                        android:paddingTop="1dp"
+                        android:paddingRight="0dp"
+                        android:paddingBottom="1dp">
+
+                        <!-- TEXT: Ho Chi Minh City (UTC+7) -->
+                        <TextView
+                            android:id="@+id/ho_chi_minh_city__utc_7_"
+                            android:text="Ho Chi Minh City (UTC+7)"
+                            android:textSize="13.300000190734863sp"
+                            android:textColor="#FF0F172A"
+                            android:gravity="start"
+                            android:fontFamily="Inter"
+        android:layout_width="280dp"
+        android:layout_height="16dp" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- FRAME: div.setting-item -->
+            <LinearLayout
+                android:id="@+id/div_setting_item"
+                android:orientation="horizontal"
+        android:layout_width="326dp"
+        android:layout_height="52dp"
+                android:paddingLeft="0dp"
+                android:paddingTop="17dp"
+                android:paddingRight="0dp"
+                android:paddingBottom="0dp">
+
+                <!-- FRAME: div.setting-info -->
+                <LinearLayout
+                    android:id="@+id/div_setting_info"
+                    android:orientation="horizontal"
+        android:layout_width="237dp"
+        android:layout_height="35dp">
+
+                    <!-- INSTANCE: Component 1 -->
+                    <androidx.constraintlayout.widget.ConstraintLayout
+                        android:id="@+id/component_1"
+        android:layout_width="20dp"
+        android:layout_height="20dp">
+
+                        <!-- VECTOR: Vector -->
+                        <ImageView
+                            android:id="@+id/vector"
+                            android:src="@drawable/ic_vector"
+                            android:scaleType="fitXY"
+        android:layout_width="17dp"
+        android:layout_height="17dp" />
+
+                        <!-- VECTOR: Vector -->
+                        <ImageView
+                            android:id="@+id/vector"
+                            android:src="@drawable/ic_vector"
+                            android:scaleType="fitXY"
+        android:layout_width="3dp"
+        android:layout_height="7dp" />
+                    </androidx.constraintlayout.widget.ConstraintLayout>
+
+                    <!-- FRAME: div.setting-text -->
+                    <LinearLayout
+                        android:id="@+id/div_setting_text"
+                        android:orientation="vertical"
+        android:layout_width="205dp"
+        android:layout_height="35dp">
+
+                        <!-- FRAME: label -->
+                        <LinearLayout
+                            android:id="@+id/label"
+                            android:orientation="vertical"
+        android:layout_width="205dp"
+        android:layout_height="20dp"
+                            android:paddingLeft="0dp"
+                            android:paddingTop="1dp"
+                            android:paddingRight="0dp"
+                            android:paddingBottom="2dp">
+
+                            <!-- TEXT: Show second timezone -->
+                            <TextView
+                                android:id="@+id/show_second_timezone"
+                                android:text="Show second timezone"
+                                android:textSize="14.100000381469727sp"
+                                android:textColor="#FF0F172A"
+                                android:gravity="start"
+                                android:fontFamily="Inter"
+        android:layout_width="155dp"
+        android:layout_height="17dp" />
+                        </LinearLayout>
+
+                        <!-- FRAME: p -->
+                        <LinearLayout
+                            android:id="@+id/p"
+                            android:orientation="vertical"
+        android:layout_width="205dp"
+        android:layout_height="15dp"
+                            android:paddingLeft="0dp"
+                            android:paddingTop="1dp"
+                            android:paddingRight="0dp"
+                            android:paddingBottom="1dp">
+
+                            <!-- TEXT: Display additional timezone in calendar -->
+                            <TextView
+                                android:id="@+id/display_additional_timezone_in_calendar"
+                                android:text="Display additional timezone in calendar"
+                                android:textSize="11.100000381469727sp"
+                                android:textColor="#FF1A73E8"
+                                android:gravity="start"
+                                android:fontFamily="Inter"
+        android:layout_width="205dp"
+        android:layout_height="13dp" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- FRAME: label.switch -->
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:id="@+id/label_switch"
+        android:layout_width="44dp"
+        android:layout_height="24dp">
+
+                    <!-- FRAME: span.slider -->
+                    <androidx.constraintlayout.widget.ConstraintLayout
+                        android:id="@+id/span_slider"
+        android:layout_width="44dp"
+        android:layout_height="24dp"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="0dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+                        android:background="@drawable/bg_rounded">
+
+                        <!-- RECTANGLE: ::before -->
+                        <LinearLayout
+                            android:id="@+id/__before"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:layout_marginStart="3dp"
+        android:layout_marginTop="3dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+                            android:background="@drawable/bg_rounded" />
+                    </androidx.constraintlayout.widget.ConstraintLayout>
+                </androidx.constraintlayout.widget.ConstraintLayout>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- FRAME: div.info-card -->
+        <LinearLayout
+            android:id="@+id/div_info_card"
+            android:orientation="vertical"
+        android:layout_width="360dp"
+        android:layout_height="83dp"
+            android:background="@drawable/bg_rounded"
+            android:paddingLeft="17dp"
+            android:paddingTop="17dp"
+            android:paddingRight="17dp"
+            android:paddingBottom="17dp">
+
+            <!-- FRAME: div.row-between -->
+            <LinearLayout
+                android:id="@+id/div_row_between"
+                android:orientation="horizontal"
+        android:layout_width="326dp"
+        android:layout_height="22dp">
+
+                <!-- FRAME: span -->
+                <LinearLayout
+                    android:id="@+id/span"
+                    android:orientation="vertical"
+        android:layout_width="88dp"
+        android:layout_height="21dp"
+                    android:paddingLeft="0dp"
+                    android:paddingTop="1dp"
+                    android:paddingRight="0dp"
+                    android:paddingBottom="2dp">
+
+                    <!-- TEXT: Current time -->
+                    <TextView
+                        android:id="@+id/current_time"
+                        android:text="Current time"
+                        android:textSize="14.899999618530273sp"
+                        android:textColor="#FF0F172A"
+                        android:gravity="start"
+                        android:fontFamily="Inter"
+        android:layout_width="88dp"
+        android:layout_height="18dp" />
+                </LinearLayout>
+
+                <!-- FRAME: span#clock -->
+                <LinearLayout
+                    android:id="@+id/span_clock"
+                    android:orientation="vertical"
+        android:layout_width="73dp"
+        android:layout_height="22dp"
+                    android:paddingLeft="0dp"
+                    android:paddingTop="1dp"
+                    android:paddingRight="0dp"
+                    android:paddingBottom="2dp">
+
+                    <!-- TEXT: 12:50 PM -->
+                    <TextView
+                        android:id="@+id/12_50_pm"
+                        android:text="12:50 PM"
+                        android:textSize="16sp"
+                        android:textColor="#FF3B82F6"
+                        android:gravity="start"
+                        android:textStyle="bold"
+                        android:fontFamily="Inter"
+        android:layout_width="73dp"
+        android:layout_height="19dp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- FRAME: div.row-between -->
+            <LinearLayout
+                android:id="@+id/div_row_between"
+                android:orientation="horizontal"
+        android:layout_width="326dp"
+        android:layout_height="19dp">
+
+                <!-- FRAME: span -->
+                <LinearLayout
+                    android:id="@+id/span"
+                    android:orientation="vertical"
+        android:layout_width="108dp"
+        android:layout_height="18dp"
+                    android:paddingLeft="0dp"
+                    android:paddingTop="1dp"
+                    android:paddingRight="0dp"
+                    android:paddingBottom="2dp">
+
+                    <!-- TEXT: Detected location -->
+                    <TextView
+                        android:id="@+id/detected_location"
+                        android:text="Detected location"
+                        android:textSize="12.800000190734863sp"
+                        android:textColor="#FF1A73E8"
+                        android:gravity="start"
+                        android:fontFamily="Inter"
+        android:layout_width="108dp"
+        android:layout_height="15dp" />
+                </LinearLayout>
+
+                <!-- FRAME: div.location-text -->
+                <LinearLayout
+                    android:id="@+id/div_location_text"
+                    android:orientation="horizontal"
+        android:layout_width="126dp"
+        android:layout_height="19dp">
+
+                    <!-- FRAME: span -->
+                    <LinearLayout
+                        android:id="@+id/span"
+                        android:orientation="vertical"
+        android:layout_width="106dp"
+        android:layout_height="19dp"
+                        android:paddingLeft="0dp"
+                        android:paddingTop="1dp"
+                        android:paddingRight="0dp"
+                        android:paddingBottom="2dp">
+
+                        <!-- TEXT: Ho Chi Minh City -->
+                        <TextView
+                            android:id="@+id/ho_chi_minh_city"
+                            android:text="Ho Chi Minh City"
+                            android:textSize="13.300000190734863sp"
+                            android:textColor="#FF1A73E8"
+                            android:gravity="start"
+                            android:fontFamily="Inter"
+        android:layout_width="106dp"
+        android:layout_height="16dp" />
+                    </LinearLayout>
+
+                    <!-- INSTANCE: Component 1 -->
+                    <androidx.constraintlayout.widget.ConstraintLayout
+                        android:id="@+id/component_1"
+        android:layout_width="16dp"
+        android:layout_height="16dp">
+
+                        <!-- VECTOR: Vector -->
+                        <ImageView
+                            android:id="@+id/vector"
+                            android:src="@drawable/ic_vector"
+                            android:scaleType="fitXY"
+        android:layout_width="4dp"
+        android:layout_height="8dp" />
+                    </androidx.constraintlayout.widget.ConstraintLayout>
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

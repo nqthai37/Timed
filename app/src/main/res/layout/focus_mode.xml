@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FFFFFFFF">
+
+    <!-- Frame: Focus Mode (364x800) -->
+
+    <!-- FRAME: div.frame -->
+    <LinearLayout
+        android:id="@+id/div_frame"
+        android:orientation="vertical"
+        android:layout_width="360dp"
+        android:layout_height="800dp"
+        android:layout_marginStart="2dp"
+        android:layout_marginTop="0dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:background="@drawable/bg_rounded">
+
+        <!-- FRAME: div.frame -->
+        <LinearLayout
+            android:id="@+id/div_frame"
+            android:orientation="vertical"
+        android:layout_width="361dp"
+        android:layout_height="800dp"
+            android:background="#FFF8FAFC">
+
+            <!-- FRAME: div.header -->
+            <LinearLayout
+                android:id="@+id/div_header"
+                android:orientation="horizontal"
+        android:layout_width="361dp"
+        android:layout_height="40dp">
+
+                <!-- FRAME: div.icon-circle -->
+                <LinearLayout
+                    android:id="@+id/div_icon_circle"
+                    android:orientation="horizontal"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+                    android:background="@drawable/bg_rounded">
+
+                    <!-- INSTANCE: Component 1 -->
+                    <androidx.constraintlayout.widget.ConstraintLayout
+                        android:id="@+id/component_1"
+        android:layout_width="20dp"
+        android:layout_height="20dp">
+
+                        <!-- VECTOR: Vector -->
+                        <ImageView
+                            android:id="@+id/vector"
+                            android:src="@drawable/ic_vector"
+                            android:scaleType="fitXY"
+        android:layout_width="8dp"
+        android:layout_height="17dp" />
+                    </androidx.constraintlayout.widget.ConstraintLayout>
+                </LinearLayout>
+
+                <!-- FRAME: div -->
+                <LinearLayout
+                    android:id="@+id/div"
+                    android:orientation="vertical"
+        android:layout_width="113dp"
+        android:layout_height="38dp">
+
+                    <!-- FRAME: h2 -->
+                    <LinearLayout
+                        android:id="@+id/h2"
+                        android:orientation="vertical"
+        android:layout_width="113dp"
+        android:layout_height="22dp"
+                        android:paddingLeft="0dp"
+                        android:paddingTop="0dp"
+                        android:paddingRight="0dp"
+                        android:paddingBottom="1dp">
+
+                        <!-- TEXT: Focus Mode -->
+                        <TextView
+                            android:id="@+id/focus_mode"
+                            android:text="Focus Mode"
+                            android:textSize="17.700000762939453sp"
+                            android:textColor="#FF000000"
+                            android:gravity="start"
+                            android:textStyle="bold"
+                            android:fontFamily="Inter"
+        android:layout_width="105dp"
+        android:layout_height="21dp" />
+                    </LinearLayout>
+
+                    <!-- FRAME: p -->
+                    <LinearLayout
+                        android:id="@+id/p"
+                        android:orientation="vertical"
+        android:layout_width="113dp"
+        android:layout_height="16dp">
+
+                        <!-- TEXT: Stay concentrated -->
+                        <TextView
+                            android:id="@+id/stay_concentrated"
+                            android:text="Stay concentrated"
+                            android:textSize="12.899999618530273sp"
+                            android:textColor="#FF64748B"
+                            android:gravity="start"
+                            android:fontFamily="Inter"
+        android:layout_width="113dp"
+        android:layout_height="16dp" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- FRAME: div.card -->
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/div_card"
+        android:layout_width="361dp"
+        android:layout_height="392dp"
+                android:background="@drawable/bg_rounded">
+
+                <!-- FRAME: button.btn-primary -->
+                <LinearLayout
+                    android:id="@+id/button_btn_primary"
+                    android:orientation="vertical"
+        android:layout_width="319dp"
+        android:layout_height="52dp"
+        android:layout_marginStart="21dp"
+        android:layout_marginTop="301dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+                    android:background="@drawable/bg_rounded"
+                    android:paddingLeft="32dp"
+                    android:paddingTop="16dp"
+                    android:paddingRight="32dp"
+                    android:paddingBottom="17dp">
+
+                    <!-- TEXT: Start Focus -->
+                    <TextView
+                        android:id="@+id/start_focus"
+                        android:text="Start Focus"
+                        android:textSize="15.600000381469727sp"
+                        android:textColor="#FFFFFFFF"
+                        android:gravity="center"
+                        android:textStyle="bold"
+                        android:fontFamily="Inter"
+        android:layout_width="88dp"
+        android:layout_height="19dp" />
+                </LinearLayout>
+
+                <!-- FRAME: div.timer-ring -->
+                <LinearLayout
+                    android:id="@+id/div_timer_ring"
+                    android:orientation="horizontal"
+        android:layout_width="236dp"
+        android:layout_height="236dp"
+        android:layout_marginStart="14dp"
+        android:layout_marginTop="159dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+                    android:background="@drawable/bg_rounded"
+                    android:paddingLeft="8.00000286102295dp"
+                    android:paddingTop="8.00000286102295dp"
+                    android:paddingRight="8.00000286102295dp"
+                    android:paddingBottom="8.00000286102295dp">
+
+                    <!-- FRAME: div.time -->
+                    <LinearLayout
+                        android:id="@+id/div_time"
+                        android:orientation="vertical"
+        android:layout_width="142dp"
+        android:layout_height="68dp"
+                        android:paddingLeft="0dp"
+                        android:paddingTop="5dp"
+                        android:paddingRight="0dp"
+                        android:paddingBottom="5dp">
+
+                        <!-- TEXT: 25:00 -->
+                        <TextView
+                            android:id="@+id/25_00"
+                            android:text="25:00"
+                            android:textSize="48sp"
+                            android:textColor="#FF0F172A"
+                            android:gravity="start"
+                            android:textStyle="bold"
+                            android:fontFamily="Inter"
+        android:layout_width="142dp"
+        android:layout_height="58dp" />
+                    </LinearLayout>
+                </LinearLayout>
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+            <!-- FRAME: div.grid-2 -->
+            <LinearLayout
+                android:id="@+id/div_grid_2"
+                android:orientation="horizontal"
+        android:layout_width="361dp"
+        android:layout_height="52dp"
+                android:paddingLeft="10dp"
+                android:paddingTop="0dp"
+                android:paddingRight="10dp"
+                android:paddingBottom="0dp">
+
+                <!-- FRAME: div.mode-btn -->
+                <LinearLayout
+                    android:id="@+id/div_mode_btn"
+                    android:orientation="vertical"
+        android:layout_width="165dp"
+        android:layout_height="52dp"
+                    android:background="@drawable/bg_rounded"
+                    android:paddingLeft="17dp"
+                    android:paddingTop="17dp"
+                    android:paddingRight="17dp"
+                    android:paddingBottom="17dp">
+
+                    <!-- TEXT: Focus (25m) -->
+                    <TextView
+                        android:id="@+id/focus__25m_"
+                        android:text="Focus (25m)"
+                        android:textSize="15sp"
+                        android:textColor="#FF3B82F6"
+                        android:gravity="center"
+                        android:fontFamily="Inter"
+        android:layout_width="90dp"
+        android:layout_height="18dp" />
+                </LinearLayout>
+
+                <!-- FRAME: div.mode-btn -->
+                <LinearLayout
+                    android:id="@+id/div_mode_btn"
+                    android:orientation="vertical"
+        android:layout_width="165dp"
+        android:layout_height="52dp"
+                    android:background="@drawable/bg_rounded"
+                    android:paddingLeft="17dp"
+                    android:paddingTop="17dp"
+                    android:paddingRight="17dp"
+                    android:paddingBottom="17dp">
+
+                    <!-- TEXT: Break (5m) -->
+                    <TextView
+                        android:id="@+id/break__5m_"
+                        android:text="Break (5m)"
+                        android:textSize="15sp"
+                        android:textColor="#FF64748B"
+                        android:gravity="center"
+                        android:fontFamily="Inter"
+        android:layout_width="79dp"
+        android:layout_height="18dp" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
