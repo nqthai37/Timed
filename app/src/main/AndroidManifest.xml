@@ -12,6 +12,19 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Timed">
         <activity
+            android:name=".SettingActivity"
+            android:exported="false" />
+        <activity android:name=".SyncStorageActivity" android:exported="false" />
+        <activity android:name=".TimezoneSettingActivity" android:exported="false" />
+        <activity android:name=".AiSchedulingActivity" android:exported="false" />
+        <activity android:name=".AnalyticsActivity" android:exported="false" />
+        <activity android:name=".ConflictResolverActivity" android:exported="false" />
+        <activity android:name=".FocusModeActivity" android:exported="false" />
+        <activity android:name=".FreeSlotFinderActivity" android:exported="false" />
+        <activity android:name=".HabitTrackerActivity" android:exported="false" />
+        <activity android:name=".SecurityActivity" android:exported="false" />
+
+        <activity
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>

@@ -1,815 +1,99 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FFFFFFFF">
+    android:orientation="vertical"
+    android:background="#FFFFFF">
 
-    <!-- Frame: Conflict Resolver (360x800) -->
-
-    <!-- FRAME: Frame -->
+    <!-- Header -->
     <LinearLayout
-        android:id="@+id/frame"
-        android:orientation="vertical"
-        android:layout_width="360dp"
-        android:layout_height="768dp"
-        android:layout_marginStart="0dp"
-        android:layout_marginTop="13dp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="16dp"
+        android:gravity="center_vertical">
 
-        <!-- FRAME: div.settings-header -->
+        <View
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/bg_rounded"
+            android:backgroundTint="#EF4444"/>
+
         <LinearLayout
-            android:id="@+id/div_settings_header"
-            android:orientation="horizontal"
-        android:layout_width="360dp"
-        android:layout_height="44dp">
-
-            <!-- FRAME: div.icon-wrapper -->
-            <LinearLayout
-                android:id="@+id/div_icon_wrapper"
-                android:orientation="horizontal"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-                android:background="@drawable/bg_rounded">
-
-                <!-- INSTANCE: Component 1 -->
-                <androidx.constraintlayout.widget.ConstraintLayout
-                    android:id="@+id/component_1"
-        android:layout_width="20dp"
-        android:layout_height="20dp">
-
-                    <!-- VECTOR: Vector -->
-                    <ImageView
-                        android:id="@+id/vector"
-                        android:src="@drawable/ic_vector"
-                        android:scaleType="fitXY"
-        android:layout_width="1dp"
-        android:layout_height="1dp" />
-
-                    <!-- VECTOR: Vector -->
-                    <ImageView
-                        android:id="@+id/vector"
-                        android:src="@drawable/ic_vector"
-                        android:scaleType="fitXY"
-        android:layout_width="1dp"
-        android:layout_height="1dp" />
-
-                    <!-- VECTOR: Vector -->
-                    <ImageView
-                        android:id="@+id/vector"
-                        android:src="@drawable/ic_vector"
-                        android:scaleType="fitXY"
-        android:layout_width="1dp"
-        android:layout_height="1dp" />
-
-                    <!-- VECTOR: Vector -->
-                    <ImageView
-                        android:id="@+id/vector"
-                        android:src="@drawable/ic_vector"
-                        android:scaleType="fitXY"
-        android:layout_width="1dp"
-        android:layout_height="1dp" />
-
-                    <!-- VECTOR: Vector -->
-                    <ImageView
-                        android:id="@+id/vector"
-                        android:src="@drawable/ic_vector"
-                        android:scaleType="fitXY"
-        android:layout_width="17dp"
-        android:layout_height="17dp" />
-                </androidx.constraintlayout.widget.ConstraintLayout>
-            </LinearLayout>
-
-            <!-- FRAME: div -->
-            <LinearLayout
-                android:id="@+id/div"
-                android:orientation="vertical"
-        android:layout_width="192dp"
-        android:layout_height="44dp">
-
-                <!-- FRAME: h2.title -->
-                <LinearLayout
-                    android:id="@+id/h2_title"
-                    android:orientation="vertical"
-        android:layout_width="192dp"
-        android:layout_height="25dp"
-                    android:paddingLeft="0dp"
-                    android:paddingTop="2dp"
-                    android:paddingRight="0dp"
-                    android:paddingBottom="2dp">
-
-                    <!-- TEXT: Theme & Appearance -->
-                    <TextView
-                        android:id="@+id/theme___appearance"
-                        android:text="Theme &amp; Appearance"
-                        android:textSize="17.399999618530273sp"
-                        android:textColor="#FF0F172A"
-                        android:gravity="start"
-                        android:textStyle="bold"
-                        android:fontFamily="Inter"
-        android:layout_width="183dp"
-        android:layout_height="21dp" />
-                </LinearLayout>
-
-                <!-- FRAME: p.subtitle -->
-                <LinearLayout
-                    android:id="@+id/p_subtitle"
-                    android:orientation="vertical"
-        android:layout_width="192dp"
-        android:layout_height="19dp"
-                    android:paddingLeft="0dp"
-                    android:paddingTop="1dp"
-                    android:paddingRight="0dp"
-                    android:paddingBottom="2dp">
-
-                    <!-- TEXT: Customize the look of your app -->
-                    <TextView
-                        android:id="@+id/customize_the_look_of_your_app"
-                        android:text="Customize the look of your app"
-                        android:textSize="13sp"
-                        android:textColor="#FF1A73E8"
-                        android:gravity="start"
-                        android:fontFamily="Inter"
-        android:layout_width="192dp"
-        android:layout_height="16dp" />
-                </LinearLayout>
-            </LinearLayout>
-        </LinearLayout>
-
-        <!-- FRAME: div.section -->
-        <LinearLayout
-            android:id="@+id/div_section"
+            android:layout_marginStart="12dp"
             android:orientation="vertical"
-        android:layout_width="360dp"
-        android:layout_height="138dp">
-
-            <!-- FRAME: span.section-label -->
-            <LinearLayout
-                android:id="@+id/span_section_label"
-                android:orientation="vertical"
-        android:layout_width="360dp"
-        android:layout_height="19dp"
-                android:paddingLeft="0dp"
-                android:paddingTop="1dp"
-                android:paddingRight="0dp"
-                android:paddingBottom="2dp">
-
-                <!-- TEXT: Appearance -->
-                <TextView
-                    android:id="@+id/appearance"
-                    android:text="Appearance"
-                    android:textSize="13.199999809265137sp"
-                    android:textColor="#FF0F172A"
-                    android:gravity="start"
-                    android:fontFamily="Inter"
-        android:layout_width="360dp"
-        android:layout_height="16dp" />
-            </LinearLayout>
-
-            <!-- FRAME: div.theme-grid -->
-            <LinearLayout
-                android:id="@+id/div_theme_grid"
-                android:orientation="horizontal"
-        android:layout_width="360dp"
-        android:layout_height="107dp">
-
-                <!-- FRAME: button.theme-btn -->
-                <LinearLayout
-                    android:id="@+id/button_theme_btn"
-                    android:orientation="vertical"
-        android:layout_width="108dp"
-        android:layout_height="106dp"
-                    android:background="@drawable/bg_rounded"
-                    android:paddingLeft="30dp"
-                    android:paddingTop="16dp"
-                    android:paddingRight="30dp"
-                    android:paddingBottom="16dp">
-
-                    <!-- RECTANGLE: button.theme-btn:shadow -->
-                    <LinearLayout
-                        android:id="@+id/button_theme_btn_shadow"
-        android:layout_width="108dp"
-        android:layout_height="106dp"
-                        android:background="@drawable/bg_rounded" />
-
-                    <!-- FRAME: div.theme-icon-wrapper -->
-                    <LinearLayout
-                        android:id="@+id/div_theme_icon_wrapper"
-                        android:orientation="horizontal"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-                        android:background="@drawable/bg_rounded">
-
-                        <!-- INSTANCE: Component 1 -->
-                        <androidx.constraintlayout.widget.ConstraintLayout
-                            android:id="@+id/component_1"
-        android:layout_width="24dp"
-        android:layout_height="24dp">
-
-                            <!-- VECTOR: Vector -->
-                            <ImageView
-                                android:id="@+id/vector"
-                                android:src="@drawable/ic_vector"
-                                android:scaleType="fitXY"
-        android:layout_width="8dp"
-        android:layout_height="8dp" />
-
-                            <!-- VECTOR: Vector -->
-                            <ImageView
-                                android:id="@+id/vector"
-                                android:src="@drawable/ic_vector"
-                                android:scaleType="fitXY"
-        android:layout_width="20dp"
-        android:layout_height="20dp" />
-                        </androidx.constraintlayout.widget.ConstraintLayout>
-                    </LinearLayout>
-
-                    <!-- FRAME: span.theme-label -->
-                    <LinearLayout
-                        android:id="@+id/span_theme_label"
-                        android:orientation="vertical"
-        android:layout_width="31dp"
-        android:layout_height="18dp"
-                        android:paddingLeft="0dp"
-                        android:paddingTop="1dp"
-                        android:paddingRight="0dp"
-                        android:paddingBottom="2dp">
-
-                        <!-- TEXT: Light -->
-                        <TextView
-                            android:id="@+id/light"
-                            android:text="Light"
-                            android:textSize="12.800000190734863sp"
-                            android:textColor="#FF3B82F6"
-                            android:gravity="center"
-                            android:fontFamily="Inter"
-        android:layout_width="31dp"
-        android:layout_height="15dp" />
-                    </LinearLayout>
-                </LinearLayout>
-
-                <!-- INSTANCE: Component 2 -->
-                <LinearLayout
-                    android:id="@+id/component_2"
-                    android:orientation="vertical"
-        android:layout_width="108dp"
-        android:layout_height="107dp"
-                    android:background="@drawable/bg_rounded"
-                    android:paddingLeft="30dp"
-                    android:paddingTop="16dp"
-                    android:paddingRight="30dp"
-                    android:paddingBottom="16dp">
-
-                    <!-- FRAME: div.theme-icon-wrapper -->
-                    <LinearLayout
-                        android:id="@+id/div_theme_icon_wrapper"
-                        android:orientation="horizontal"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-                        android:background="@drawable/bg_rounded">
-
-                        <!-- INSTANCE: Component 1 -->
-                        <androidx.constraintlayout.widget.ConstraintLayout
-                            android:id="@+id/component_1"
-        android:layout_width="24dp"
-        android:layout_height="24dp">
-
-                            <!-- VECTOR: Vector -->
-                            <ImageView
-                                android:id="@+id/vector"
-                                android:src="@drawable/ic_vector"
-                                android:scaleType="fitXY"
-        android:layout_width="18dp"
-        android:layout_height="18dp" />
-                        </androidx.constraintlayout.widget.ConstraintLayout>
-                    </LinearLayout>
-
-                    <!-- FRAME: span.theme-label -->
-                    <LinearLayout
-                        android:id="@+id/span_theme_label"
-                        android:orientation="vertical"
-        android:layout_width="30dp"
-        android:layout_height="19dp"
-                        android:paddingLeft="0dp"
-                        android:paddingTop="1dp"
-                        android:paddingRight="0dp"
-                        android:paddingBottom="2dp">
-
-                        <!-- TEXT: Text -->
-                        <TextView
-                            android:id="@+id/text"
-                            android:text="Dark"
-                            android:textSize="13.300000190734863sp"
-                            android:textColor="#FF1A73E8"
-                            android:gravity="center"
-                            android:fontFamily="Inter"
-        android:layout_width="30dp"
-        android:layout_height="16dp" />
-                    </LinearLayout>
-                </LinearLayout>
-
-                <!-- INSTANCE: Component 2 -->
-                <LinearLayout
-                    android:id="@+id/component_2"
-                    android:orientation="vertical"
-        android:layout_width="108dp"
-        android:layout_height="107dp"
-                    android:background="@drawable/bg_rounded"
-                    android:paddingLeft="30dp"
-                    android:paddingTop="16dp"
-                    android:paddingRight="30dp"
-                    android:paddingBottom="16dp">
-
-                    <!-- FRAME: div.theme-icon-wrapper -->
-                    <LinearLayout
-                        android:id="@+id/div_theme_icon_wrapper"
-                        android:orientation="horizontal"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-                        android:background="@drawable/bg_rounded">
-
-                        <!-- INSTANCE: Component 1 -->
-                        <androidx.constraintlayout.widget.ConstraintLayout
-                            android:id="@+id/component_1"
-        android:layout_width="24dp"
-        android:layout_height="24dp">
-
-                            <!-- VECTOR: Vector -->
-                            <ImageView
-                                android:id="@+id/vector"
-                                android:src="@drawable/ic_vector"
-                                android:scaleType="fitXY"
-        android:layout_width="20dp"
-        android:layout_height="14dp" />
-
-                            <!-- VECTOR: Vector -->
-                            <ImageView
-                                android:id="@+id/vector"
-                                android:src="@drawable/ic_vector"
-                                android:scaleType="fitXY"
-        android:layout_width="8dp"
-        android:layout_height="0dp" />
-
-                            <!-- VECTOR: Vector -->
-                            <ImageView
-                                android:id="@+id/vector"
-                                android:src="@drawable/ic_vector"
-                                android:scaleType="fitXY"
-        android:layout_width="0dp"
-        android:layout_height="4dp" />
-                        </androidx.constraintlayout.widget.ConstraintLayout>
-                    </LinearLayout>
-
-                    <!-- FRAME: span.theme-label -->
-                    <LinearLayout
-                        android:id="@+id/span_theme_label"
-                        android:orientation="vertical"
-        android:layout_width="47dp"
-        android:layout_height="19dp"
-                        android:paddingLeft="0dp"
-                        android:paddingTop="1dp"
-                        android:paddingRight="0dp"
-                        android:paddingBottom="2dp">
-
-                        <!-- TEXT: Text -->
-                        <TextView
-                            android:id="@+id/text"
-                            android:text="System"
-                            android:textSize="13.100000381469727sp"
-                            android:textColor="#FF1A73E8"
-                            android:gravity="center"
-                            android:fontFamily="Inter"
-        android:layout_width="47dp"
-        android:layout_height="16dp" />
-                    </LinearLayout>
-                </LinearLayout>
-            </LinearLayout>
-        </LinearLayout>
-
-        <!-- FRAME: div.section -->
-        <LinearLayout
-            android:id="@+id/div_section"
-            android:orientation="vertical"
-        android:layout_width="360dp"
-        android:layout_height="107dp">
-
-            <!-- FRAME: span.section-label -->
-            <LinearLayout
-                android:id="@+id/span_section_label"
-                android:orientation="vertical"
-        android:layout_width="360dp"
-        android:layout_height="19dp"
-                android:paddingLeft="0dp"
-                android:paddingTop="1dp"
-                android:paddingRight="0dp"
-                android:paddingBottom="2dp">
-
-                <!-- TEXT: Primary Color -->
-                <TextView
-                    android:id="@+id/primary_color"
-                    android:text="Primary Color"
-                    android:textSize="13.300000190734863sp"
-                    android:textColor="#FF0F172A"
-                    android:gravity="start"
-                    android:fontFamily="Inter"
-        android:layout_width="360dp"
-        android:layout_height="16dp" />
-            </LinearLayout>
-
-            <!-- FRAME: div.color-grid -->
-            <LinearLayout
-                android:id="@+id/div_color_grid"
-                android:orientation="horizontal"
-        android:layout_width="360dp"
-        android:layout_height="48dp">
-
-                <!-- INSTANCE: Component 3 -->
-                <LinearLayout
-                    android:id="@+id/component_3"
-                    android:orientation="horizontal"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-                    android:background="@drawable/bg_rounded">
-
-                    <!-- RECTANGLE: button.color-btn:shadow -->
-                    <LinearLayout
-                        android:id="@+id/button_color_btn_shadow"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-                        android:background="@drawable/bg_rounded" />
-
-                    <!-- INSTANCE: Component 1 -->
-                    <androidx.constraintlayout.widget.ConstraintLayout
-                        android:id="@+id/component_1"
-        android:layout_width="20dp"
-        android:layout_height="20dp">
-
-                        <!-- VECTOR: Vector -->
-                        <ImageView
-                            android:id="@+id/vector"
-                            android:src="@drawable/ic_vector"
-                            android:scaleType="fitXY"
-        android:layout_width="13dp"
-        android:layout_height="9dp" />
-                    </androidx.constraintlayout.widget.ConstraintLayout>
-                </LinearLayout>
-
-                <!-- RECTANGLE: button.color-btn -->
-                <LinearLayout
-                    android:id="@+id/button_color_btn"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-                    android:background="@drawable/bg_rounded" />
-
-                <!-- RECTANGLE: button.color-btn -->
-                <LinearLayout
-                    android:id="@+id/button_color_btn"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-                    android:background="@drawable/bg_rounded" />
-
-                <!-- RECTANGLE: button.color-btn -->
-                <LinearLayout
-                    android:id="@+id/button_color_btn"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-                    android:background="@drawable/bg_rounded" />
-
-                <!-- RECTANGLE: button.color-btn -->
-                <LinearLayout
-                    android:id="@+id/button_color_btn"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-                    android:background="@drawable/bg_rounded" />
-
-                <!-- RECTANGLE: button.color-btn -->
-                <LinearLayout
-                    android:id="@+id/button_color_btn"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-                    android:background="@drawable/bg_rounded" />
-            </LinearLayout>
-
-            <!-- FRAME: span.hint-text -->
-            <LinearLayout
-                android:id="@+id/span_hint_text"
-                android:orientation="vertical"
-        android:layout_width="360dp"
-        android:layout_height="16dp"
-                android:paddingLeft="0dp"
-                android:paddingTop="1dp"
-                android:paddingRight="0dp"
-                android:paddingBottom="1dp">
-
-                <!-- TEXT: Selected: Blue -->
-                <TextView
-                    android:id="@+id/selected__blue"
-                    android:text="Selected: Blue"
-                    android:textSize="11.399999618530273sp"
-                    android:textColor="#FF1A73E8"
-                    android:gravity="start"
-                    android:fontFamily="Inter"
-        android:layout_width="360dp"
-        android:layout_height="14dp" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <!-- FRAME: div.section -->
-        <LinearLayout
-            android:id="@+id/div_section"
-            android:orientation="vertical"
-        android:layout_width="360dp"
-        android:layout_height="153dp">
-
-            <!-- FRAME: span.section-label -->
-            <LinearLayout
-                android:id="@+id/span_section_label"
-                android:orientation="vertical"
-        android:layout_width="360dp"
-        android:layout_height="19dp"
-                android:paddingLeft="0dp"
-                android:paddingTop="1dp"
-                android:paddingRight="0dp"
-                android:paddingBottom="2dp">
-
-                <!-- TEXT: Preview -->
-                <TextView
-                    android:id="@+id/preview"
-                    android:text="Preview"
-                    android:textSize="13.199999809265137sp"
-                    android:textColor="#FF0F172A"
-                    android:gravity="start"
-                    android:fontFamily="Inter"
-        android:layout_width="360dp"
-        android:layout_height="16dp" />
-            </LinearLayout>
-
-            <!-- FRAME: div.preview-box -->
-            <LinearLayout
-                android:id="@+id/div_preview_box"
-                android:orientation="vertical"
-        android:layout_width="360dp"
-        android:layout_height="122dp"
-                android:background="@drawable/bg_rounded"
-                android:paddingLeft="16dp"
-                android:paddingTop="16dp"
-                android:paddingRight="16dp"
-                android:paddingBottom="16dp">
-
-                <!-- FRAME: div.preview-header -->
-                <LinearLayout
-                    android:id="@+id/div_preview_header"
-                    android:orientation="horizontal"
-        android:layout_width="326dp"
-        android:layout_height="41dp">
-
-                    <!-- RECTANGLE: div.preview-avatar -->
-                    <LinearLayout
-                        android:id="@+id/div_preview_avatar"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-                        android:background="@drawable/bg_rounded" />
-
-                    <!-- FRAME: div.preview-text-col -->
-                    <LinearLayout
-                        android:id="@+id/div_preview_text_col"
-                        android:orientation="vertical"
-        android:layout_width="108dp"
-        android:layout_height="41dp">
-
-                        <!-- FRAME: span.preview-title -->
-                        <LinearLayout
-                            android:id="@+id/span_preview_title"
-                            android:orientation="vertical"
-        android:layout_width="108dp"
-        android:layout_height="22dp"
-                            android:paddingLeft="0dp"
-                            android:paddingTop="1dp"
-                            android:paddingRight="0dp"
-                            android:paddingBottom="2dp">
-
-                            <!-- TEXT: Sample Event -->
-                            <TextView
-                                android:id="@+id/sample_event"
-                                android:text="Sample Event"
-                                android:textSize="15.300000190734863sp"
-                                android:textColor="#FF0F172A"
-                                android:gravity="start"
-                                android:fontFamily="Inter"
-        android:layout_width="99dp"
-        android:layout_height="19dp" />
-                        </LinearLayout>
-
-                        <!-- FRAME: span.preview-subtitle -->
-                        <LinearLayout
-                            android:id="@+id/span_preview_subtitle"
-                            android:orientation="vertical"
-        android:layout_width="108dp"
-        android:layout_height="19dp"
-                            android:paddingLeft="0dp"
-                            android:paddingTop="1dp"
-                            android:paddingRight="0dp"
-                            android:paddingBottom="2dp">
-
-                            <!-- TEXT: Today at 2:00 PM -->
-                            <TextView
-                                android:id="@+id/today_at_2_00_pm"
-                                android:text="Today at 2:00 PM"
-                                android:textSize="13sp"
-                                android:textColor="#FF6B7280"
-                                android:gravity="start"
-                                android:fontFamily="Inter"
-        android:layout_width="108dp"
-        android:layout_height="16dp" />
-                        </LinearLayout>
-                    </LinearLayout>
-                </LinearLayout>
-
-                <!-- FRAME: div.preview-content -->
-                <LinearLayout
-                    android:id="@+id/div_preview_content"
-                    android:orientation="vertical"
-        android:layout_width="326dp"
-        android:layout_height="35dp"
-                    android:background="@drawable/bg_rounded"
-                    android:paddingLeft="12dp"
-                    android:paddingTop="9dp"
-                    android:paddingRight="12dp"
-                    android:paddingBottom="10dp">
-
-                    <!-- TEXT: This is how your calendar will look -->
-                    <TextView
-                        android:id="@+id/this_is_how_your_calendar_will_look"
-                        android:text="This is how your calendar will look"
-                        android:textSize="13.100000381469727sp"
-                        android:textColor="#FF4B5563"
-                        android:gravity="start"
-                        android:fontFamily="Inter"
-        android:layout_width="211dp"
-        android:layout_height="16dp" />
-                </LinearLayout>
-            </LinearLayout>
-        </LinearLayout>
-
-        <!-- FRAME: div.section -->
-        <LinearLayout
-            android:id="@+id/div_section"
-            android:orientation="vertical"
-        android:layout_width="360dp"
-        android:layout_height="57dp">
-
-            <!-- FRAME: div.font-header -->
-            <LinearLayout
-                android:id="@+id/div_font_header"
-                android:orientation="horizontal"
-        android:layout_width="360dp"
-        android:layout_height="19dp">
-
-                <!-- FRAME: span.section-label -->
-                <LinearLayout
-                    android:id="@+id/span_section_label"
-                    android:orientation="vertical"
-        android:layout_width="58dp"
-        android:layout_height="19dp"
-                    android:paddingLeft="0dp"
-                    android:paddingTop="1dp"
-                    android:paddingRight="0dp"
-                    android:paddingBottom="2dp">
-
-                    <!-- TEXT: Font Size -->
-                    <TextView
-                        android:id="@+id/font_size"
-                        android:text="Font Size"
-                        android:textSize="13.300000190734863sp"
-                        android:textColor="#FF0F172A"
-                        android:gravity="start"
-                        android:fontFamily="Inter"
-        android:layout_width="58dp"
-        android:layout_height="16dp" />
-                </LinearLayout>
-
-                <!-- FRAME: span.hint-text -->
-                <LinearLayout
-                    android:id="@+id/span_hint_text"
-                    android:orientation="vertical"
-        android:layout_width="43dp"
-        android:layout_height="16dp"
-                    android:paddingLeft="0dp"
-                    android:paddingTop="1dp"
-                    android:paddingRight="0dp"
-                    android:paddingBottom="1dp">
-
-                    <!-- TEXT: Medium -->
-                    <TextView
-                        android:id="@+id/medium"
-                        android:text="Medium"
-                        android:textSize="11.300000190734863sp"
-                        android:textColor="#FF1A73E8"
-                        android:gravity="start"
-                        android:fontFamily="Inter"
-        android:layout_width="43dp"
-        android:layout_height="14dp" />
-                </LinearLayout>
-            </LinearLayout>
-
-            <!-- FRAME: div.slider-container -->
-            <LinearLayout
-                android:id="@+id/div_slider_container"
-                android:orientation="horizontal"
-        android:layout_width="360dp"
-        android:layout_height="26dp">
-
-                <!-- FRAME: span.font-small -->
-                <LinearLayout
-                    android:id="@+id/span_font_small"
-                    android:orientation="vertical"
-        android:layout_width="9dp"
-        android:layout_height="17dp"
-                    android:paddingLeft="0dp"
-                    android:paddingTop="1dp"
-                    android:paddingRight="0dp"
-                    android:paddingBottom="1dp">
-
-                    <!-- TEXT: A -->
-                    <TextView
-                        android:id="@+id/a"
-                        android:text="A"
-                        android:textSize="12sp"
-                        android:textColor="#FF1A73E8"
-                        android:gravity="start"
-                        android:fontFamily="Inter"
-        android:layout_width="9dp"
-        android:layout_height="15dp" />
-                </LinearLayout>
-
-                <!-- FRAME: div.slider-track -->
-                <androidx.constraintlayout.widget.ConstraintLayout
-                    android:id="@+id/div_slider_track"
-        android:layout_width="322dp"
-        android:layout_height="8dp"
-                    android:background="@drawable/bg_rounded">
-
-                    <!-- RECTANGLE: div.slider-fill -->
-                    <LinearLayout
-                        android:id="@+id/div_slider_fill"
-        android:layout_width="161dp"
-        android:layout_height="8dp"
-        android:layout_marginStart="80dp"
-        android:layout_marginTop="0dp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-                        android:background="@drawable/bg_rounded" />
-
-                    <!-- RECTANGLE: div.slider-thumb -->
-                    <LinearLayout
-                        android:id="@+id/div_slider_thumb"
-        android:layout_width="16dp"
-        android:layout_height="16dp"
-        android:layout_marginStart="153dp"
-        android:layout_marginTop="-4dp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-                        android:background="@drawable/bg_rounded" />
-                </androidx.constraintlayout.widget.ConstraintLayout>
-
-                <!-- FRAME: span.font-large -->
-                <LinearLayout
-                    android:id="@+id/span_font_large"
-                    android:orientation="vertical"
-        android:layout_width="13dp"
-        android:layout_height="26dp"
-                    android:paddingLeft="0dp"
-                    android:paddingTop="2dp"
-                    android:paddingRight="0dp"
-                    android:paddingBottom="2dp">
-
-                    <!-- TEXT: A -->
-                    <TextView
-                        android:id="@+id/a"
-                        android:text="A"
-                        android:textSize="18sp"
-                        android:textColor="#FF1A73E8"
-                        android:gravity="start"
-                        android:fontFamily="Inter"
-        android:layout_width="13dp"
-        android:layout_height="22dp" />
-                </LinearLayout>
-            </LinearLayout>
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+
+                android:text="Schedule Conflict"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="#0F172A"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="2 events overlap"
+                android:textSize="13sp"
+                android:textColor="#1A73E8"/>
         </LinearLayout>
     </LinearLayout>
 
-    <!-- RECTANGLE: Rectangle 1 -->
-    <LinearLayout
-        android:id="@+id/rectangle_1"
-        android:layout_width="360dp"
-        android:layout_height="13dp"
-        android:layout_marginStart="0dp"
-        android:layout_marginTop="0dp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        android:background="#FFD9D9D9" />
+    <!-- RecyclerView -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_conflicts"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"/>
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+    <!-- Actions -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <Button
+            android:id="@+id/btn_auto"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="Auto Reschedule"
+            android:textColor="#FFFFFF"
+            android:background="@drawable/bg_rounded"/>
+
+        <LinearLayout
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal"
+            android:weightSum="2"
+            android:layout_width="match_parent"
+            android:layout_height="48dp">
+
+            <Button
+                android:id="@+id/btn_second"
+                android:layout_weight="1"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:text="Keep Second"/>
+
+            <Button
+                android:id="@+id/btn_first"
+                android:layout_weight="1"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:text="Keep First"/>
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btn_ignore"
+            android:layout_marginTop="12dp"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="Ignore Conflict"
+            android:textColor="#1A73E8"/>
+    </LinearLayout>
+
+</LinearLayout>

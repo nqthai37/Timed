@@ -1,60 +1,55 @@
 package com.timed;
 
+import android.content.Context;
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import java.util.List;
 
-public class SettingsAdapter extends RecyclerView.Adapter<SettingsAdapter.ViewHolder> {
+public class SettingsAdapter extends RecyclerView.Adapter<SettingsAdapter.SettingViewHolder> {
 
-    private final List<SettingItem> settingItems;
+    private Context context;
+    private List<SettingItem> settingList;
 
-    public SettingsAdapter(List<SettingItem> settingItems) {
-        this.settingItems = settingItems;
+    public SettingsAdapter(Context context, List<SettingItem> settingList) {
+        this.context = context;
+        this.settingList = settingList;
     }
 
     @NonNull
     @Override
-    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_setting, parent, false);
-        return new ViewHolder(view);
+    public SettingViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        View view = LayoutInflater.from(context).inflate(R.layout.item_setting, parent, false);
+        return new SettingViewHolder(view);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        SettingItem item = settingItems.get(position);
+    public void onBindViewHolder(@NonNull SettingViewHolder holder, int position) {
+        SettingItem item = settingList.get(position);
+        holder.tvSettingName.setText(item.getName());
 
-        holder.tvTitle.setText(item.getTitle());
-        holder.tvSubtitle.setText(item.getSubtitle());
-        holder.imgIcon.setImageResource(item.getIconRes());
-
-        if (item.isNew()) {
-            holder.tvTagNew.setVisibility(View.VISIBLE);
-        } else {
-            holder.tvTagNew.setVisibility(View.GONE);
-        }
+        // Xử lý sự kiện click vào item
+        holder.itemView.setOnClickListener(v -> {
+            Intent intent = new Intent(context, item.getTargetActivity());
+            context.startActivity(intent);
+        });
     }
 
     @Override
     public int getItemCount() {
-        return settingItems.size();
+        return settingList.size();
     }
 
-    public static class ViewHolder extends RecyclerView.ViewHolder {
-        ImageView imgIcon;
-        TextView tvTitle, tvSubtitle, tvTagNew;
+    public static class SettingViewHolder extends RecyclerView.ViewHolder {
+        TextView tvSettingName;
 
-        public ViewHolder(@NonNull View itemView) {
+        public SettingViewHolder(@NonNull View itemView) {
             super(itemView);
-            imgIcon = itemView.findViewById(R.id.imgIcon);
-            tvTitle = itemView.findViewById(R.id.tvTitle);
-            tvSubtitle = itemView.findViewById(R.id.tvSubtitle);
-            tvTagNew = itemView.findViewById(R.id.tvTagNew);
+            tvSettingName = itemView.findViewById(R.id.title);
         }
     }
 }
