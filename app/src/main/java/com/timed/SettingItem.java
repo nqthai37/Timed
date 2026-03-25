@@ -1,37 +1,31 @@
 package com.timed;
 
-import android.os.Bundle;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-import java.util.ArrayList;
-import java.util.List;
+public class SettingItem {
+    private final int iconId;
+    private String name;
+    private Class<?> targetActivity;
+    private String headerTitle; // Biến mới để lưu tên nhóm
 
-public class MainActivity extends AppCompatActivity {
-
-    private RecyclerView recyclerView;
-    private SettingsAdapter adapter;
-    private List<SettingItem> settingList;
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_setting);
-
-        recyclerView = findViewById(R.id.rv_settings);
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
-
-        settingList = new ArrayList<>();
-        settingList.add(new SettingItem("Time & Timezone",R.drawable.ic_time_zone, "Timezone Setting", TimezoneSettingActivity.class));
-        settingList.add(new SettingItem(R.drawable.ic_conflict_resolver, "Conflict Resolver", ConflictResolverActivity.class));
-        settingList.add(new SettingItem(R.drawable.ic_free_slot_finder, "Free Slot Finder", FreeSlotFinderActivity.class));
-        settingList.add(new SettingItem("Productivity & Focus",R.drawable.ic_habit_tracker, "Habit Tracker", HabitTrackerActivity.class));
-        settingList.add(new SettingItem(R.drawable.ic_focus, "Focus Mode", FocusModeActivity.class));
-        settingList.add(new SettingItem(R.drawable.ic_focus, "AI Scheduling", AiSchedulingActivity.class));
-        settingList.add(new SettingItem(R.drawable.ic_analytics, "Analytics", AnalyticsActivity.class));
-        settingList.add(new SettingItem("System & Security",R.drawable.ic_security, "Security", SecurityActivity.class));
-        settingList.add(new SettingItem(R.drawable.ic_cloud, "Sync & Storage", SyncStorageActivity.class));
-        adapter = new SettingsAdapter(this, settingList);
-        recyclerView.setAdapter(adapter);
+    // Constructor 1: Dành cho item mở đầu nhóm (CÓ truyền tiêu đề nhóm)
+    public SettingItem(String headerTitle, int iconId, String name, Class<?> targetActivity) {
+        this.headerTitle = headerTitle;
+        this.iconId = iconId;
+        this.name = name;
+        this.targetActivity = targetActivity;
     }
+
+    // Constructor 2: Dành cho item bình thường (KHÔNG có tiêu đề nhóm)
+    public SettingItem(int iconId, String name, Class<?> targetActivity) {
+        this.headerTitle = null; // Gán null vì không có
+        this.iconId = iconId;
+        this.name = name;
+        this.targetActivity = targetActivity;
+    }
+
+    public int getIconId() { return iconId; }
+    public String getName() { return name; }
+    public Class<?> getTargetActivity() { return targetActivity; }
+
+    // Getter mới
+    public String getHeaderTitle() { return headerTitle; }
 }
