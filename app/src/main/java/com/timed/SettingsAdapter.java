@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -30,26 +31,38 @@ public class SettingsAdapter extends RecyclerView.Adapter<SettingsAdapter.Settin
     @Override
     public void onBindViewHolder(@NonNull SettingViewHolder holder, int position) {
         SettingItem item = settingList.get(position);
-        holder.tvSettingName.setText(item.getName());
 
-        // Xử lý sự kiện click vào item
+        holder.tvTitle.setText(item.getName());
+        holder.ivIcon.setImageResource(item.getIconId());
+
+        // CHÌA KHÓA Ở ĐÂY: Nếu có tên nhóm -> HIỆN. Nếu không -> ẨN.
+        if (item.getHeaderTitle() != null && !item.getHeaderTitle().isEmpty()) {
+            holder.tvHeaderTitle.setVisibility(View.VISIBLE);
+            holder.tvHeaderTitle.setText(item.getHeaderTitle());
+        } else {
+            holder.tvHeaderTitle.setVisibility(View.GONE);
+        }
+
         holder.itemView.setOnClickListener(v -> {
             Intent intent = new Intent(context, item.getTargetActivity());
             context.startActivity(intent);
         });
     }
-
     @Override
     public int getItemCount() {
         return settingList.size();
     }
 
     public static class SettingViewHolder extends RecyclerView.ViewHolder {
-        TextView tvSettingName;
+        TextView tvTitle;
+        ImageView ivIcon;
+        TextView tvHeaderTitle; // Khai báo thêm
 
         public SettingViewHolder(@NonNull View itemView) {
             super(itemView);
-            tvSettingName = itemView.findViewById(R.id.title);
+            tvTitle = itemView.findViewById(R.id.title);
+            ivIcon = itemView.findViewById(R.id.icon);
+            tvHeaderTitle = itemView.findViewById(R.id.tvHeaderTitle); // Ánh xạ
         }
     }
 }
