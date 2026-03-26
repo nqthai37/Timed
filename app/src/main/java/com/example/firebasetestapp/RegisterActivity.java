@@ -81,7 +81,9 @@ public class RegisterActivity extends AppCompatActivity {
 
                     Toast.makeText(RegisterActivity.this, "Registration Successful!", Toast.LENGTH_LONG).show();
 
-                    Intent intent = new Intent(RegisterActivity.this, MainActivity.class);
+//                    Intent intent = new Intent(RegisterActivity.this, MainActivity.class);
+
+                    Intent intent = new Intent(RegisterActivity.this, ProfileActivity.class);
 
                     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                     startActivity(intent);

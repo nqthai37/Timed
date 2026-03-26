@@ -1,5 +1,6 @@
 package com.example.firebasetestapp.repositories;
 
+import com.example.firebasetestapp.managers.UserManager;
 import com.example.firebasetestapp.models.User;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.Firebase;
@@ -18,6 +19,30 @@ public class AuthRepository {
         userRepository = new UserRepository();
     }
 
+    public Task<User> loginWithEmail(String email, String password) {
+        return mAuth.signInWithEmailAndPassword(email, password)
+                .continueWithTask(authTask -> {
+                    if (!authTask.isSuccessful()) {
+                        throw authTask.getException();
+                    }
+
+                    String uid = authTask.getResult().getUser().getUid();
+                    return userRepository.getUser(uid);
+                })
+                .continueWith(dbTask -> {
+                    if (!dbTask.isSuccessful()) {
+                        throw dbTask.getException();
+                    }
+
+                    com.google.firebase.firestore.DocumentSnapshot snapshot = dbTask.getResult();
+
+                    User loggedInUser = snapshot.toObject(User.class);
+                    UserManager.getInstance().setCurrentUser(loggedInUser);
+
+                    return loggedInUser;
+                });
+    }
+
     public Task<Void> registerWithEmail(String name, String email, String password) {
 
         return mAuth.createUserWithEmailAndPassword(email, password)
@@ -30,8 +55,10 @@ public class AuthRepository {
                     String uid = task.getResult().getUser().getUid();
 
                     User newUser = new User();
+                    newUser.setUid(uid);
                     newUser.setName(name);
                     newUser.setEmail(email);
+                    newUser.setAvatar("https://res.cloudinary.com/dpsqhztqa/image/upload/v1774512640/default_person_drlyqj.webp");
                     newUser.setEmailVerified(false);
                     newUser.setAuthProvider("password");
 
@@ -55,6 +82,8 @@ public class AuthRepository {
 
                     newUser.setCreatedAt(now);
                     newUser.setUpdatedAt(now);
+
+                    UserManager.getInstance().setCurrentUser(newUser);
 
                     return userRepository.createUser(uid, newUser);
                 });

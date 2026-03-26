@@ -10,6 +10,7 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.example.firebasetestapp.managers.UserManager;
 import com.example.firebasetestapp.models.User;
 import com.example.firebasetestapp.repositories.UserRepository;
 import com.bumptech.glide.Glide;
@@ -38,7 +39,7 @@ public class ProfileActivity extends AppCompatActivity {
 
         userRepository = new UserRepository();
 
-        fetchUserProfile("JrBHoYhi1xQEsIwcgBFf");
+        fetchUserProfile(UserManager.getInstance().getCurrentUser().getUid());
     }
 
     private void fetchUserProfile(String uid) {
