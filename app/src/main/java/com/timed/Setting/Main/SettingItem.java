@@ -1,4 +1,4 @@
-package com.timed;
+package com.timed.Setting.Main;
 
 public class SettingItem {
     private final int iconId;

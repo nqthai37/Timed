@@ -1,4 +1,4 @@
-package com.timed;
+package com.timed.Setting.Main;
 
 import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
@@ -6,6 +6,17 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.timed.R;
+import com.timed.Setting.AI.AiSchedulingActivity;
+import com.timed.Setting.Analytics.AnalyticsActivity;
+import com.timed.Setting.ConflictResolver.ConflictResolverActivity;
+import com.timed.Setting.FocusMode.FocusModeActivity;
+import com.timed.Setting.FreeSlotFinder.FreeSlotFinderActivity;
+import com.timed.Setting.HabitTracker.HabitTrackerActivity;
+import com.timed.Setting.Security.SecurityActivity;
+import com.timed.Setting.SyncStorage.SyncStorageActivity;
+import com.timed.Setting.Timezone.TimezoneSettingActivity;
 
 public class SettingActivity extends AppCompatActivity {
 

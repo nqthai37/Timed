@@ -1,4 +1,4 @@
-package com.timed;
+package com.timed.Setting.ConflictResolver;
 
 import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
@@ -8,7 +8,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 // Import đúng Model đã định nghĩa bên trong Adapter
-import com.timed.ConflictEventAdapter.ConflictEvent;
+import com.timed.R;
+import com.timed.Setting.ConflictResolver.ConflictEventAdapter.ConflictEvent;
+import com.timed.Setting.SyncStorage.SyncStorageActivity;
 
 public class ConflictResolverActivity extends AppCompatActivity {
 

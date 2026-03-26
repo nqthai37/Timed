@@ -1,4 +1,4 @@
-package com.timed;
+package com.timed.Setting.Timezone;
 
 import android.view.LayoutInflater;
 import android.view.View;
@@ -6,6 +6,9 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.timed.R;
+
 import java.util.List;
 
 // Changed class name to match TimezoneAdapter.java

@@ -1,9 +1,13 @@
-package com.timed;
+package com.timed.Setting.Timezone;
 
 import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.LinearLayoutManager;
+
+import com.timed.R;
+import com.timed.Setting.Main.GenericSettingAdapter;
+
 import java.util.ArrayList;
 import java.util.List;
 
