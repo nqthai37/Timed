@@ -10,7 +10,8 @@ public class User {
     private String avatar;
     private String email;
     private String name;
-    private String provider;
+    private String auth_provider;
+    private Boolean email_verified;
     private String timezone;
     private Security security;
     private Settings settings;
@@ -31,8 +32,10 @@ public class User {
     public void setEmail(String email) { this.email = email; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
-    public String getProvider() { return provider; }
-    public void setProvider(String provider) { this.provider = provider; }
+    public String getAuthProvider() { return auth_provider; }
+    public void setAuthProvider(String provider) { this.auth_provider = provider; }
+    public Boolean getEmailVerified() { return email_verified; }
+    public void setEmailVerified(Boolean email_verified) { this.email_verified = email_verified; }
     public String getTimezone() { return timezone; }
     public void setTimezone(String timezone) { this.timezone = timezone; }
     public Security getSecurity() { return security; }

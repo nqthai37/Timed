@@ -57,7 +57,7 @@ public class ProfileActivity extends AppCompatActivity {
                     if (myUser.getAvatar() != null && !myUser.getAvatar().isEmpty()) {
                         Glide.with(this)
                                 .load(myUser.getAvatar())
-                                .circleCrop() // Pro-move: This automatically makes the avatar a perfect circle!
+                                .circleCrop()
                                 .into(ivAvatar);
                     }
 
