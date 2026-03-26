@@ -73,7 +73,7 @@
             android:id="@+id/btnLogin"
             android:layout_width="match_parent"
             android:layout_height="56dp"
-            android:text="Log In"
+            android:text="Login"
             android:textSize="16sp"
             app:cornerRadius="8dp"
             android:layout_marginBottom="24dp" />
