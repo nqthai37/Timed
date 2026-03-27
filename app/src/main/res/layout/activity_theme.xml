@@ -35,7 +35,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Security"
+                android:text="Themes"
                 android:textColor="#0F172A"
                 android:textSize="18sp"
                 android:textStyle="bold" />
@@ -43,13 +43,14 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Protect your account"
+                android:text="Customize your interface"
                 android:textColor="#64748B"
                 android:textSize="13sp" />
         </LinearLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <LinearLayout
+        android:id="@+id/ll_list_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="16dp"
@@ -62,7 +63,7 @@
         app:layout_constraintTop_toBottomOf="@+id/clHeader">
 
         <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rv_security_options"
+            android:id="@+id/rv_themes"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:overScrollMode="never" />
