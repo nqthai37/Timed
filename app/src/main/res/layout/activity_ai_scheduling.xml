@@ -1,135 +1,183 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:background="#FFF8FAFC"
-    android:padding="16dp">
+    tools:context=".Setting.AI.AiSchedulingActivity">
 
-    <LinearLayout
-        android:id="@+id/div_header"
-        android:orientation="horizontal"
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/clHeader"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center_vertical">
+        android:padding="16dp"
+        app:layout_constraintTop_toTopOf="parent">
 
         <ImageView
             android:id="@+id/iv_back"
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:background="@drawable/bg_rounded"
-            android:src="@drawable/ic_r_arrow"
             android:padding="12dp"
-            android:layout_marginEnd="16dp" />
+            android:src="@drawable/ic_back"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
         <LinearLayout
-            android:orientation="vertical"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content">
-
-            <TextView
-                android:id="@+id/tv_header_title"
-                android:text="AI Scheduling"
-                android:textSize="18sp"
-                android:textColor="#FF000000"
-                android:textStyle="bold"
-                android:fontFamily="Inter"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
-
-            <TextView
-                android:id="@+id/tv_header_subtitle"
-                android:text="Natural language input"
-                android:textSize="13sp"
-                android:textColor="#FF64748B"
-                android:fontFamily="Inter"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
-        </LinearLayout>
-    </LinearLayout>
-
-    <LinearLayout
-        android:id="@+id/div_chat_box"
-        android:orientation="horizontal"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@drawable/bg_rounded"
-        android:padding="8dp"
-        android:layout_marginTop="16dp"
-        android:gravity="center_vertical">
-
-        <EditText
-            android:id="@+id/et_input"
-            android:hint="Meeting tomorrow at 2pm on Meet"
-            android:textSize="14sp"
-            android:textColor="#FF000000"
-            android:background="@android:color/transparent"
-            android:fontFamily="Inter"
-            android:layout_width="0dp"
-            android:layout_weight="1"
             android:layout_height="wrap_content"
-            android:padding="8dp"/>
+            android:gravity="center"
+            android:orientation="vertical"
+            app:layout_constraintBottom_toBottomOf="@+id/iv_back"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="@+id/iv_back">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="AI Scheduling"
+                android:textColor="#0F172A"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Smart task management"
+                android:textColor="#64748B"
+                android:textSize="13sp" />
+        </LinearLayout>
 
         <ImageView
-            android:id="@+id/btn_send"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:id="@+id/iv_magic"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:background="@drawable/bg_rounded"
-            android:src="@drawable/ic_r_arrow"
-            android:padding="8dp"/>
-    </LinearLayout>
+            android:backgroundTint="#EFF6FF"
+            android:padding="10dp"
+            android:src="@drawable/ic_ai_schedule"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="#2563EB" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <HorizontalScrollView
+    <TextView
+        android:id="@+id/tv_prompt_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="24dp"
+        android:text="What do you want to schedule?"
+        android:textColor="#0F172A"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/clHeader" />
+
+    <LinearLayout
+        android:id="@+id/ll_input_box"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/bg_rounded"
+        android:backgroundTint="#FFFFFF"
+        android:elevation="2dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="8dp"
+        app:layout_constraintTop_toBottomOf="@+id/tv_prompt_title">
+
+        <EditText
+            android:id="@+id/et_ai_input"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@null"
+            android:hint="E.g. Schedule a team sync tomorrow at 10 AM"
+            android:padding="12dp"
+            android:textColor="#0F172A"
+            android:textColorHint="#94A3B8"
+            android:textSize="14sp" />
+
+        <ImageView
+            android:id="@+id/iv_send"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/bg_rounded"
+            android:backgroundTint="#2563EB"
+            android:padding="10dp"
+            android:src="@drawable/ic_send" 
+            app:tint="#FFFFFF" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tv_try_these"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="24dp"
+        android:text="Try these:"
+        android:textColor="#64748B"
+        android:textSize="14sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/ll_input_box" />
+
+    <HorizontalScrollView
+        android:id="@+id/sv_chips"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:paddingHorizontal="16dp"
         android:scrollbars="none"
-        android:layout_marginTop="16dp">
+        app:layout_constraintTop_toBottomOf="@+id/tv_try_these">
 
-        <LinearLayout
-            android:orientation="horizontal"
+        <com.google.android.material.chip.ChipGroup
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            app:singleLine="true">
 
-            <TextView
-                android:id="@+id/chip_1"
+            <com.google.android.material.chip.Chip
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:text="&quot;Lunch with John on Friday&quot;"
-                android:textSize="12sp"
-                android:textColor="#FF64748B"
-                android:background="@drawable/bg_rounded"
-                android:paddingLeft="12dp"
-                android:paddingTop="8dp"
-                android:paddingRight="12dp"
-                android:paddingBottom="8dp"
-                android:layout_marginEnd="8dp"
-                android:fontFamily="Inter"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
+                android:textColor="#475569"
+                app:chipBackgroundColor="#F1F5F9"
+                app:chipStrokeWidth="0dp" />
 
-            <TextView
-                android:id="@+id/chip_2"
-                android:text="&quot;Gym every Monday 7am&quot;"
-                android:textSize="12sp"
-                android:textColor="#FF64748B"
-                android:background="@drawable/bg_rounded"
-                android:paddingLeft="12dp"
-                android:paddingTop="8dp"
-                android:paddingRight="12dp"
-                android:paddingBottom="8dp"
-                android:fontFamily="Inter"
+            <com.google.android.material.chip.Chip
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
-        </LinearLayout>
+                android:layout_height="wrap_content"
+                android:text="&quot;Gym every Monday 7am&quot;"
+                android:textColor="#475569"
+                app:chipBackgroundColor="#F1F5F9"
+                app:chipStrokeWidth="0dp" />
+        </com.google.android.material.chip.ChipGroup>
     </HorizontalScrollView>
+
+    <TextView
+        android:id="@+id/tv_recent"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="24dp"
+        android:text="Recent schedules"
+        android:textColor="#0F172A"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/sv_chips" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_ai_schedules"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:layout_marginTop="8dp"
-         />
+        android:layout_marginTop="12dp"
+        android:clipToPadding="false"
+        android:paddingBottom="24dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tv_recent" />
 
-</LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>
