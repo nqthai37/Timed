@@ -2,36 +2,39 @@ package com.timed.Setting.HabitTracker;
 
 import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import java.util.ArrayList;
 import java.util.List;
 
 import com.timed.R;
-import com.timed.Setting.Main.GenericSettingAdapter;
 
 public class HabitTrackerActivity extends AppCompatActivity {
 
     private RecyclerView rvHabits;
-    private GenericSettingAdapter adapter;
+    private HabitAdapter adapter;
+    private List<Habit> habitList;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.habit_tracker);
+        setContentView(R.layout.activity_habit_tracker);
 
-        rvHabits = findViewById(R.id.rv_habits);
+        // Ánh xạ RecyclerView
+        rvHabits = findViewById(R.id.rvTodayHabits);
+        
         if (rvHabits != null) {
             rvHabits.setLayoutManager(new LinearLayoutManager(this));
 
-            List<GenericSettingAdapter.SettingItemModel> habitList = new ArrayList<>();
-            habitList.add(new GenericSettingAdapter.SettingItemModel("Morning Workout", "7 day streak", "habit_1"));
-            habitList.add(new GenericSettingAdapter.SettingItemModel("Reading", "15 day streak", "habit_2"));
-            habitList.add(new GenericSettingAdapter.SettingItemModel("Meditation", "3 day streak", "habit_3"));
+            // Khởi tạo dữ liệu mẫu giống y như trong ảnh
+            habitList = new ArrayList<>();
+            // (Lưu ý: Bạn hãy truyền đúng ID ảnh của bạn vào thay cho R.drawable.ic_...)
+            habitList.add(new Habit("Drink 8 glasses of water", "7/8 glasses", R.drawable.ic_focus, false));
+            habitList.add(new Habit("Read for 30 minutes", "Complete", R.drawable.ic_analytics, true));
+            habitList.add(new Habit("Exercise", "No progress yet", R.drawable.ic_security, false));
 
-            adapter = new GenericSettingAdapter(habitList, item -> {
-                // Handle habit selection
-            });
+            // Cài đặt Adapter
+            adapter = new HabitAdapter(habitList);
             rvHabits.setAdapter(adapter);
         }
     }
