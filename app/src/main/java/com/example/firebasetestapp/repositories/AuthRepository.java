@@ -3,16 +3,16 @@ package com.example.firebasetestapp.repositories;
 import com.example.firebasetestapp.managers.UserManager;
 import com.example.firebasetestapp.models.User;
 import com.google.android.gms.tasks.Task;
-import com.google.firebase.Firebase;
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.firestore.FieldValue;
-
-import java.util.Collections;
+import com.google.firebase.auth.AuthCredential;
+import com.google.firebase.auth.GoogleAuthProvider;
 
 public class AuthRepository {
     private final FirebaseAuth mAuth;
     private final UserRepository userRepository;
+
+    private final String defaultAvatar = "https://res.cloudinary.com/dpsqhztqa/image/upload/v1774512640/default_person_drlyqj.webp";
 
     public AuthRepository() {
         mAuth = FirebaseAuth.getInstance();
@@ -58,7 +58,7 @@ public class AuthRepository {
                     newUser.setUid(uid);
                     newUser.setName(name);
                     newUser.setEmail(email);
-                    newUser.setAvatar("https://res.cloudinary.com/dpsqhztqa/image/upload/v1774512640/default_person_drlyqj.webp");
+                    newUser.setAvatar(defaultAvatar);
                     newUser.setEmailVerified(false);
                     newUser.setAuthProvider("password");
 
@@ -86,6 +86,81 @@ public class AuthRepository {
                     UserManager.getInstance().setCurrentUser(newUser);
 
                     return userRepository.createUser(uid, newUser);
+                });
+    }
+
+    public Task<User> signInWithGoogle(String idToken) {
+        AuthCredential credential = GoogleAuthProvider.getCredential(idToken, null);
+
+        return mAuth.signInWithCredential(credential)
+                .continueWithTask(authTask -> {
+                    if (!authTask.isSuccessful()) {
+                        throw authTask.getException();
+                    }
+
+                    boolean isNewUser = authTask.getResult().getAdditionalUserInfo().isNewUser();
+                    com.google.firebase.auth.FirebaseUser firebaseUser = authTask.getResult().getUser();
+                    String uid = firebaseUser.getUid();
+
+                    if (isNewUser) {
+                        Timestamp now = Timestamp.now();
+                        User newUser = new User();
+
+                        newUser.setUid(firebaseUser.getUid());
+                        newUser.setName(firebaseUser.getDisplayName());
+
+                        String actualEmail = firebaseUser.getEmail();
+
+                        if (actualEmail == null) {
+                            for (com.google.firebase.auth.UserInfo userInfo : firebaseUser.getProviderData()) {
+                                if (userInfo.getEmail() != null) {
+                                    actualEmail = userInfo.getEmail();
+                                    break;
+                                }
+                            }
+                        }
+                        newUser.setEmail(actualEmail);
+
+                        newUser.setEmailVerified(true);
+                        newUser.setAuthProvider("google.com");
+
+                        if (firebaseUser.getPhotoUrl() != null) {
+                            newUser.setAvatar(firebaseUser.getPhotoUrl().toString());
+                        } else {
+                            newUser.setAvatar(defaultAvatar);
+                        }
+
+                        newUser.setCreatedAt(now);
+                        newUser.setUpdatedAt(now);
+
+                        User.Settings settings = new User.Settings();
+                        settings.setTheme("light");
+                        User.Notifications notifs = new User.Notifications();
+                        notifs.setEmail(true);
+                        notifs.setPush(true);
+                        notifs.setSnoozeDefaultMinutes(5);
+                        settings.setNotifications(notifs);
+                        newUser.setSettings(settings);
+
+                        User.Security security = new User.Security();
+                        security.setTwoFactorEnabled(false);
+                        security.setLastLogin(now);
+                        newUser.setSecurity(security);
+
+                        return userRepository.createUser(uid, newUser).continueWith(saveTask -> {
+                            if (!saveTask.isSuccessful()) throw saveTask.getException();
+                            UserManager.getInstance().setCurrentUser(newUser);
+                            return newUser;
+                        });
+
+                    } else {
+                        return userRepository.getUser(uid).continueWith(dbTask -> {
+                            if (!dbTask.isSuccessful()) throw dbTask.getException();
+                            User existingUser = dbTask.getResult().toObject(User.class);
+                            UserManager.getInstance().setCurrentUser(existingUser);
+                            return existingUser;
+                        });
+                    }
                 });
     }
 

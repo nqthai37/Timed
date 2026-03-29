@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">Firebase Test App</string>
+    <string name="default_web_client_id">
+        343178520285-oio8b19me03rkotfvcnt6tg1fch2lffj.apps.googleusercontent.com
+    </string>
+    <string name="legal_agreement">By signing in, you agree to our <b><u>Terms of Service</u></b> and <b><u>Privacy Policy</u></b></string>
 </resources>

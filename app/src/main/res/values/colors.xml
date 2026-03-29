@@ -2,4 +2,9 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="timed_blue">#3B82F6</color>
+    <color name="timed_dark_text">#111827</color>
+    <color name="timed_gray_text">#6B7280</color>
+    <color name="timed_light_gray">#E5E7EB</color>
+    <color name="timed_bg">#FFFFFF</color>
 </resources>
