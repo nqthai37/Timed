@@ -20,7 +20,6 @@ import androidx.credentials.CustomCredential;
 import com.example.firebasetestapp.repositories.AuthRepository;
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption;
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential;
-import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 
@@ -96,7 +95,7 @@ public class RegisterActivity extends AppCompatActivity {
                                 btnRegister.setEnabled(true);
 
                                 String exactError = e.getMessage();
-                                String errorType = e.getType();
+                                String errorType = e.getClass().getSimpleName();
 
                                 Toast.makeText(RegisterActivity.this, "Failed: " + exactError, Toast.LENGTH_LONG).show();
                                 android.util.Log.e("GoogleAuth", "Type: " + errorType + " | Message: " + exactError);
