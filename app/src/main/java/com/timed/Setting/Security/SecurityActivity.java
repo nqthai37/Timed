@@ -16,6 +16,8 @@ public class SecurityActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // Nút quay lại
+        findViewById(R.id.iv_back).setOnClickListener(v -> finish());
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_security);
 

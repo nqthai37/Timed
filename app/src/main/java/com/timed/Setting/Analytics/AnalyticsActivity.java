@@ -17,9 +17,11 @@ public class AnalyticsActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+    
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_analytics);
-
+    // Nút quay lại
+        findViewById(R.id.iv_back).setOnClickListener(v -> finish());
         rvAnalyticsReports = findViewById(R.id.rv_analytics_reports);
         if (rvAnalyticsReports != null) {
             rvAnalyticsReports.setLayoutManager(new LinearLayoutManager(this));

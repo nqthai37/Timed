@@ -41,7 +41,6 @@
             android:layout_height="40dp"
             android:background="@drawable/bg_rounded"
             android:padding="10dp"
-            android:src="@drawable/ic_sparkle" 
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:tint="#3B82F6" />

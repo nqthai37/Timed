@@ -18,9 +18,11 @@ public class FreeSlotFinderActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.free_slot_finder);
-
+        setContentView(R.layout.activity_free_slot_finder);
+        // Nút quay lại
+        findViewById(R.id.iv_back).setOnClickListener(v -> finish());
         rvSlots = findViewById(R.id.rv_free_slots);
         if (rvSlots != null) {
             rvSlots.setLayoutManager(new LinearLayoutManager(this));

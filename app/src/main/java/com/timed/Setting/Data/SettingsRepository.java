@@ -15,6 +15,7 @@ import com.timed.Setting.Main.SettingItem;
 import com.timed.Setting.Security.SecurityActivity;
 import com.timed.Setting.SyncStorage.SyncStorageActivity;
 import com.timed.Setting.Timezone.TimezoneSettingActivity;
+import com.timed.Setting.Themes.ThemeActivity;
 
 public class SettingsRepository {
     
@@ -31,7 +32,7 @@ public class SettingsRepository {
         settingList.add(new SettingItem(R.drawable.ic_analytics, "Analytics", AnalyticsActivity.class));
         settingList.add(new SettingItem("System & Security",R.drawable.ic_security, "Security", SecurityActivity.class));
         settingList.add(new SettingItem(R.drawable.ic_cloud, "Sync & Storage", SyncStorageActivity.class));
-        
+        settingList.add(new SettingItem(R.drawable.ic_analytics,"Theme", ThemeActivity.class));
         return settingList;
     }
 }
