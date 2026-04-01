@@ -11,18 +11,18 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Timed">
-        <activity
-            android:name=".SettingActivity"
-            android:exported="false" />
-        <activity android:name=".SyncStorageActivity" android:exported="false" />
-        <activity android:name=".TimezoneSettingActivity" android:exported="false" />
-        <activity android:name=".AiSchedulingActivity" android:exported="false" />
-        <activity android:name=".AnalyticsActivity" android:exported="false" />
-        <activity android:name=".ConflictResolverActivity" android:exported="false" />
-        <activity android:name=".FocusModeActivity" android:exported="false" />
-        <activity android:name=".FreeSlotFinderActivity" android:exported="false" />
-        <activity android:name=".HabitTrackerActivity" android:exported="false" />
-        <activity android:name=".SecurityActivity" android:exported="false" />
+
+        <activity android:name=".Setting.Main.SettingActivity" android:exported="false" />
+        <activity android:name=".Setting.SyncStorage.SyncStorageActivity" android:exported="false" />
+        <activity android:name=".Setting.Timezone.TimezoneSettingActivity" android:exported="false" />
+        <activity android:name=".Setting.AI.AiSchedulingActivity" android:exported="false" />
+        <activity android:name=".Setting.Analytics.AnalyticsActivity" android:exported="false" />
+        <activity android:name=".Setting.ConflictResolver.ConflictResolverActivity" android:exported="false" />
+        <activity android:name=".Setting.FocusMode.FocusModeActivity" android:exported="false" />
+        <activity android:name=".Setting.FreeSlotFinder.FreeSlotFinderActivity" android:exported="false" />
+        <activity android:name=".Setting.HabitTracker.HabitTrackerActivity" android:exported="false" />
+        <activity android:name=".Setting.Security.SecurityActivity" android:exported="false" />
+        <activity android:name=".Setting.Themes.ThemeActivity" android:exported="false" />
 
         <activity
             android:name=".MainActivity"
