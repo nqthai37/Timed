@@ -186,49 +186,55 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:layout_marginTop="12dp"
+            android:layout_marginStart="8dp"
             app:layout_constraintTop_toBottomOf="@+id/tilPassword">
 
             <TextView
-                android:id="@+id/reqLength"
+                android:id="@+id/tvReqLength"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="At least 8 characters"
                 android:textColor="#94A3B8"
-                android:textSize="12sp"
-                app:drawableStartCompat="@android:drawable/presence_invisible" android:drawablePadding="8dp"
-                android:layout_marginBottom="4dp"/>
+                android:textSize="14sp"
+                android:drawablePadding="12dp"
+                app:drawableStartCompat="@drawable/ic_dot"
+                app:drawableTint="#94A3B8" />
 
             <TextView
-                android:id="@+id/reqUppercase"
+                android:id="@+id/tvReqUppercase"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Contains uppercase letter"
                 android:textColor="#94A3B8"
-                android:textSize="12sp"
-                app:drawableStartCompat="@android:drawable/presence_invisible"
-                android:drawablePadding="8dp"
-                android:layout_marginBottom="4dp"/>
+                android:textSize="14sp"
+                android:layout_marginTop="4dp"
+                android:drawablePadding="12dp"
+                app:drawableStartCompat="@drawable/ic_dot"
+                app:drawableTint="#94A3B8" />
 
             <TextView
-                android:id="@+id/reqLowercase"
+                android:id="@+id/tvReqLowercase"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Contains lowercase letter"
                 android:textColor="#94A3B8"
-                android:textSize="12sp"
-                app:drawableStartCompat="@android:drawable/presence_invisible"
-                android:drawablePadding="8dp"
-                android:layout_marginBottom="4dp"/>
+                android:textSize="14sp"
+                android:layout_marginTop="4dp"
+                android:drawablePadding="12dp"
+                app:drawableStartCompat="@drawable/ic_dot"
+                app:drawableTint="#94A3B8" />
 
             <TextView
-                android:id="@+id/reqNumber"
+                android:id="@+id/tvReqNumber"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Contains number"
                 android:textColor="#94A3B8"
-                android:textSize="12sp"
-                app:drawableStartCompat="@android:drawable/presence_invisible"
-                android:drawablePadding="8dp"/>
+                android:textSize="14sp"
+                android:layout_marginTop="4dp"
+                android:drawablePadding="12dp"
+                app:drawableStartCompat="@drawable/ic_dot"
+                app:drawableTint="#94A3B8" />
         </LinearLayout>
 
         <LinearLayout
@@ -263,7 +269,7 @@
             android:textAllCaps="false"
             android:textSize="16sp"
             app:cornerRadius="8dp"
-            app:backgroundTint="#93C5FD" app:icon="@drawable/ic_right_arrow"
+            app:backgroundTint="@color/timed_blue" app:icon="@drawable/ic_right_arrow"
             app:iconGravity="textEnd"
             app:layout_constraintTop_toBottomOf="@+id/llTerms"/>
 

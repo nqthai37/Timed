@@ -2,6 +2,8 @@ package com.example.firebasetestapp;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Patterns;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -11,12 +13,17 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.example.firebasetestapp.managers.GoogleAuthManager;
 import com.example.firebasetestapp.repositories.AuthRepository;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.checkbox.MaterialCheckBox;
 import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 
 public class RegisterActivity extends AppCompatActivity {
     private TextInputEditText etName, etEmail, etPassword;
     private MaterialButton btnRegister, btnGoogleSignUp;
     private TextView tvGoToLogin;
+    private TextInputLayout tilPassword;
+    private TextView tvReqLength, tvReqUppercase, tvReqLowercase, tvReqNumber;
+    private MaterialCheckBox cbTerms;
 
     private AuthRepository authRepository;
 
@@ -34,6 +41,13 @@ public class RegisterActivity extends AppCompatActivity {
         btnGoogleSignUp = findViewById(R.id.btnGoogleSignUp);
         tvGoToLogin = findViewById(R.id.tvGoToLogin);
 
+        tilPassword = findViewById(R.id.tilPassword);
+        cbTerms = findViewById(R.id.cbTerms);
+        tvReqLength = findViewById(R.id.tvReqLength);
+        tvReqUppercase = findViewById(R.id.tvReqUppercase);
+        tvReqLowercase = findViewById(R.id.tvReqLowercase);
+        tvReqNumber = findViewById(R.id.tvReqNumber);
+
         setupClickListeners();
     }
 
@@ -42,6 +56,28 @@ public class RegisterActivity extends AppCompatActivity {
 
         tvGoToLogin.setOnClickListener(v -> {
             finish();
+        });
+
+        etPassword.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void afterTextChanged(Editable s) {
+
+            }
+
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                String password = s.toString();
+
+                updateRequirementState(tvReqLength, password.length() >= 8);
+                updateRequirementState(tvReqUppercase, password.matches(".*[A-Z].*"));
+                updateRequirementState(tvReqLowercase, password.matches(".*[a-z].*"));
+                updateRequirementState(tvReqNumber, password.matches(".*\\d.*"));
+            }
         });
 
         GoogleAuthManager googleAuthManager = new GoogleAuthManager(this, new GoogleAuthManager.AuthCallback() {
@@ -79,6 +115,16 @@ public class RegisterActivity extends AppCompatActivity {
                 });
     }
 
+    private void updateRequirementState(TextView tv, boolean isMet) {
+        int color = isMet ? android.graphics.Color.parseColor("#10B981") : android.graphics.Color.parseColor("#94A3B8");
+
+        tv.setTextColor(color);
+
+        if (tv.getCompoundDrawablesRelative()[0] != null) {
+            tv.getCompoundDrawablesRelative()[0].setTint(color);
+        }
+    }
+
     private void handleRegistration() {
         String name = etName.getText().toString().trim();
         String email = etEmail.getText().toString().trim();
@@ -96,27 +142,23 @@ public class RegisterActivity extends AppCompatActivity {
             return;
         }
 
-        if (password.isEmpty() || password.length() < 8) {
-            etPassword.setError("Password must be at least 8 characters");
+        tilPassword.setErrorEnabled(false);
+        tilPassword.setError(null);
+
+        boolean hasLength = password.length() >= 8;
+        boolean hasUpper = password.matches(".*[A-Z].*");
+        boolean hasLower = password.matches(".*[a-z].*");
+        boolean hasNumber = password.matches(".*\\d.*");
+
+        if (!hasLength || !hasUpper || !hasLower || !hasNumber) {
+            tilPassword.setErrorEnabled(true);
+            tilPassword.setError("Please meet all password requirements below.");
             etPassword.requestFocus();
             return;
         }
 
-        if (!password.matches(".*[A-Z].*")) {
-            etPassword.setError("Must contain at least one uppercase letter");
-            etPassword.requestFocus();
-            return;
-        }
-
-        if (!password.matches(".*[a-z].*")) {
-            etPassword.setError("Must contain at least one lowercase letter");
-            etPassword.requestFocus();
-            return;
-        }
-
-        if (!password.matches(".*\\d.*")) {
-            etPassword.setError("Must contain at least one number");
-            etPassword.requestFocus();
+        if (!cbTerms.isChecked()) {
+            Toast.makeText(this, "You must agree to the Terms & Conditions to register.", Toast.LENGTH_LONG).show();
             return;
         }
 
