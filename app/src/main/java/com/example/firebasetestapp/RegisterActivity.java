@@ -1,25 +1,15 @@
 package com.example.firebasetestapp;
 
 import android.content.Intent;
-import androidx.credentials.Credential;
-import androidx.credentials.CredentialManager;
-import androidx.credentials.exceptions.GetCredentialException;
-import androidx.credentials.GetCredentialRequest;
-import androidx.credentials.GetCredentialResponse;
 import android.os.Bundle;
-import android.os.CancellationSignal;
 import android.util.Patterns;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
-import androidx.credentials.CredentialManagerCallback;
-import androidx.credentials.CustomCredential;
 
+import com.example.firebasetestapp.managers.GoogleAuthManager;
 import com.example.firebasetestapp.repositories.AuthRepository;
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption;
-import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 
@@ -54,56 +44,25 @@ public class RegisterActivity extends AppCompatActivity {
             finish();
         });
 
-        btnGoogleSignUp.setOnClickListener(v -> {
-                btnRegister.setEnabled(false);
-                CredentialManager credentialManager = CredentialManager.create(this);
-
-                GetGoogleIdOption googleIdOption = new GetGoogleIdOption.Builder()
-                        .setFilterByAuthorizedAccounts(false)
-                        .setServerClientId(getString(R.string.default_web_client_id))
-                        .setAutoSelectEnabled(true)
-                        .build();
-
-                GetCredentialRequest request = new GetCredentialRequest.Builder()
-                        .addCredentialOption(googleIdOption)
-                        .build();
-
-                credentialManager.getCredentialAsync(
-                        this,
-                        request,
-                        new CancellationSignal(),
-                        ContextCompat.getMainExecutor(this),
-                        new CredentialManagerCallback<GetCredentialResponse, GetCredentialException>() {
-                            @Override
-                            public void onResult(GetCredentialResponse result) {
-                                Credential credential = result.getCredential();
-                                if (credential instanceof CustomCredential && credential.getType().equals(GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL)) {
-                                    try {
-                                        GoogleIdTokenCredential googleId = GoogleIdTokenCredential.createFrom(credential.getData());
-                                        String idToken = googleId.getIdToken();
-
-                                        firebaseAuthWithGoogle(idToken);
-                                    } catch (Exception e) {
-                                        Toast.makeText(RegisterActivity.this, "Token error " + e.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
-                                        btnRegister.setEnabled(true);
-                                    }
-                                }
-                            }
-
-                            @Override
-                            public void onError(GetCredentialException e) {
-                                btnRegister.setEnabled(true);
-
-                                String exactError = e.getMessage();
-                                String errorType = e.getClass().getSimpleName();
-
-                                Toast.makeText(RegisterActivity.this, "Failed: " + exactError, Toast.LENGTH_LONG).show();
-                                android.util.Log.e("GoogleAuth", "Type: " + errorType + " | Message: " + exactError);
-                            }
-                        }
-                );
+        GoogleAuthManager googleAuthManager = new GoogleAuthManager(this, new GoogleAuthManager.AuthCallback() {
+            @Override
+            public void onTokenReceived(String idToken) {
+                firebaseAuthWithGoogle(idToken);
             }
-        );
+
+            @Override
+            public void onError(String errorMessage) {
+                btnRegister.setEnabled(true);
+                if (!errorMessage.equals("cancelled")) {
+                    Toast.makeText(RegisterActivity.this, "Google UI Failed: " + errorMessage, Toast.LENGTH_LONG).show();
+                }
+            }
+        });
+
+        btnGoogleSignUp.setOnClickListener(v -> {
+            btnRegister.setEnabled(false);
+            googleAuthManager.startGoogleSignIn();
+        });
     }
 
     private void firebaseAuthWithGoogle(String idToken) {

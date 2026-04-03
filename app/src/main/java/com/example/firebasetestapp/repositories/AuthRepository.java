@@ -1,5 +1,7 @@
 package com.example.firebasetestapp.repositories;
 
+import android.util.Log;
+
 import com.example.firebasetestapp.managers.UserManager;
 import com.example.firebasetestapp.models.User;
 import com.google.android.gms.tasks.Task;
@@ -29,7 +31,7 @@ public class AuthRepository {
                     String uid = authTask.getResult().getUser().getUid();
                     return userRepository.getUser(uid);
                 })
-                .continueWith(dbTask -> {
+                .continueWithTask(dbTask -> {
                     if (!dbTask.isSuccessful()) {
                         throw dbTask.getException();
                     }
@@ -37,9 +39,29 @@ public class AuthRepository {
                     com.google.firebase.firestore.DocumentSnapshot snapshot = dbTask.getResult();
 
                     User loggedInUser = snapshot.toObject(User.class);
+                    String uid = loggedInUser.getUid();
+
+                    Timestamp now = Timestamp.now();
+                    if (loggedInUser.getSecurity() != null) {
+                        loggedInUser.getSecurity().setLastLogin(now);
+                    } else {
+                        User.Security security = new User.Security();
+                        security.setLastLogin(now);
+                        loggedInUser.setSecurity(security);
+                    }
+
                     UserManager.getInstance().setCurrentUser(loggedInUser);
 
-                    return loggedInUser;
+                    java.util.Map<String, Object> updates = new java.util.HashMap<>();
+                    updates.put("security.last_login", now);
+
+                    return userRepository.updateUser(uid, updates)
+                            .continueWith(updateTask -> {
+                                if (!updateTask.isSuccessful()) {
+                                    Log.e("AuthRepo", "Failed to update last_login", updateTask.getException());
+                                }
+                                return loggedInUser;
+                            });
                 });
     }
 
@@ -154,11 +176,27 @@ public class AuthRepository {
                         });
 
                     } else {
-                        return userRepository.getUser(uid).continueWith(dbTask -> {
+                        return userRepository.getUser(uid).continueWithTask(dbTask -> {
                             if (!dbTask.isSuccessful()) throw dbTask.getException();
                             User existingUser = dbTask.getResult().toObject(User.class);
+
+                            Timestamp now = Timestamp.now();
+                            if (existingUser.getSecurity() != null) {
+                                existingUser.getSecurity().setLastLogin(now);
+                            }
+
                             UserManager.getInstance().setCurrentUser(existingUser);
-                            return existingUser;
+
+                            java.util.Map<String, Object> updates = new java.util.HashMap<>();
+                            updates.put("security.last_login", now);
+
+                            return userRepository.updateUser(uid, updates)
+                                    .continueWith(updateTask -> {
+                                        if (!updateTask.isSuccessful()) {
+                                            Log.e("AuthRepo", "Failed to update last_login", updateTask.getException());
+                                        }
+                                        return existingUser;
+                                    });
                         });
                     }
                 });

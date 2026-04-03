@@ -8,6 +8,7 @@ import android.util.Patterns;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.firebasetestapp.managers.GoogleAuthManager;
 import com.example.firebasetestapp.repositories.AuthRepository;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
@@ -15,7 +16,7 @@ import com.google.android.material.textfield.TextInputEditText;
 public class LoginActivity extends AppCompatActivity {
     private TextInputEditText etEmail, etPassword;
     private MaterialButton btnLogin, btnGoogleSignIn;
-    private TextView tvGoToRegister;
+    private TextView tvGoToRegister, tvForgotPassword;
 
     private AuthRepository authRepository;
 
@@ -31,6 +32,7 @@ public class LoginActivity extends AppCompatActivity {
         btnLogin = findViewById(R.id.btnLogin);
         btnGoogleSignIn = findViewById(R.id.btnGoogleSignIn);
         tvGoToRegister = findViewById(R.id.tvGoToRegister);
+        tvForgotPassword = findViewById(R.id.tvForgotPassword);
 
         setupClickListeners();
     }
@@ -43,9 +45,45 @@ public class LoginActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        btnGoogleSignIn.setOnClickListener(v ->
-                Toast.makeText(LoginActivity.this, "Google Sign-In coming soon!", Toast.LENGTH_SHORT).show()
+        tvForgotPassword.setOnClickListener(v -> {
+            Intent intent = new Intent(LoginActivity.this, ForgotPasswordActivity.class);
+            startActivity(intent);
+        });
+
+        GoogleAuthManager googleAuthManager = new GoogleAuthManager(this, new GoogleAuthManager.AuthCallback() {
+            @Override
+            public void onTokenReceived(String idToken) {
+                firebaseAuthWithGoogle(idToken);
+            }
+
+            @Override
+            public void onError(String errorMessage) {
+                btnGoogleSignIn.setEnabled(true);
+                if (!errorMessage.equals("cancelled")) {
+                    Toast.makeText(LoginActivity.this, "Google UI Failed: " + errorMessage, Toast.LENGTH_LONG).show();
+                }
+            }
+        });
+
+        btnGoogleSignIn.setOnClickListener(v -> {
+                btnGoogleSignIn.setEnabled(false);
+                googleAuthManager.startGoogleSignIn();
+            }
         );
+    }
+
+    private void firebaseAuthWithGoogle(String idToken) {
+        authRepository.signInWithGoogle(idToken)
+                .addOnSuccessListener(user -> {
+                    Toast.makeText(this, "Login Successful!", Toast.LENGTH_SHORT).show();
+                    Intent intent = new Intent(LoginActivity.this, ProfileActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(intent);
+                })
+                .addOnFailureListener(e -> {
+                    btnGoogleSignIn.setEnabled(true);
+                    Toast.makeText(this, "Auth Failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                });
     }
 
 
