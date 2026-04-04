@@ -10,24 +10,45 @@ import java.util.List;
 import com.timed.Setting.Data.SettingsRepository;
 import com.timed.Setting.Main.SettingItem;
 import com.timed.Setting.Main.SettingsAdapter;
-
+import com.timed.demo.NotificationDemo;
+import com.timed.managers.UserManager;
 public class MainActivity extends AppCompatActivity {
 
     private RecyclerView recyclerView;
     private SettingsAdapter adapter;
     private List<SettingItem> settingList;
-
+    
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_setting);
+        setContentView(R.layout.activity_main);
 
-        recyclerView = findViewById(R.id.rv_settings);
+        // Test notification ngay lập tức
+        findViewById(R.id.btn_test_notification).setOnClickListener(v -> {
+            NotificationDemo.showSampleNotification(MainActivity.this);
+        });
+
+        // Test reminder (5 phút sau)
+        findViewById(R.id.btn_test_reminder).setOnClickListener(v -> {
+            String userId = UserManager.getInstance().getCurrentUserId();
+            if (userId != null) {
+                NotificationDemo.createSampleReminder(MainActivity.this, userId);
+            }
+        });
+
+        // Test urgent notification
+        findViewById(R.id.btn_test_urgent).setOnClickListener(v -> {
+            NotificationDemo.showSampleUrgentNotification(MainActivity.this);
+        });
+
+        // Initialize RecyclerView for Settings
+        recyclerView = findViewById(R.id.recyclerViewSettings);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
-        // CHỈ CẦN GỌI 1 DÒNG NÀY LÀ CÓ TOÀN BỘ DỮ LIỆU!
+        // Get settings data from repository
         settingList = SettingsRepository.getSettingsData();
 
+        // Create and set adapter
         adapter = new SettingsAdapter(this, settingList);
         recyclerView.setAdapter(adapter);
     }

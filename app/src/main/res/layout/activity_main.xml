@@ -14,6 +14,49 @@
         android:padding="16dp"
         android:textColor="#0F172A"/>
 
+    <!-- Test Notification Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="16dp"
+        android:gravity="center"
+        android:spacing="8dp">
+
+        <Button
+            android:id="@+id/btn_test_notification"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Test Notification"
+            android:textSize="12sp"
+            android:backgroundTint="#3B82F6"
+            android:textColor="#FFFFFF"
+            android:layout_margin="4dp"/>
+
+        <Button
+            android:id="@+id/btn_test_reminder"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Test Reminder"
+            android:textSize="12sp"
+            android:backgroundTint="#10B981"
+            android:textColor="#FFFFFF"
+            android:layout_margin="4dp"/>
+
+        <Button
+            android:id="@+id/btn_test_urgent"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Test Urgent"
+            android:textSize="12sp"
+            android:backgroundTint="#EF4444"
+            android:textColor="#FFFFFF"
+            android:layout_margin="4dp"/>
+    </LinearLayout>
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerViewSettings"
         android:layout_width="match_parent"
