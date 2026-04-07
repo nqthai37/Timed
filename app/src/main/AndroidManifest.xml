@@ -38,6 +38,8 @@
             </intent-filter>
         </activity>
 
+        <activity android:name=".DayViewActivity" />
+
         <!-- Receiver for Reminders & Notifications -->
         <receiver
             android:name="com.timed.services.ReminderNotificationReceiver"

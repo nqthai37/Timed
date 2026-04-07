@@ -1,34 +1,5 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="16dp"
-    android:height="16dp"
-    android:viewportWidth="16"
-    android:viewportHeight="16">
-  <path
-      android:pathData="M12.667,2.667H3.333C2.597,2.667 2,3.264 2,4V13.333C2,14.07 2.597,14.667 3.333,14.667H12.667C13.403,14.667 14,14.07 14,13.333V4C14,3.264 13.403,2.667 12.667,2.667Z"
-      android:strokeLineJoin="round"
-      android:strokeWidth="1.33333"
-      android:fillColor="#00000000"
-      android:strokeColor="#64748B"
-      android:strokeLineCap="round"/>
-  <path
-      android:pathData="M10.667,1.333V4"
-      android:strokeLineJoin="round"
-      android:strokeWidth="1.33333"
-      android:fillColor="#00000000"
-      android:strokeColor="#64748B"
-      android:strokeLineCap="round"/>
-  <path
-      android:pathData="M5.333,1.333V4"
-      android:strokeLineJoin="round"
-      android:strokeWidth="1.33333"
-      android:fillColor="#00000000"
-      android:strokeColor="#64748B"
-      android:strokeLineCap="round"/>
-  <path
-      android:pathData="M2,6.667H14"
-      android:strokeLineJoin="round"
-      android:strokeWidth="1.33333"
-      android:fillColor="#00000000"
-      android:strokeColor="#64748B"
-      android:strokeLineCap="round"/>
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:height="24dp" android:tint="#741CE9" android:viewportHeight="960" android:viewportWidth="960" android:width="24dp">
+      
+    <path android:fillColor="@android:color/white" android:pathData="M200,880Q167,880 143.5,856.5Q120,833 120,800L120,240Q120,207 143.5,183.5Q167,160 200,160L240,160L240,80L320,80L320,160L640,160L640,80L720,80L720,160L760,160Q793,160 816.5,183.5Q840,207 840,240L840,800Q840,833 816.5,856.5Q793,880 760,880L200,880ZM200,800L760,800Q760,800 760,800Q760,800 760,800L760,400L200,400L200,800Q200,800 200,800Q200,800 200,800ZM200,320L760,320L760,240Q760,240 760,240Q760,240 760,240L200,240Q200,240 200,240Q200,240 200,240L200,320ZM200,320L200,240Q200,240 200,240Q200,240 200,240L200,240Q200,240 200,240Q200,240 200,240L200,320Z"/>
+    
 </vector>
