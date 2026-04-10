@@ -1,6 +1,6 @@
-package com.example.firebasetestapp.repositories;
+package com.timed.repositories;
 
-import com.example.firebasetestapp.models.User;
+import com.timed.models.User;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;

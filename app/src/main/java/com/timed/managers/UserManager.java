@@ -1,6 +1,6 @@
-package com.example.firebasetestapp.managers;
+package com.timed.managers;
 
-import com.example.firebasetestapp.models.User;
+import com.timed.models.User;
 
 public class UserManager {
     private static UserManager instance;

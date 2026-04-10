@@ -1,4 +1,4 @@
-package com.example.firebasetestapp.managers;
+package com.timed.managers;
 
 import android.app.Activity;
 import android.os.CancellationSignal;
@@ -13,7 +13,7 @@ import androidx.credentials.GetCredentialRequest;
 import androidx.credentials.GetCredentialResponse;
 import androidx.credentials.exceptions.GetCredentialException;
 
-import com.example.firebasetestapp.R;
+import com.timed.R;
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption;
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential;
 

@@ -1,4 +1,4 @@
-package com.example.firebasetestapp.models;
+package com.timed.models;
 
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.DocumentId;

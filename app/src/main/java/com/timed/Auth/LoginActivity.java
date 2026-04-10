@@ -1,4 +1,4 @@
-package com.example.firebasetestapp.Auth;
+package com.timed.Auth;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -12,10 +12,10 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.content.SharedPreferences;
 
-import com.example.firebasetestapp.ProfileActivity;
-import com.example.firebasetestapp.R;
-import com.example.firebasetestapp.managers.GoogleAuthManager;
-import com.example.firebasetestapp.repositories.AuthRepository;
+import com.timed.ProfileActivity;
+import com.timed.R;
+import com.timed.managers.GoogleAuthManager;
+import com.timed.repositories.AuthRepository;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.checkbox.MaterialCheckBox;
 import com.google.android.material.textfield.TextInputEditText;

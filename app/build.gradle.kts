@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.firebasetestapp"
+    namespace = "com.timed"
     compileSdk {
         version = release(36)
     }

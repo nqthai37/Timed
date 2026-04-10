@@ -1,4 +1,4 @@
-package com.example.firebasetestapp;
+package com.timed;
 
 import android.os.Bundle;
 import android.util.Log;

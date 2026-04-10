@@ -1,4 +1,4 @@
-package com.example.firebasetestapp;
+package com.timed;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -11,11 +11,11 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.example.firebasetestapp.Auth.LoginActivity;
-import com.example.firebasetestapp.managers.UserManager;
-import com.example.firebasetestapp.models.User;
-import com.example.firebasetestapp.repositories.AuthRepository;
-import com.example.firebasetestapp.repositories.UserRepository;
+import com.timed.Auth.LoginActivity;
+import com.timed.managers.UserManager;
+import com.timed.models.User;
+import com.timed.repositories.AuthRepository;
+import com.timed.repositories.UserRepository;
 import com.bumptech.glide.Glide;
 import com.google.android.material.button.MaterialButton;
 

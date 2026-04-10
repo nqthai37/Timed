@@ -1,4 +1,4 @@
-package com.example.firebasetestapp.Auth;
+package com.timed.Auth;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -7,9 +7,9 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.example.firebasetestapp.ProfileActivity;
-import com.example.firebasetestapp.R;
-import com.example.firebasetestapp.repositories.AuthRepository;
+import com.timed.ProfileActivity;
+import com.timed.R;
+import com.timed.repositories.AuthRepository;
 import com.google.android.material.button.MaterialButton;
 
 public class EmailVerificationActivity extends AppCompatActivity {

@@ -1,9 +1,9 @@
-package com.example.firebasetestapp.repositories;
+package com.timed.repositories;
 
 import android.util.Log;
 
-import com.example.firebasetestapp.managers.UserManager;
-import com.example.firebasetestapp.models.User;
+import com.timed.managers.UserManager;
+import com.timed.models.User;
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.Timestamp;
