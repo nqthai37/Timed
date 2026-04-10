@@ -1,4 +1,4 @@
-package com.example.firebasetestapp;
+package com.example.firebasetestapp.Auth;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -7,6 +7,8 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.example.firebasetestapp.ProfileActivity;
+import com.example.firebasetestapp.R;
 import com.example.firebasetestapp.repositories.AuthRepository;
 import com.google.android.material.button.MaterialButton;
 

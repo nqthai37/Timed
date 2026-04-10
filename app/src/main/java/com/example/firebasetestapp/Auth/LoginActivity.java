@@ -1,4 +1,4 @@
-package com.example.firebasetestapp;
+package com.example.firebasetestapp.Auth;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -12,6 +12,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.content.SharedPreferences;
 
+import com.example.firebasetestapp.ProfileActivity;
+import com.example.firebasetestapp.R;
 import com.example.firebasetestapp.managers.GoogleAuthManager;
 import com.example.firebasetestapp.repositories.AuthRepository;
 import com.google.android.material.button.MaterialButton;

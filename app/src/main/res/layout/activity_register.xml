@@ -11,7 +11,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:padding="24dp"
-        tools:context=".RegisterActivity">
+        tools:context=".Auth.RegisterActivity">
 
         <ImageView
             android:id="@+id/ivLogo"

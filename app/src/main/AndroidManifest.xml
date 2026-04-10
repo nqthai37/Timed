@@ -12,7 +12,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.FirebaseTestApp">
         <activity
-            android:name=".LoginActivity"
+            android:name=".Auth.LoginActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -21,11 +21,11 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".RegisterActivity" />
+        <activity android:name=".Auth.RegisterActivity" />
 
-        <activity android:name=".ForgotPasswordActivity" />
+        <activity android:name=".Auth.ForgotPasswordActivity" />
 
-        <activity android:name=".EmailVerificationActivity" />
+        <activity android:name=".Auth.EmailVerificationActivity" />
 
         <activity android:name=".ProfileActivity" />
 
