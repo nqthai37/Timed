@@ -2,9 +2,17 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="timed_blue">#3B82F6</color>
-    <color name="timed_dark_text">#111827</color>
-    <color name="timed_gray_text">#6B7280</color>
-    <color name="timed_light_gray">#E5E7EB</color>
-    <color name="timed_bg">#FFFFFF</color>
+    <color name="primary">#741ce9</color>
+    <color name="background_light">#f7f6f8</color>
+    <color name="slate_900">#0f172a</color>
+    <color name="slate_500">#64748b</color>
+    <color name="slate_400">#94a3b8</color>
+    <color name="blue_500">#3b82f6</color>
+    <color name="green_500">#22c55e</color>
+    <color name="orange_500">#f97316</color>
+<!--    <color name="timed_blue">#3B82F6</color>-->
+<!--    <color name="timed_dark_text">#111827</color>-->
+<!--    <color name="timed_gray_text">#6B7280</color>-->
+<!--    <color name="timed_light_gray">#E5E7EB</color>-->
+<!--    <color name="timed_bg">#FFFFFF</color>-->
 </resources>

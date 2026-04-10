@@ -25,6 +25,8 @@
 
         <activity android:name=".ForgotPasswordActivity" />
 
+        <activity android:name=".EmailVerificationActivity" />
+
         <activity android:name=".ProfileActivity" />
 
         <activity android:name=".MainActivity" />

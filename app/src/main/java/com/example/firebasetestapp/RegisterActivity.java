@@ -165,15 +165,12 @@ public class RegisterActivity extends AppCompatActivity {
         btnRegister.setEnabled(false);
         btnRegister.setText("Creating Account...");
 
-        // --- Backend Call ---
         authRepository.registerWithEmail(name, email, password)
                 .addOnSuccessListener(aVoid -> {
 
-                    Toast.makeText(RegisterActivity.this, "Registration Successful!", Toast.LENGTH_LONG).show();
+                    authRepository.sendVerificationEmail();
 
-//                    Intent intent = new Intent(RegisterActivity.this, MainActivity.class);
-
-                    Intent intent = new Intent(RegisterActivity.this, ProfileActivity.class);
+                    Intent intent = new Intent(RegisterActivity.this, EmailVerificationActivity.class);
 
                     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                     startActivity(intent);

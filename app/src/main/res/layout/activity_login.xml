@@ -24,7 +24,7 @@
         android:text="Timed"
         android:textSize="20sp"
         android:textStyle="bold"
-        android:textColor="#0F172A"
+        android:textColor="@color/slate_900"
         android:layout_marginStart="12dp"
         app:layout_constraintStart_toEndOf="@+id/ivLogo"
         app:layout_constraintTop_toTopOf="parent"
@@ -37,7 +37,7 @@
         android:text="Welcome back"
         android:textSize="28sp"
         android:textStyle="bold"
-        android:textColor="#0F172A"
+        android:textColor="@color/slate_900"
         android:layout_marginTop="32dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/ivLogo" />
@@ -55,7 +55,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Don't have an account? "
-            android:textColor="#64748B"
+            android:textColor="@color/slate_500"
             android:textSize="14sp"/>
 
         <TextView
@@ -63,7 +63,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Sign up"
-            android:textColor="@color/timed_blue"
+            android:textColor="@color/blue_500"
             android:textSize="14sp"/>
     </LinearLayout>
 
@@ -72,7 +72,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Email"
-        android:textColor="#0F172A"
+        android:textColor="@color/slate_900"
         android:layout_marginTop="32dp"
         app:drawableStartCompat="@drawable/baseline_mail_outline_24" android:drawablePadding="8dp"
         app:layout_constraintStart_toStartOf="parent"
@@ -107,7 +107,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Password"
-        android:textColor="#0F172A"
+        android:textColor="@color/slate_900"
         android:layout_marginTop="16dp"
         app:drawableStartCompat="@drawable/ic_passlock" android:drawablePadding="8dp"
         app:layout_constraintStart_toStartOf="parent"
@@ -144,7 +144,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Remember me"
-        android:textColor="#64748B"
+        android:textColor="@color/slate_500"
         android:buttonTint="#757575"
         android:layout_marginTop="8dp"
         app:layout_constraintStart_toStartOf="parent"
@@ -155,7 +155,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Forgot password?"
-        android:textColor="@color/timed_blue"
+        android:textColor="@color/blue_500"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@+id/cbRememberMe"
         app:layout_constraintBottom_toBottomOf="@+id/cbRememberMe"/>
@@ -169,7 +169,7 @@
         android:textAllCaps="false"
         android:textSize="16sp"
         app:cornerRadius="8dp"
-        app:backgroundTint="@color/timed_blue"
+        app:backgroundTint="@color/blue_500"
         app:icon="@drawable/ic_right_arrow" app:iconGravity="textEnd"
         app:layout_constraintTop_toBottomOf="@+id/cbRememberMe"/>
 
@@ -193,7 +193,7 @@
             android:layout_height="wrap_content"
             android:text="OR CONTINUE WITH"
             android:textSize="12sp"
-            android:textColor="#64748B"
+            android:textColor="@color/slate_500"
             android:layout_marginHorizontal="16dp"/>
 
         <View
@@ -221,7 +221,7 @@
             app:backgroundTint="#F8FAFC"
             app:strokeColor="#E2E8F0"
             android:text="Google"
-            android:textColor="#0F172A"
+            android:textColor="@color/slate_900"
             android:textSize="16sp"
             android:textAllCaps="false"
             app:icon="@drawable/ic_google"
@@ -236,7 +236,7 @@
         android:text="@string/legal_agreement"
         android:textAlignment="center"
         android:textSize="12sp"
-        android:textColor="@color/timed_gray_text"
+        android:textColor="#6B7280"
         android:layout_marginTop="32dp"
         app:layout_constraintTop_toBottomOf="@+id/llSocial"
         app:layout_constraintBottom_toBottomOf="parent"

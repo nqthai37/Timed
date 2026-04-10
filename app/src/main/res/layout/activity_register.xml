@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/timed_bg"
+    android:background="@color/white"
     android:fillViewport="true">
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -28,7 +28,7 @@
             android:text="Timed"
             android:textSize="20sp"
             android:textStyle="bold"
-            android:textColor="#0F172A"
+            android:textColor="@color/slate_900"
             android:layout_marginStart="12dp"
             app:layout_constraintStart_toEndOf="@+id/ivLogo"
             app:layout_constraintTop_toTopOf="@+id/ivLogo"
@@ -41,7 +41,7 @@
             android:text="Create your account"
             android:textSize="28sp"
             android:textStyle="bold"
-            android:textColor="#0F172A"
+            android:textColor="@color/slate_900"
             android:layout_marginTop="32dp"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/ivLogo" />
@@ -59,7 +59,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Already have an account? "
-                android:textColor="#64748B"
+                android:textColor="@color/slate_500"
                 android:textSize="14sp"/>
 
             <TextView
@@ -67,7 +67,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Sign in"
-                android:textColor="@color/timed_blue"
+                android:textColor="@color/blue_500"
                 android:textSize="14sp"/>
         </LinearLayout>
 
@@ -76,7 +76,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Full name"
-            android:textColor="#0F172A"
+            android:textColor="@color/slate_900"
             android:layout_marginTop="24dp"
             app:drawableStartCompat="@drawable/ic_person" android:drawablePadding="8dp"
             app:layout_constraintStart_toStartOf="parent"
@@ -111,7 +111,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Email"
-            android:textColor="#0F172A"
+            android:textColor="@color/slate_900"
             android:layout_marginTop="16dp"
             app:drawableStartCompat="@drawable/baseline_mail_outline_24"
             android:drawablePadding="8dp"
@@ -147,7 +147,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Password"
-            android:textColor="#0F172A"
+            android:textColor="@color/slate_900"
             android:layout_marginTop="16dp"
             app:drawableStartCompat="@drawable/ic_passlock"
             android:drawablePadding="8dp"
@@ -194,47 +194,47 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="At least 8 characters"
-                android:textColor="#94A3B8"
+                android:textColor="@color/slate_400"
                 android:textSize="14sp"
                 android:drawablePadding="12dp"
                 app:drawableStartCompat="@drawable/ic_dot"
-                app:drawableTint="#94A3B8" />
+                app:drawableTint="@color/slate_400" />
 
             <TextView
                 android:id="@+id/tvReqUppercase"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Contains uppercase letter"
-                android:textColor="#94A3B8"
+                android:textColor="@color/slate_400"
                 android:textSize="14sp"
                 android:layout_marginTop="4dp"
                 android:drawablePadding="12dp"
                 app:drawableStartCompat="@drawable/ic_dot"
-                app:drawableTint="#94A3B8" />
+                app:drawableTint="@color/slate_400" />
 
             <TextView
                 android:id="@+id/tvReqLowercase"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Contains lowercase letter"
-                android:textColor="#94A3B8"
+                android:textColor="@color/slate_400"
                 android:textSize="14sp"
                 android:layout_marginTop="4dp"
                 android:drawablePadding="12dp"
                 app:drawableStartCompat="@drawable/ic_dot"
-                app:drawableTint="#94A3B8" />
+                app:drawableTint="@color/slate_400" />
 
             <TextView
                 android:id="@+id/tvReqNumber"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Contains number"
-                android:textColor="#94A3B8"
+                android:textColor="@color/slate_400"
                 android:textSize="14sp"
                 android:layout_marginTop="4dp"
                 android:drawablePadding="12dp"
                 app:drawableStartCompat="@drawable/ic_dot"
-                app:drawableTint="#94A3B8" />
+                app:drawableTint="@color/slate_400" />
         </LinearLayout>
 
         <LinearLayout
@@ -250,13 +250,13 @@
                 android:id="@+id/cbTerms"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                app:buttonTint="#94A3B8"/>
+                app:buttonTint="@color/slate_400"/>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/agree_terms"
-                android:textColor="#64748B"
+                android:textColor="@color/slate_500"
                 android:textSize="14sp"/>
         </LinearLayout>
 
@@ -269,7 +269,7 @@
             android:textAllCaps="false"
             android:textSize="16sp"
             app:cornerRadius="8dp"
-            app:backgroundTint="@color/timed_blue" app:icon="@drawable/ic_right_arrow"
+            app:backgroundTint="@color/blue_500" app:icon="@drawable/ic_right_arrow"
             app:iconGravity="textEnd"
             app:layout_constraintTop_toBottomOf="@+id/llTerms"/>
 
@@ -293,7 +293,7 @@
                 android:layout_height="wrap_content"
                 android:text="OR SIGN UP WITH"
                 android:textSize="12sp"
-                android:textColor="#64748B"
+                android:textColor="@color/slate_500"
                 android:layout_marginHorizontal="16dp"/>
 
             <View
@@ -314,7 +314,7 @@
             app:backgroundTint="#F8FAFC"
             app:strokeColor="#E2E8F0"
             android:text="Continue with Google"
-            android:textColor="#0F172A"
+            android:textColor="@color/slate_900"
             android:textSize="16sp"
             android:textAllCaps="false"
             app:icon="@drawable/ic_google"

@@ -5,6 +5,7 @@ import android.util.Log;
 import com.example.firebasetestapp.managers.UserManager;
 import com.example.firebasetestapp.models.User;
 import com.google.android.gms.tasks.Task;
+import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.AuthCredential;
@@ -26,6 +27,11 @@ public class AuthRepository {
                 .continueWithTask(authTask -> {
                     if (!authTask.isSuccessful()) {
                         throw authTask.getException();
+                    }
+
+                    if (!authTask.getResult().getUser().isEmailVerified()) {
+                        mAuth.signOut();
+                        throw new Exception("Please verify your email before logging in.");
                     }
 
                     String uid = authTask.getResult().getUser().getUid();
@@ -50,10 +56,15 @@ public class AuthRepository {
                         loggedInUser.setSecurity(security);
                     }
 
-                    UserManager.getInstance().setCurrentUser(loggedInUser);
-
                     java.util.Map<String, Object> updates = new java.util.HashMap<>();
                     updates.put("security.last_login", now);
+
+                    if (!loggedInUser.getEmailVerified()) {
+                        loggedInUser.setEmailVerified(true);
+                        updates.put("emailVerified", true);
+                    }
+
+                    UserManager.getInstance().setCurrentUser(loggedInUser);
 
                     return userRepository.updateUser(uid, updates)
                             .continueWith(updateTask -> {
@@ -170,14 +181,16 @@ public class AuthRepository {
                         newUser.setSecurity(security);
 
                         return userRepository.createUser(uid, newUser).continueWith(saveTask -> {
-                            if (!saveTask.isSuccessful()) throw saveTask.getException();
+                            if (!saveTask.isSuccessful())
+                                throw saveTask.getException();
                             UserManager.getInstance().setCurrentUser(newUser);
                             return newUser;
                         });
 
                     } else {
                         return userRepository.getUser(uid).continueWithTask(dbTask -> {
-                            if (!dbTask.isSuccessful()) throw dbTask.getException();
+                            if (!dbTask.isSuccessful())
+                                throw dbTask.getException();
                             User existingUser = dbTask.getResult().toObject(User.class);
 
                             Timestamp now = Timestamp.now();
@@ -202,4 +215,66 @@ public class AuthRepository {
                 });
     }
 
+    public Task<Void> sendVerificationEmail() {
+        if (mAuth.getCurrentUser() != null) {
+            return mAuth.getCurrentUser().sendEmailVerification();
+        }
+        return Tasks.forException(new Exception("No user logged in"));
+    }
+
+    public Task<Void> markEmailAsVerifiedInFirestore() {
+        if (mAuth.getCurrentUser() != null) {
+            String uid = mAuth.getCurrentUser().getUid();
+
+            User currentUser = UserManager.getInstance().getCurrentUser();
+            if (currentUser != null) {
+                currentUser.setEmailVerified(true);
+            }
+
+            java.util.Map<String, Object> updates = new java.util.HashMap<>();
+            updates.put("emailVerified", true);
+
+            return userRepository.updateUser(uid, updates);
+        }
+        return Tasks.forException(new Exception("No user logged in"));
+    }
+
+    public Task<Void> sendPasswordResetEmail(String email) {
+        return mAuth.sendPasswordResetEmail(email);
+    }
+
+    public Task<Void> reloadUser() {
+        if (mAuth.getCurrentUser() != null) {
+            return mAuth.getCurrentUser().reload();
+        }
+        return com.google.android.gms.tasks.Tasks.forException(new Exception("No user logged in"));
+    }
+
+    public boolean isCurrentUserVerified() {
+        return mAuth.getCurrentUser() != null && mAuth.getCurrentUser().isEmailVerified();
+    }
+
+    public Task<User> restoreSession() {
+        if (mAuth.getCurrentUser() != null) {
+            String uid = mAuth.getCurrentUser().getUid();
+
+            return userRepository.getUser(uid).continueWith(task -> {
+                if (!task.isSuccessful()) {
+                    throw task.getException();
+                }
+
+                com.google.firebase.firestore.DocumentSnapshot snapshot = task.getResult();
+                User restoredUser = snapshot.toObject(User.class);
+
+                UserManager.getInstance().setCurrentUser(restoredUser);
+                return restoredUser;
+            });
+        }
+        return com.google.android.gms.tasks.Tasks.forException(new Exception("No saved session found"));
+    }
+
+    public void logout() {
+        mAuth.signOut();
+        UserManager.getInstance().setCurrentUser(null);
+    }
 }

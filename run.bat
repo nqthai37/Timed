@@ -11,6 +11,7 @@ echo [2/4] Waiting for the fake phone to wake up...
 "%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe" wait-for-device
 
 echo [3/4] Compiling the App (This uses the 1.5GB RAM limit we set!)...
+set JAVA_HOME=C:\Program Files\Android\Android Studio\jbr
 call gradlew installDebug
 
 echo [4/4] Launching Timed!
