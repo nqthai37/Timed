@@ -1,5 +1,6 @@
 package com.timed;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageButton;
@@ -15,8 +16,10 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import com.timed.Setting.Main.SettingActivity;
 
 import com.google.android.material.tabs.TabLayout;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -217,6 +220,19 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         eventAdapter = new EventAdapter(currentEvents);
         rvEvents.setAdapter(eventAdapter);
         updateEventsForDate(selectedDate);
+
+        // Setup BottomNavigationView
+        BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
+        if (bottomNav != null) {
+            bottomNav.setOnItemSelectedListener(item -> {
+                if (item.getItemId() == R.id.nav_settings) {
+                    Intent intent = new Intent(MainActivity.this, SettingActivity.class);
+                    startActivity(intent);
+                    return true;
+                }
+                return false;
+            });
+        }
     }
 
     private int dpToPx(int dp) {

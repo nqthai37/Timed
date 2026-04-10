@@ -6,6 +6,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.timed.R;
+import com.timed.Setting.Analytics.AnalyticsReportAdapter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,8 +21,9 @@ public class AnalyticsActivity extends AppCompatActivity {
     
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_analytics);
-    // Nút quay lại
+        // Back button
         findViewById(R.id.iv_back).setOnClickListener(v -> finish());
+
         rvAnalyticsReports = findViewById(R.id.rv_analytics_reports);
         if (rvAnalyticsReports != null) {
             rvAnalyticsReports.setLayoutManager(new LinearLayoutManager(this));

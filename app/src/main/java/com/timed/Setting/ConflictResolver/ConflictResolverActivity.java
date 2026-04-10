@@ -23,6 +23,8 @@ public class ConflictResolverActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_conflict_resolver);
+        // Back button
+        findViewById(R.id.iv_back).setOnClickListener(v -> finish());
 
         // Ánh xạ RecyclerView
         recyclerView = findViewById(R.id.rvConflictEvent);

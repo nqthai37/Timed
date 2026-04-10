@@ -20,6 +20,8 @@ public class TimezoneSettingActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_timezone);
+        // Back button
+        findViewById(R.id.iv_back).setOnClickListener(v -> finish());
 
         rvTimezones = findViewById(R.id.rv_timezone_settings);
         if (rvTimezones != null) {

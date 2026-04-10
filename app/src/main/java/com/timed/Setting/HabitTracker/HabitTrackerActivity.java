@@ -17,10 +17,10 @@ public class HabitTrackerActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // Nút quay lại
-        findViewById(R.id.iv_back).setOnClickListener(v -> finish());
-        super.onCreate(savedInstanceState);
+         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_habit_tracker);
+        // Back button
+        findViewById(R.id.iv_back).setOnClickListener(v -> finish());
 
         // Ánh xạ RecyclerView
         rvHabits = findViewById(R.id.rvTodayHabits);

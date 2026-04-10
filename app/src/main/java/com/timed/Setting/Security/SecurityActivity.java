@@ -8,6 +8,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.util.ArrayList;
 import java.util.List;
 import com.timed.R;
+import com.timed.Setting.Security.SecurityAdapter;
+import com.timed.Setting.Security.SecurityOption;
 
 public class SecurityActivity extends AppCompatActivity {
 
@@ -16,8 +18,7 @@ public class SecurityActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // Nút quay lại
-        findViewById(R.id.iv_back).setOnClickListener(v -> finish());
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_security);
 
