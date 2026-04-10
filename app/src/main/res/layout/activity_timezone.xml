@@ -101,8 +101,8 @@
         android:id="@+id/btn_add_timezone"
         android:layout_width="match_parent"
         android:layout_height="52dp"
-        android:background="@drawable/bg_rounded"
-        android:backgroundTint="#EFF6FF"
+        android:background="@drawable/bg_day_event_light"
+
         android:gravity="center"
         android:orientation="horizontal"
         android:layout_marginBottom="20dp">
@@ -111,14 +111,14 @@
             android:layout_width="18dp"
             android:layout_height="18dp"
             android:src="@android:drawable/ic_input_add" 
-            app:tint="#2563EB"
+            app:tint="@color/primary"
             android:layout_marginEnd="8dp"/>
             
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Add timezone"
-            android:textColor="#2563EB"
+            android:textColor="@color/primary"
             android:textStyle="bold"
             android:textSize="15sp"/>
     </LinearLayout>

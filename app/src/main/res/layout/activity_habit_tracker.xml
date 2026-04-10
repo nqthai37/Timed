@@ -97,7 +97,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Drink water"
-                    app:chipBackgroundColor="#EFF6FF"
+                    android:background="@drawable/bg_day_event_light"
                     app:chipCornerRadius="16dp"
                     app:chipStrokeWidth="0dp" />
 
@@ -105,7 +105,8 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Read book"
-                    app:chipBackgroundColor="#EFF6FF"
+                    android:background="@drawable/bg_day_event_light"
+
                     app:chipCornerRadius="16dp"
                     app:chipStrokeWidth="0dp" />
                     
@@ -113,7 +114,8 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Exercise"
-                    app:chipBackgroundColor="#EFF6FF"
+                    android:background="@drawable/bg_day_event_light"
+
                     app:chipCornerRadius="16dp"
                     app:chipStrokeWidth="0dp" />
             </com.google.android.material.chip.ChipGroup>
@@ -139,25 +141,26 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:clipToPadding="false"
-        android:paddingBottom="80dp" 
+        android:paddingBottom="80dp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tv_today_habits_title" />
+        app:layout_constraintTop_toBottomOf="@+id/tv_today_habits_title"
+        app:layout_constraintVertical_bias="0.0"
+        tools:layout_editor_absoluteX="0dp" />
 
     <Button
         android:id="@+id/btn_new_habit"
         android:layout_width="match_parent"
         android:layout_height="52dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
         android:layout_marginBottom="16dp"
-        android:backgroundTint="#FFFFFF"
+        android:backgroundTint="@color/primary"
         android:text="New Habit"
         android:textAllCaps="false"
-        android:textColor="#2563EB"
+        android:textColor="@color/white"
         android:textSize="16sp"
         android:textStyle="bold"
         app:cornerRadius="12dp"
         app:elevation="4dp"
-        app:layout_constraintBottom_toBottomOf="parent" />
+        app:layout_constraintBottom_toBottomOf="parent"
+        tools:layout_editor_absoluteX="16dp" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

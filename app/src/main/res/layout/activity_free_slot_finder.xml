@@ -77,8 +77,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="8dp"
-                android:background="@drawable/bg_rounded"
-                android:backgroundTint="#F1F5F9"
+                android:background="@drawable/bg_day_event_light"
+
                 android:paddingHorizontal="16dp"
                 android:paddingVertical="8dp"
                 android:text="Any duration"
@@ -89,8 +89,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="8dp"
-                android:background="@drawable/bg_rounded"
-                android:backgroundTint="#F1F5F9"
+                android:background="@drawable/bg_day_event_light"
+
                 android:paddingHorizontal="16dp"
                 android:paddingVertical="8dp"
                 android:text="Any time"
@@ -100,8 +100,8 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_rounded"
-                android:backgroundTint="#F1F5F9"
+                android:background="@drawable/bg_day_event_light"
+
                 android:paddingHorizontal="16dp"
                 android:paddingVertical="8dp"
                 android:text="Any calendar"
@@ -146,7 +146,7 @@
             android:textColor="#FFFFFF"
             android:textSize="16sp"
             android:textStyle="bold"
-            app:backgroundTint="#2563EB"
+            app:backgroundTint="@color/primary"
             app:cornerRadius="8dp" />
     </LinearLayout>
 
