@@ -1,5 +1,6 @@
 package com.example.firebasetestapp;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.LinearLayout;
@@ -10,10 +11,13 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.example.firebasetestapp.Auth.LoginActivity;
 import com.example.firebasetestapp.managers.UserManager;
 import com.example.firebasetestapp.models.User;
+import com.example.firebasetestapp.repositories.AuthRepository;
 import com.example.firebasetestapp.repositories.UserRepository;
 import com.bumptech.glide.Glide;
+import com.google.android.material.button.MaterialButton;
 
 public class ProfileActivity extends AppCompatActivity {
 
@@ -21,8 +25,10 @@ public class ProfileActivity extends AppCompatActivity {
     private LinearLayout profileDataContainer;
     private ImageView ivAvatar;
     private TextView tvName, tvEmail, tvTheme, tvNotifications;
+    private MaterialButton btnTempLogout;
 
     private UserRepository userRepository;
+    private AuthRepository authRepository;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,10 +42,31 @@ public class ProfileActivity extends AppCompatActivity {
         tvEmail = findViewById(R.id.tvEmail);
         tvTheme = findViewById(R.id.tvTheme);
         tvNotifications = findViewById(R.id.tvNotifications);
+        btnTempLogout = findViewById(R.id.btnTempLogout);
 
         userRepository = new UserRepository();
+        authRepository = new AuthRepository();
 
         fetchUserProfile(UserManager.getInstance().getCurrentUser().getUid());
+        setupClickListeners();
+    }
+
+    private void setupClickListeners() {
+        btnTempLogout.setOnClickListener(v -> {
+            authRepository.logout();
+
+            getSharedPreferences("TimedAppPrefs", MODE_PRIVATE)
+                    .edit()
+                    .putBoolean("REMEMBER_ME", false)
+                    .apply();
+
+            Toast.makeText(this, "Logged out successfully", Toast.LENGTH_SHORT).show();
+
+            Intent intent = new Intent(ProfileActivity.this, LoginActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            finish();
+        });
     }
 
     private void fetchUserProfile(String uid) {
