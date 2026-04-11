@@ -316,49 +316,6 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         }
     }
 
-    private void setupBottomNavigation() {
-        BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
-        if (bottomNav == null) {
-            return;
-        }
-
-        bottomNav.setSelectedItemId(R.id.nav_schedule);
-        bottomNav.setOnItemSelectedListener(item -> {
-            int itemId = item.getItemId();
-            if (itemId == R.id.nav_schedule) {
-                return true;
-            }
-
-            if (itemId == R.id.nav_settings) {
-                Intent intent = new Intent(this, SettingsActivity.class);
-                startActivity(intent);
-                return true;
-            }
-
-            Toast.makeText(this, "Tính năng đang được phát triển", Toast.LENGTH_SHORT).show();
-            return true;
-        });
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        updateEventsForDate(selectedDate);
-
-        // Setup BottomNavigationView
-        BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
-        if (bottomNav != null) {
-            bottomNav.setOnItemSelectedListener(item -> {
-                if (item.getItemId() == R.id.nav_settings) {
-                    Intent intent = new Intent(MainActivity.this, SettingActivity.class);
-                    startActivity(intent);
-                    return true;
-                }
-                return false;
-            });
-        }
-    }
-
     private int dpToPx(int dp) {
         float density = getResources().getDisplayMetrics().density;
         return Math.round((float) dp * density);
