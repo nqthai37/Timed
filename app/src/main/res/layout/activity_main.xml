@@ -372,7 +372,9 @@
             android:backgroundTint="@color/primary"
             app:tint="@android:color/white"
             android:src="@drawable/ic_add"
-            app:elevation="8dp" />
+            app:elevation="8dp"
+            app:fabSize="normal"
+            app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Timed.CircularFab" />
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/layoutFabMenuOverlay"
@@ -392,8 +394,10 @@
             android:rotation="45"
             android:src="@drawable/ic_add"
             app:elevation="12dp"
+            app:fabSize="normal"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
+            app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Timed.CircularFab"
             app:tint="@android:color/white" />
 
             <LinearLayout

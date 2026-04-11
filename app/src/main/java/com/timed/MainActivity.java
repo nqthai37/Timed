@@ -1,10 +1,13 @@
 package com.timed;
 
 import android.content.Intent;
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.TextView;
+import android.util.Log;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
@@ -18,7 +21,17 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.timed.Setting.Main.SettingActivity;
 
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.tabs.TabLayout;
+import com.timed.activities.CreateEventActivity;
+import com.timed.activities.SettingsActivity;
+import com.timed.data.models.EventModel;
+import com.timed.utils.FirebaseInitializer;
+import com.timed.utils.FirebaseHelper;
+import com.timed.utils.FirebaseAuthManager;
+import com.timed.utils.EventIntegrationService;
+import com.timed.utils.CalendarIntegrationService;
+import com.timed.utils.EventModelAdapter;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import java.time.LocalDate;
@@ -29,6 +42,8 @@ import java.util.List;
 import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity implements CalendarAdapter.OnItemListener {
+
+    private static final String TAG = "MainActivity";
 
     private RecyclerView rvCalendar;
     private RecyclerView rvHorizontalCalendar;
@@ -56,11 +71,25 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
     private HorizontalCalendarAdapter horizontalAdapter;
     private List<LocalDate> horizontalDateList;
 
+    // Firebase instances
+    private FirebaseInitializer firebaseInitializer;
+    private FirebaseHelper firebaseHelper;
+    private FirebaseAuthManager firebaseAuthManager;
+
+    // Integration services
+    private EventIntegrationService eventIntegrationService;
+    private CalendarIntegrationService calendarIntegrationService;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_main);
+
+        // Khởi tạo Firebase
+        initializeFirebase();
+        // Khởi tạo integration services
+        initializeIntegrationServices();
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.mainContent), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -189,10 +218,15 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                 });
             }
 
-            findViewById(R.id.btnFabEvent).setOnClickListener(v -> {
-                toggleFabMenu();
-                android.widget.Toast.makeText(this, "Create Event Clicked", android.widget.Toast.LENGTH_SHORT).show();
-            });
+            View btnFabEvent = findViewById(R.id.btnFabEvent);
+            if (btnFabEvent != null) {
+                btnFabEvent.setOnClickListener(v -> {
+                    toggleFabMenu();
+                    Intent intent = new Intent(this, CreateEventActivity.class);
+                    intent.putExtra("calendarId", "default_calendar");
+                    startActivity(intent);
+                });
+            }
 
             findViewById(R.id.btnFabTask).setOnClickListener(v -> {
                 toggleFabMenu();
@@ -233,8 +267,82 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         tvUpcomingTitle = findViewById(R.id.tvUpcomingTitle);
         rvEvents.setLayoutManager(new LinearLayoutManager(this));
         currentEvents = new ArrayList<>();
-        eventAdapter = new EventAdapter(currentEvents);
+        eventAdapter = new EventAdapter(currentEvents, this::openEditEvent);
         rvEvents.setAdapter(eventAdapter);
+        setupBottomNavigation();
+        updateEventsForDate(selectedDate);
+    }
+
+    private void setupBottomNavigation() {
+        BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
+        if (bottomNav == null) {
+            return;
+        }
+
+        bottomNav.setSelectedItemId(R.id.nav_schedule);
+        bottomNav.setOnItemSelectedListener(item -> {
+            int itemId = item.getItemId();
+            if (itemId == R.id.nav_schedule) {
+                return true;
+            }
+
+            if (itemId == R.id.nav_settings) {
+                Intent intent = new Intent(this, SettingsActivity.class);
+                startActivity(intent);
+                return true;
+            }
+
+            Toast.makeText(this, "Tính năng đang được phát triển", Toast.LENGTH_SHORT).show();
+            return true;
+        });
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        updateEventsForDate(selectedDate);
+
+        // Setup BottomNavigationView
+        BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
+        if (bottomNav != null) {
+            bottomNav.setOnItemSelectedListener(item -> {
+                if (item.getItemId() == R.id.nav_settings) {
+                    Intent intent = new Intent(MainActivity.this, SettingActivity.class);
+                    startActivity(intent);
+                    return true;
+                }
+                return false;
+            });
+        }
+    }
+
+    private void setupBottomNavigation() {
+        BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
+        if (bottomNav == null) {
+            return;
+        }
+
+        bottomNav.setSelectedItemId(R.id.nav_schedule);
+        bottomNav.setOnItemSelectedListener(item -> {
+            int itemId = item.getItemId();
+            if (itemId == R.id.nav_schedule) {
+                return true;
+            }
+
+            if (itemId == R.id.nav_settings) {
+                Intent intent = new Intent(this, SettingsActivity.class);
+                startActivity(intent);
+                return true;
+            }
+
+            Toast.makeText(this, "Tính năng đang được phát triển", Toast.LENGTH_SHORT).show();
+            return true;
+        });
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
         updateEventsForDate(selectedDate);
 
         // Setup BottomNavigationView
@@ -682,14 +790,46 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         String formattedDate = date.format(formatter).toUpperCase();
         tvUpcomingTitle.setText("UPCOMING FOR " + formattedDate);
 
-        currentEvents.clear();
-        if (date.getDayOfMonth() % 2 == 0) {
-            currentEvents.add(new Event("10:00", "Team Standup", "Google Meet · 30m"));
-            currentEvents.add(new Event("13:00", "Client Meeting", "Design Office · 1h"));
-        } else {
-            currentEvents.add(new Event("09:00", "Project Planning", "Room 302 · 2h"));
+        if (eventIntegrationService == null) {
+            currentEvents.clear();
+            eventAdapter.notifyDataSetChanged();
+            return;
         }
-        eventAdapter.notifyDataSetChanged();
+
+        long startOfDay = date.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+        long endOfDay = date.plusDays(1).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli() - 1;
+        String calendarId = "default_calendar";
+
+        eventIntegrationService.getEventsInDateRange(calendarId, startOfDay, endOfDay,
+            new EventIntegrationService.EventLoadListener() {
+                @Override
+                public void onEventsLoaded(List<EventModel> events) {
+                    currentEvents.clear();
+                    currentEvents.addAll(EventModelAdapter.toUIEventList(events));
+                    eventAdapter.notifyDataSetChanged();
+                }
+
+                @Override
+                public void onError(String errorMessage) {
+                    Log.e(TAG, "Error loading selected day events: " + errorMessage);
+                    currentEvents.clear();
+                    eventAdapter.notifyDataSetChanged();
+                }
+            });
+    }
+
+    private void openEditEvent(Event event) {
+        Intent intent = new Intent(this, CreateEventActivity.class);
+        intent.putExtra("mode", "edit");
+        intent.putExtra("eventId", event.getId());
+        intent.putExtra("calendarId", event.getCalendarId() != null ? event.getCalendarId() : "default_calendar");
+        intent.putExtra("title", event.getTitle());
+        intent.putExtra("description", event.getDetails());
+        intent.putExtra("location", event.getLocation());
+        intent.putExtra("startTime", event.getStartTime());
+        intent.putExtra("endTime", event.getEndTime());
+        intent.putExtra("allDay", event.isAllDay());
+        startActivity(intent);
     }
 
     private void toggleFabMenu() {
@@ -728,5 +868,145 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                 fabOptionReminder.setVisibility(View.INVISIBLE);
             }).start();
         }
+    }
+    
+    /**
+     * Khởi tạo Firebase
+     */
+    private void initializeFirebase() {
+        try {
+            // Khởi tạo Firebase Initializer
+            firebaseInitializer = FirebaseInitializer.getInstance();
+            firebaseInitializer.initialize(this);
+            
+            // Tạo Firebase Helper
+            firebaseHelper = new FirebaseHelper();
+            
+            // Tạo Firebase Auth Manager
+            firebaseAuthManager = new FirebaseAuthManager();
+            
+            Log.d(TAG, "Firebase initialized successfully");
+            
+            // Kiểm tra kết nối Firebase
+            checkFirebaseConnection();
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error initializing Firebase: " + e.getMessage(), e);
+            Toast.makeText(this, "Lỗi khởi tạo Firebase", Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    /**
+     * Kiểm tra kết nối Firebase
+     */
+    private void checkFirebaseConnection() {
+        firebaseHelper.checkConnection(new FirebaseHelper.FirebaseCallback<Boolean>() {
+            @Override
+            public void onSuccess(Boolean result) {
+                Log.d(TAG, "Firebase connection verified");
+                Toast.makeText(MainActivity.this, "Kết nối Firebase thành công", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onFailure(String errorMessage) {
+                Log.e(TAG, "Firebase connection failed: " + errorMessage);
+                Toast.makeText(MainActivity.this, "Lỗi kết nối Firebase: " + errorMessage, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+    
+    /**
+     * Lấy Firebase Auth Manager
+     */
+    public FirebaseAuthManager getFirebaseAuthManager() {
+        return firebaseAuthManager;
+    }
+    
+    /**
+     * Lấy Firebase Helper
+     */
+    public FirebaseHelper getFirebaseHelper() {
+        return firebaseHelper;
+    }
+    
+    /**
+     * Lấy Firebase Initializer
+     */
+    public FirebaseInitializer getFirebaseInitializer() {
+        return firebaseInitializer;
+    }
+
+    /**
+     * Khởi tạo integration services
+     */
+    private void initializeIntegrationServices() {
+        try {
+            eventIntegrationService = new EventIntegrationService();
+            calendarIntegrationService = new CalendarIntegrationService();
+            Log.d(TAG, "Integration services initialized");
+        } catch (Exception e) {
+            Log.e(TAG, "Error initializing integration services: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Load events từ backend
+     */
+    private void loadEventsFromBackend() {
+        if (eventIntegrationService == null) {
+            Log.w(TAG, "Event integration service not initialized");
+            return;
+        }
+
+        // Load sự kiện cho ngày hôm nay
+        long today = System.currentTimeMillis();
+        long tomorrow = today + (24 * 60 * 60 * 1000);
+
+        String calendarId = "default_calendar"; // Or get from preferences
+
+        eventIntegrationService.getEventsInDateRange(calendarId, today, tomorrow,
+            new EventIntegrationService.EventLoadListener() {
+                @Override
+                public void onEventsLoaded(List<EventModel> events) {
+                    Log.d(TAG, "Events loaded from backend: " + events.size());
+                    // Convert backend events to UI events
+                    List<Event> uiEvents = new ArrayList<>();
+                    for (EventModel backendEvent : events) {
+                        Event uiEvent = EventModelAdapter.toUIEvent(backendEvent);
+                        uiEvents.add(uiEvent);
+                    }
+                    currentEvents = uiEvents;
+                    updateUI();
+                }
+
+                @Override
+                public void onError(String errorMessage) {
+                    Log.e(TAG, "Error loading events: " + errorMessage);
+                    Toast.makeText(MainActivity.this, "Lỗi tải sự kiện: " + errorMessage, Toast.LENGTH_SHORT).show();
+                }
+            });
+    }
+
+    /**
+     * Cập nhật UI với các sự kiện mới
+     */
+    private void updateUI() {
+        if (eventAdapter != null) {
+            eventAdapter.notifyDataSetChanged();
+        }
+    }
+
+    /**
+     * Lấy Event Integration Service
+     */
+    public EventIntegrationService getEventIntegrationService() {
+        return eventIntegrationService;
+    }
+
+    /**
+     * Lấy Calendar Integration Service
+     */
+    public CalendarIntegrationService getCalendarIntegrationService() {
+        return calendarIntegrationService;
     }
 }

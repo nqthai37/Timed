@@ -6,6 +6,11 @@
 
     <style name="Theme.Timed" parent="Base.Theme.Timed" />
 
+    <style name="ShapeAppearanceOverlay.Timed.CircularFab" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
+
     <!-- Add the missing styles here -->
     <style name="TextStyle_11">
         <item name="android:textSize">11sp</item>
