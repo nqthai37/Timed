@@ -41,9 +41,15 @@ public class EventModelAdapter {
     public static Event toUIEvent(EventModel backendEvent) {
         String timeStr = formatTime(backendEvent.getStartTime());
         return new Event(
+            backendEvent.getId(),
+            backendEvent.getCalendarId(),
             timeStr,
             backendEvent.getTitle(),
-            backendEvent.getDescription()
+            backendEvent.getDescription(),
+            backendEvent.getLocation(),
+            backendEvent.getStartTime(),
+            backendEvent.getEndTime(),
+            backendEvent.isAllDay()
         );
     }
 

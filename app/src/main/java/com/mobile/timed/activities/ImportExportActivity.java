@@ -5,6 +5,8 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.InputType;
+import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
@@ -14,6 +16,10 @@ import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import com.mobile.timed.R;
 import com.mobile.timed.data.models.CalendarModel;
@@ -57,7 +63,9 @@ public class ImportExportActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_import_export);
+        setupInsets();
 
         firebaseInitializer = FirebaseInitializer.getInstance();
         firebaseInitializer.initialize(this);
@@ -88,6 +96,37 @@ public class ImportExportActivity extends AppCompatActivity {
         btnSyncFromUrl.setOnClickListener(v -> promptSyncUrl());
         btnExportSelected.setOnClickListener(v -> exportCalendars(false));
         btnExportAll.setOnClickListener(v -> exportCalendars(true));
+    }
+
+    private void setupInsets() {
+        View root = findViewById(R.id.rootImportExport);
+        View topBar = findViewById(R.id.topBar);
+        if (root == null || topBar == null) {
+            return;
+        }
+
+        final int baseTopBarHeight = dpToPx(56);
+        final int baseTopPadding = topBar.getPaddingTop();
+        final int baseBottomPadding = topBar.getPaddingBottom();
+        final int baseLeftPadding = topBar.getPaddingLeft();
+        final int baseRightPadding = topBar.getPaddingRight();
+
+        ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
+            Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+
+            topBar.setPadding(baseLeftPadding, baseTopPadding + bars.top, baseRightPadding, baseBottomPadding);
+            ViewGroup.LayoutParams lp = topBar.getLayoutParams();
+            lp.height = baseTopBarHeight + bars.top;
+            topBar.setLayoutParams(lp);
+
+            v.setPadding(v.getPaddingLeft(), 0, v.getPaddingRight(), bars.bottom);
+            return insets;
+        });
+    }
+
+    private int dpToPx(int dp) {
+        float density = getResources().getDisplayMetrics().density;
+        return Math.round(dp * density);
     }
 
     private void onFileSelected(Uri uri) {

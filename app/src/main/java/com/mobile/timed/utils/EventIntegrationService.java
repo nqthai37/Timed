@@ -27,6 +27,11 @@ public class EventIntegrationService {
         void onError(String errorMessage);
     }
 
+    public interface EventDetailListener {
+        void onEventLoaded(EventModel event);
+        void onError(String errorMessage);
+    }
+
     public EventIntegrationService() {
         this.eventManager = new EventManager();
         this.firebaseInitializer = FirebaseInitializer.getInstance();
@@ -66,6 +71,23 @@ public class EventIntegrationService {
             @Override
             public void onFailure(String errorMessage) {
                 Log.e(TAG, "Error loading events in range: " + errorMessage);
+                listener.onError(errorMessage);
+            }
+        });
+    }
+
+    /**
+     * Lấy chi tiết một event theo id
+     */
+    public void getEventById(String eventId, EventDetailListener listener) {
+        eventManager.getEvent(eventId, new EventRepository.OnEventListener<EventModel>() {
+            @Override
+            public void onSuccess(EventModel event) {
+                listener.onEventLoaded(event);
+            }
+
+            @Override
+            public void onFailure(String errorMessage) {
                 listener.onError(errorMessage);
             }
         });

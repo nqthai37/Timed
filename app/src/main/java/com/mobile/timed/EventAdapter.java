@@ -11,9 +11,19 @@ import java.util.List;
 public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHolder> {
 
     private final List<Event> events;
+    private final OnEventClickListener onEventClickListener;
+
+    public interface OnEventClickListener {
+        void onEventClick(Event event);
+    }
 
     public EventAdapter(List<Event> events) {
+        this(events, null);
+    }
+
+    public EventAdapter(List<Event> events, OnEventClickListener onEventClickListener) {
         this.events = events;
+        this.onEventClickListener = onEventClickListener;
     }
 
     @NonNull
@@ -30,6 +40,12 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
         holder.tvEventTime.setText(event.getTime());
         holder.tvEventTitle.setText(event.getTitle());
         holder.tvEventDetails.setText(event.getDetails());
+
+        holder.itemView.setOnClickListener(v -> {
+            if (onEventClickListener != null) {
+                onEventClickListener.onEventClick(event);
+            }
+        });
     }
 
     @Override

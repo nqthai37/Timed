@@ -1,5 +1,6 @@
 package com.mobile.timed;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageButton;
@@ -18,14 +19,17 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.tabs.TabLayout;
+import com.mobile.timed.activities.CreateEventActivity;
+import com.mobile.timed.activities.SettingsActivity;
+import com.mobile.timed.data.models.EventModel;
 import com.mobile.timed.utils.FirebaseInitializer;
 import com.mobile.timed.utils.FirebaseHelper;
 import com.mobile.timed.utils.FirebaseAuthManager;
 import com.mobile.timed.utils.EventIntegrationService;
 import com.mobile.timed.utils.CalendarIntegrationService;
 import com.mobile.timed.utils.EventModelAdapter;
-import com.mobile.timed.data.models.EventModel;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -198,10 +202,15 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                 });
             }
 
-            findViewById(R.id.btnFabEvent).setOnClickListener(v -> {
-                toggleFabMenu();
-                android.widget.Toast.makeText(this, "Create Event Clicked", android.widget.Toast.LENGTH_SHORT).show();
-            });
+            View btnFabEvent = findViewById(R.id.btnFabEvent);
+            if (btnFabEvent != null) {
+                btnFabEvent.setOnClickListener(v -> {
+                    toggleFabMenu();
+                    Intent intent = new Intent(this, CreateEventActivity.class);
+                    intent.putExtra("calendarId", "default_calendar");
+                    startActivity(intent);
+                });
+            }
 
             findViewById(R.id.btnFabTask).setOnClickListener(v -> {
                 toggleFabMenu();
@@ -239,8 +248,39 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         tvUpcomingTitle = findViewById(R.id.tvUpcomingTitle);
         rvEvents.setLayoutManager(new LinearLayoutManager(this));
         currentEvents = new ArrayList<>();
-        eventAdapter = new EventAdapter(currentEvents);
+        eventAdapter = new EventAdapter(currentEvents, this::openEditEvent);
         rvEvents.setAdapter(eventAdapter);
+        setupBottomNavigation();
+        updateEventsForDate(selectedDate);
+    }
+
+    private void setupBottomNavigation() {
+        BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
+        if (bottomNav == null) {
+            return;
+        }
+
+        bottomNav.setSelectedItemId(R.id.nav_schedule);
+        bottomNav.setOnItemSelectedListener(item -> {
+            int itemId = item.getItemId();
+            if (itemId == R.id.nav_schedule) {
+                return true;
+            }
+
+            if (itemId == R.id.nav_settings) {
+                Intent intent = new Intent(this, SettingsActivity.class);
+                startActivity(intent);
+                return true;
+            }
+
+            Toast.makeText(this, "Tính năng đang được phát triển", Toast.LENGTH_SHORT).show();
+            return true;
+        });
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
         updateEventsForDate(selectedDate);
     }
 
@@ -311,12 +351,6 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             timelineContainer.addView(line, lineParams);
         }
 
-        if (date.getDayOfMonth() % 2 == 0 || date.equals(LocalDate.now())) {
-            addEventCardToTimeline(timelineContainer, hourHeightPx, "Morning Standup", "09:00 - 10:00 • Office", 9, 0, 60, R.drawable.bg_day_event_primary, "#FFFFFF", "#E6FFFFFF");
-            addEventCardToTimeline(timelineContainer, hourHeightPx, "Client Strategy Meeting", "11:30 - 13:00 • Zoom", 11, 30, 90, R.drawable.bg_day_event_light, "#741ce9", "#64748b");
-            addEventCardToTimeline(timelineContainer, hourHeightPx, "Lunch with Design Team", "13:00 - 14:00 • Bistro", 13, 0, 60, R.drawable.bg_day_event_emerald, "#047857", "#059669");
-            addEventCardToTimeline(timelineContainer, hourHeightPx, "Product Sync", "15:30 - 16:30 • Room 4B", 15, 30, 60, R.drawable.bg_day_event_light, "#741ce9", "#64748b");
-        }
     }
 
     private void addEventCardToTimeline(android.widget.RelativeLayout container, int hourHeightPx, String title, String details, int startHour, int startMinute, int durationMinutes, int backgroundResId, String titleColorHex, String detailsColorHex) {
@@ -420,9 +454,6 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                 container.addView(verticalLine, vParams);
             }
 
-            addEventTo3Days(container, hourHeightPx, timeColumnWidth, colWidth, 0, "Team Sync", "Room 302", 9, 0, 90, R.drawable.bg_day_event_primary, "#FFFFFF", "#E6FFFFFF");
-            addEventTo3Days(container, hourHeightPx, timeColumnWidth, colWidth, 1, "Design Sprint", "Virtual", 13, 0, 120, R.drawable.bg_day_event_primary, "#FFFFFF", "#E6FFFFFF");
-            addEventTo3Days(container, hourHeightPx, timeColumnWidth, colWidth, 2, "Deep Work", "", 10, 0, 60, R.drawable.bg_day_event_light, "#334155", "#64748b");
         });
     }
 
@@ -552,9 +583,6 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                 container.addView(verticalLine, vParams);
             }
 
-            addEventToWeekGrid(container, hourHeightPx, timeColumnWidth, colWidth, 1, "Standup", 9, 0, 60, R.drawable.bg_day_event_primary);
-            addEventToWeekGrid(container, hourHeightPx, timeColumnWidth, colWidth, 2, "Client", 11, 30, 90, R.drawable.bg_day_event_emerald);
-            addEventToWeekGrid(container, hourHeightPx, timeColumnWidth, colWidth, 4, "Review", 15, 0, 120, R.drawable.bg_day_event_light);
         });
     }
 
@@ -643,14 +671,46 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         String formattedDate = date.format(formatter).toUpperCase();
         tvUpcomingTitle.setText("UPCOMING FOR " + formattedDate);
 
-        currentEvents.clear();
-        if (date.getDayOfMonth() % 2 == 0) {
-            currentEvents.add(new Event("10:00", "Team Standup", "Google Meet · 30m"));
-            currentEvents.add(new Event("13:00", "Client Meeting", "Design Office · 1h"));
-        } else {
-            currentEvents.add(new Event("09:00", "Project Planning", "Room 302 · 2h"));
+        if (eventIntegrationService == null) {
+            currentEvents.clear();
+            eventAdapter.notifyDataSetChanged();
+            return;
         }
-        eventAdapter.notifyDataSetChanged();
+
+        long startOfDay = date.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+        long endOfDay = date.plusDays(1).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli() - 1;
+        String calendarId = "default_calendar";
+
+        eventIntegrationService.getEventsInDateRange(calendarId, startOfDay, endOfDay,
+            new EventIntegrationService.EventLoadListener() {
+                @Override
+                public void onEventsLoaded(List<EventModel> events) {
+                    currentEvents.clear();
+                    currentEvents.addAll(EventModelAdapter.toUIEventList(events));
+                    eventAdapter.notifyDataSetChanged();
+                }
+
+                @Override
+                public void onError(String errorMessage) {
+                    Log.e(TAG, "Error loading selected day events: " + errorMessage);
+                    currentEvents.clear();
+                    eventAdapter.notifyDataSetChanged();
+                }
+            });
+    }
+
+    private void openEditEvent(Event event) {
+        Intent intent = new Intent(this, CreateEventActivity.class);
+        intent.putExtra("mode", "edit");
+        intent.putExtra("eventId", event.getId());
+        intent.putExtra("calendarId", event.getCalendarId() != null ? event.getCalendarId() : "default_calendar");
+        intent.putExtra("title", event.getTitle());
+        intent.putExtra("description", event.getDetails());
+        intent.putExtra("location", event.getLocation());
+        intent.putExtra("startTime", event.getStartTime());
+        intent.putExtra("endTime", event.getEndTime());
+        intent.putExtra("allDay", event.isAllDay());
+        startActivity(intent);
     }
 
     private void toggleFabMenu() {
