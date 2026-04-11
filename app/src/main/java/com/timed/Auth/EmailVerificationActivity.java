@@ -7,7 +7,7 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.timed.ProfileActivity;
+import com.timed.MainActivity;
 import com.timed.R;
 import com.timed.repositories.AuthRepository;
 import com.google.android.material.button.MaterialButton;
@@ -42,7 +42,7 @@ public class EmailVerificationActivity extends AppCompatActivity {
                     authRepository.markEmailAsVerifiedInFirestore().addOnCompleteListener(updateTask -> {
                         Toast.makeText(this, "Email verified successfully!", Toast.LENGTH_SHORT).show();
 
-                        Intent intent = new Intent(EmailVerificationActivity.this, ProfileActivity.class);
+                        Intent intent = new Intent(EmailVerificationActivity.this, MainActivity.class);
                         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                         startActivity(intent);
                     });

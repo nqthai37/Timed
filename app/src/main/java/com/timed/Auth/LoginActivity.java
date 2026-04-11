@@ -12,7 +12,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.content.SharedPreferences;
 
-import com.timed.ProfileActivity;
+import com.timed.MainActivity;
 import com.timed.R;
 import com.timed.managers.GoogleAuthManager;
 import com.timed.repositories.AuthRepository;
@@ -101,7 +101,7 @@ public class LoginActivity extends AppCompatActivity {
                 btnLogin.setText("Restoring Session...");
 
                 authRepository.restoreSession().addOnSuccessListener(user -> {
-                   Intent intent = new Intent(LoginActivity.this, ProfileActivity.class);
+                   Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                     startActivity(intent);
                 }).addOnFailureListener(e -> {
@@ -154,7 +154,7 @@ public class LoginActivity extends AppCompatActivity {
                 .addOnSuccessListener(user -> {
                     prefs.edit().putBoolean("REMEMBER_ME", cbRememberMe.isChecked()).apply();
                     Toast.makeText(this, "Login Successful!", Toast.LENGTH_SHORT).show();
-                    Intent intent = new Intent(LoginActivity.this, ProfileActivity.class);
+                    Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                     startActivity(intent);
                 })
@@ -199,9 +199,7 @@ public class LoginActivity extends AppCompatActivity {
                     Toast.makeText(LoginActivity.this, "Welcome back, " + user.getName() + "!", Toast.LENGTH_LONG)
                             .show();
 
-                    // Intent intent = new Intent(RegisterActivity.this, MainActivity.class);
-
-                    Intent intent = new Intent(LoginActivity.this, ProfileActivity.class);
+                    Intent intent = new Intent(LoginActivity.this, MainActivity.class);
 
                     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                     startActivity(intent);

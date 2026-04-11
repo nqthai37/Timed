@@ -10,7 +10,7 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.timed.ProfileActivity;
+import com.timed.MainActivity;
 import com.timed.R;
 import com.timed.managers.GoogleAuthManager;
 import com.timed.repositories.AuthRepository;
@@ -107,7 +107,7 @@ public class RegisterActivity extends AppCompatActivity {
         authRepository.signInWithGoogle(idToken)
                 .addOnSuccessListener(user -> {
                     Toast.makeText(this, "Welcome, " + user.getName() + "!", Toast.LENGTH_SHORT).show();
-                    Intent intent = new Intent(RegisterActivity.this, ProfileActivity.class);
+                    Intent intent = new Intent(RegisterActivity.this, MainActivity.class);
                     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                     startActivity(intent);
                 })
