@@ -1,3 +1,26 @@
 <resources>
     <string name="app_name">Timed</string>
+    <string name="back">Back</string>
+    <string name="settings">Settings</string>
+    <string name="settings_and_privacy">Settings &amp; Privacy</string>
+    <string name="time_timezone">Time &amp; Timezone</string>
+    <string name="timezone_settings">Timezone Settings</string>
+    <string name="manage_time_zones">Manage time zones</string>
+
+    <string name="conflict_resolver">Conflict Resolver</string>
+    <string name="handle_schedule_conflicts">Handle schedule conflicts</string>
+
+    <string name="free_slot_finder">Free Slot Finder</string>
+    <string name="find_available_time">Find available time</string>
+
+    <string name="productivity_focus">Productivity &amp; Focus </string>
+    <string name="focus_mode">Focus Mode</string>
+    <string name="focus_mode_txt">Promodoro timer</string>
+
+    <string name="habit_tracker">Habit Tracker</string>
+    <string name="habit_tracker_txt">Track daily habits</string>
+
+    <string name="analytics">Analytics</string>
+    <string name="analytics_txt">View productivity statistics</string>
+
 </resources>
