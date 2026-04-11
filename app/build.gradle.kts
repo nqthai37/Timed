@@ -4,13 +4,13 @@ plugins {
 }
 
 android {
-    namespace = "com.mobile.timed"
+    namespace = "com.timed"
     compileSdk {
         version = release(36)
     }
 
     defaultConfig {
-        applicationId = "com.mobile.timed"
+        applicationId = "com.timed"
         minSdk = 29
         targetSdk = 36
         versionCode = 1
