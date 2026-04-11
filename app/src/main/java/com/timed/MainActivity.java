@@ -1,5 +1,6 @@
 package com.timed;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageButton;
@@ -16,6 +17,7 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.tabs.TabLayout;
 
 import java.time.LocalDate;
@@ -42,6 +44,9 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
     private EventAdapter eventAdapter;
     private List<Event> currentEvents;
 
+    // Temporary storage for events created during this session
+    private static final List<Event> temporaryEvents = new ArrayList<>();
+
     private View layoutMonthView;
     private View layoutDayView;
     private View layout3DaysView;
@@ -52,6 +57,10 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
 
     private HorizontalCalendarAdapter horizontalAdapter;
     private List<LocalDate> horizontalDateList;
+
+    public static void addTemporaryEvent(Event event) {
+        temporaryEvents.add(event);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -160,34 +169,56 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             com.google.android.material.floatingactionbutton.FloatingActionButton fabClose = findViewById(R.id.fabCloseMenu);
 
             if (fabMain != null) {
-                fabMain.setOnClickListener(v -> toggleFabMenu());
+                fabMain.setOnClickListener(v -> {
+                    toggleFabMenu();
+                    fabMain.animate().alpha(0f).setDuration(200).withEndAction(() -> fabMain.setVisibility(View.INVISIBLE)).start();
+                });
             }
 
             if (fabClose != null) {
-                fabClose.setOnClickListener(v -> toggleFabMenu());
+                fabClose.setOnClickListener(v -> {
+                    toggleFabMenu();
+                    assert fabMain != null;
+                    fabMain.animate().alpha(1f).setDuration(200).setStartDelay(100).withEndAction(() -> fabMain.setVisibility(View.VISIBLE)).start();
+                });
             }
 
             if (layoutFabMenuOverlay != null) {
                 layoutFabMenuOverlay.setOnClickListener(v -> {
-                    if (isFabMenuOpen) toggleFabMenu();
+                    if (isFabMenuOpen) {
+                        toggleFabMenu();
+                        assert fabMain != null;
+                        fabMain.animate().alpha(1f).setDuration(200).setStartDelay(100).withEndAction(() -> fabMain.setVisibility(View.VISIBLE)).start();
+                    }
                 });
             }
 
             findViewById(R.id.btnFabEvent).setOnClickListener(v -> {
                 toggleFabMenu();
-                android.widget.Toast.makeText(this, "Create Event Clicked", android.widget.Toast.LENGTH_SHORT).show();
+                if (fabMain != null) {
+                    fabMain.animate().alpha(1f).setDuration(200).setStartDelay(100).withEndAction(() -> fabMain.setVisibility(View.VISIBLE)).start();
+                }
+                startActivity(new Intent(this, NewEventActivity.class));
             });
 
             findViewById(R.id.btnFabTask).setOnClickListener(v -> {
                 toggleFabMenu();
-                android.widget.Toast.makeText(this, "Create Task Clicked", android.widget.Toast.LENGTH_SHORT).show();
+                if (fabMain != null) {
+                    fabMain.animate().alpha(1f).setDuration(200).setStartDelay(100).withEndAction(() -> fabMain.setVisibility(View.VISIBLE)).start();
+                }
+                startActivity(new Intent(this, TasksActivity.class));
             });
 
             findViewById(R.id.btnFabReminder).setOnClickListener(v -> {
                 toggleFabMenu();
+                if (fabMain != null) {
+                    fabMain.animate().alpha(1f).setDuration(200).setStartDelay(100).withEndAction(() -> fabMain.setVisibility(View.VISIBLE)).start();
+                }
                 android.widget.Toast.makeText(this, "Create Reminder Clicked", android.widget.Toast.LENGTH_SHORT).show();
             });
         }
+
+        setupBottomNavigation();
 
         rvCalendar = findViewById(R.id.rvCalendar);
         tvCurrentMonth = findViewById(R.id.tvCurrentMonth);
@@ -217,6 +248,34 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         eventAdapter = new EventAdapter(currentEvents);
         rvEvents.setAdapter(eventAdapter);
         updateEventsForDate(selectedDate);
+    }
+
+    private void setupBottomNavigation() {
+        BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
+        if (bottomNav != null) {
+            bottomNav.setSelectedItemId(R.id.nav_schedule);
+            bottomNav.setOnItemSelectedListener(item -> {
+                int id = item.getItemId();
+                if (id == R.id.nav_tasks) {
+                    startActivity(new Intent(this, TasksActivity.class));
+                    overridePendingTransition(0, 0);
+                    return true;
+                } else if (id == R.id.nav_schedule) {
+                    return true;
+                }
+                return false;
+            });
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        updateEventsForDate(selectedDate);
+        BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
+        if (bottomNav != null) {
+            bottomNav.setSelectedItemId(R.id.nav_schedule);
+        }
     }
 
     private int dpToPx(int dp) {
@@ -619,12 +678,22 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         tvUpcomingTitle.setText("UPCOMING FOR " + formattedDate);
 
         currentEvents.clear();
+
+        // Add dummy data for visual testing based on date
         if (date.getDayOfMonth() % 2 == 0) {
-            currentEvents.add(new Event("10:00", "Team Standup", "Google Meet · 30m"));
-            currentEvents.add(new Event("13:00", "Client Meeting", "Design Office · 1h"));
+            currentEvents.add(new Event("10:00 AM", "Team Standup", "Google Meet · 30m"));
+            currentEvents.add(new Event("1:00 PM", "Client Meeting", "Design Office · 1h"));
         } else {
-            currentEvents.add(new Event("09:00", "Project Planning", "Room 302 · 2h"));
+            currentEvents.add(new Event("9:00 AM", "Project Planning", "Room 302 · 2h"));
         }
+
+        // Add temporary events that match the current date
+        for (Event event : temporaryEvents) {
+            if (event.getDetails().contains(date.format(DateTimeFormatter.ofPattern("MMM d, yyyy")))) {
+                currentEvents.add(event);
+            }
+        }
+
         eventAdapter.notifyDataSetChanged();
     }
 

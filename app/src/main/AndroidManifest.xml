@@ -21,6 +21,8 @@
         </activity>
 
         <activity android:name=".DayViewActivity" />
+        <activity android:name=".NewEventActivity" />
+        <activity android:name=".TasksActivity" />
     </application>
 
 </manifest>
