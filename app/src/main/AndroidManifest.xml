@@ -10,7 +10,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.FirebaseTestApp">
+        android:theme="@style/Theme.Timed">
         <activity
             android:name=".Auth.LoginActivity"
             android:exported="true">
