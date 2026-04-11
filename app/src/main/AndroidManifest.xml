@@ -59,6 +59,18 @@
                 <action android:name="com.timed.REMINDER_COMPLETE" />
             </intent-filter>
         </receiver>
+
+        <!-- Receiver for Event Reminders & Notifications -->
+        <receiver
+            android:name="com.timed.services.EventNotificationReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.timed.EVENT_REMINDER" />
+                <action android:name="com.timed.EVENT_ACCEPT" />
+                <action android:name="com.timed.EVENT_DECLINE" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

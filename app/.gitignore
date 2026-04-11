@@ -1,2 +1,33 @@
+# Build files
 /build
+/*/build
+*.apk
+*.ap_
+*.dex
+*.class
+
+# IDE
+/.idea
+/.vscode
+*.iml
+.DS_Store
+
+# Gradle
+.gradle
+/local.properties
+/gradle.properties
+!gradle-wrapper.jar
+
+# Firebase & Secrets
 google-services.json
+local.properties
+
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+
+# Environment
+.env
+*.keystore
+*.jks
