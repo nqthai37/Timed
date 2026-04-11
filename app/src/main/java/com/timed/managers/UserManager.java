@@ -7,10 +7,12 @@ public class UserManager {
 
     private User currentUser;
 
-    private UserManager() {}
+    private UserManager() {
+    }
 
     public static synchronized UserManager getInstance() {
-        if (instance == null) instance = new UserManager();
+        if (instance == null)
+            instance = new UserManager();
 
         return instance;
     }

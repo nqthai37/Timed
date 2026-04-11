@@ -1,19 +1,523 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.drawerlayout.widget.DrawerLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/main"
+    android:id="@+id/drawerLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".MainActivity">
+    android:background="@color/background_light">
 
-    <TextView
+    <androidx.coordinatorlayout.widget.CoordinatorLayout
+        android:id="@+id/mainContent"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <com.google.android.material.appbar.AppBarLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/background_light"
+            app:elevation="0dp">
+
+            <include layout="@layout/layout_top_bar" />
+
+            <com.google.android.material.tabs.TabLayout
+                android:id="@+id/tabLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:tabIndicatorColor="@color/primary"
+                app:tabSelectedTextColor="@color/primary"
+                app:tabTextColor="@color/slate_500"
+                app:tabMode="fixed">
+
+                <com.google.android.material.tabs.TabItem android:text="Day" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+                <com.google.android.material.tabs.TabItem android:text="3 Days" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+                <com.google.android.material.tabs.TabItem android:text="Week" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+                <com.google.android.material.tabs.TabItem android:text="Month" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+            </com.google.android.material.tabs.TabLayout>
+
+        </com.google.android.material.appbar.AppBarLayout>
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/layoutMonthView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:padding="16dp">
+
+                <ImageButton
+                    android:id="@+id/btnPrevMonth"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_chevron_left"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+                <TextView
+                    android:id="@+id/tvCurrentMonth"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:textColor="@color/slate_900"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    app:layout_constraintBottom_toBottomOf="@+id/btnPrevMonth"
+                    app:layout_constraintEnd_toStartOf="@+id/btnNextMonth"
+                    app:layout_constraintStart_toEndOf="@+id/btnPrevMonth"
+                    app:layout_constraintTop_toTopOf="@+id/btnPrevMonth" />
+
+                <ImageButton
+                    android:id="@+id/btnNextMonth"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_chevron_right"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+                <LinearLayout
+                    android:id="@+id/layoutWeekDays"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:orientation="horizontal"
+                    app:layout_constraintTop_toBottomOf="@+id/btnPrevMonth">
+                </LinearLayout>
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvCalendar"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    app:layoutManager="androidx.recyclerview.widget.GridLayoutManager"
+                    app:spanCount="7"
+                    app:layout_constraintTop_toBottomOf="@+id/layoutWeekDays" />
+
+                <TextView
+                    android:id="@+id/tvUpcomingTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:textColor="@color/slate_400"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    app:layout_constraintTop_toBottomOf="@+id/rvCalendar" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvEvents"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_marginTop="16dp"
+                    android:layout_marginBottom="88dp"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/tvUpcomingTitle" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/layoutDayView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:id="@+id/layoutWeekNavigation"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="4dp"
+                    app:layout_constraintTop_toTopOf="parent">
+
+                    <ImageButton
+                        android:id="@+id/btnPrevWeek"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:src="@drawable/ic_chevron_left" />
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/rvHorizontalCalendar"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="horizontal"
+                        android:paddingVertical="8dp" />
+
+                    <ImageButton
+                        android:id="@+id/btnNextWeek"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:src="@drawable/ic_chevron_right" />
+                </LinearLayout>
+
+                <View
+                    android:id="@+id/dividerDayView"
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="#1A741CE9"
+                    app:layout_constraintTop_toBottomOf="@id/layoutWeekNavigation" />
+
+                <androidx.core.widget.NestedScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:clipToPadding="false"
+                    android:paddingBottom="120dp"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/dividerDayView">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:id="@+id/tvCurrentDayFull"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="24dp"
+                            android:textColor="@color/slate_900"
+                            android:textSize="20sp"
+                            android:textStyle="bold" />
+
+                        <RelativeLayout
+                            android:id="@+id/timelineContainer"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content" />
+
+                    </LinearLayout>
+                </androidx.core.widget.NestedScrollView>
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/layout3DaysView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:id="@+id/layout3DaysHeader"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="#80F7F6F8"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    app:layout_constraintTop_toTopOf="parent">
+
+                    <ImageButton
+                        android:id="@+id/btnPrev3Days"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:src="@drawable/ic_chevron_left" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="horizontal">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:orientation="vertical"
+                            android:paddingVertical="12dp">
+                            <TextView android:id="@+id/tv3DaysDow1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="10sp" android:textStyle="bold" android:textColor="@color/slate_400" />
+                            <TextView android:id="@+id/tv3DaysDate1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="18sp" android:textStyle="bold" android:textColor="@color/primary" />
+                        </LinearLayout>
+
+                        <View android:layout_width="1dp" android:layout_height="match_parent" android:background="#0D741CE9" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:orientation="vertical"
+                            android:paddingVertical="12dp">
+                            <TextView android:id="@+id/tv3DaysDow2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="10sp" android:textStyle="bold" android:textColor="@color/slate_400" />
+                            <TextView android:id="@+id/tv3DaysDate2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="18sp" android:textStyle="bold" android:textColor="@color/slate_900" />
+                        </LinearLayout>
+
+                        <View android:layout_width="1dp" android:layout_height="match_parent" android:background="#0D741CE9" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:orientation="vertical"
+                            android:paddingVertical="12dp">
+                            <TextView android:id="@+id/tv3DaysDow3" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="10sp" android:textStyle="bold" android:textColor="@color/slate_400" />
+                            <TextView android:id="@+id/tv3DaysDate3" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="18sp" android:textStyle="bold" android:textColor="@color/slate_900" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <ImageButton
+                        android:id="@+id/btnNext3Days"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:src="@drawable/ic_chevron_right" />
+                </LinearLayout>
+
+                <View
+                    android:id="@+id/divider3Days"
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="#1A741CE9"
+                    app:layout_constraintTop_toBottomOf="@id/layout3DaysHeader" />
+
+                <androidx.core.widget.NestedScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:clipToPadding="false"
+                    android:paddingBottom="120dp"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/divider3Days">
+
+                    <RelativeLayout
+                        android:id="@+id/timeline3DaysContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                </androidx.core.widget.NestedScrollView>
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/layoutWeekView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:id="@+id/layoutWeekHeader"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="#80F7F6F8"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    app:layout_constraintTop_toTopOf="parent">
+
+                    <ImageButton
+                        android:id="@+id/btnPrevWeekView"
+                        android:layout_width="32dp"
+                        android:layout_height="40dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:src="@drawable/ic_chevron_left" />
+
+                    <View
+                        android:layout_width="14dp"
+                        android:layout_height="match_parent" />
+
+                    <LinearLayout
+                        android:id="@+id/layoutWeekDaysHeader"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="horizontal">
+                    </LinearLayout>
+
+                    <ImageButton
+                        android:id="@+id/btnNextWeekView"
+                        android:layout_width="32dp"
+                        android:layout_height="40dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:src="@drawable/ic_chevron_right" />
+                </LinearLayout>
+
+                <View
+                    android:id="@+id/dividerWeekView"
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="#1A741CE9"
+                    app:layout_constraintTop_toBottomOf="@id/layoutWeekHeader" />
+
+                <androidx.core.widget.NestedScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:clipToPadding="false"
+                    android:paddingBottom="120dp"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/dividerWeekView">
+
+                    <RelativeLayout
+                        android:id="@+id/timelineWeekContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                </androidx.core.widget.NestedScrollView>
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fabAddEvent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_marginEnd="24dp"
+            android:layout_marginBottom="100dp"
+            android:backgroundTint="@color/primary"
+            app:tint="@android:color/white"
+            android:src="@drawable/ic_add"
+            app:elevation="8dp" />
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/layoutFabMenuOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#99181121"
+            android:clickable="true"
+            android:elevation="10dp"
+            android:focusable="true"
+            android:visibility="gone"> <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fabCloseMenu"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="24dp"
+            android:layout_marginBottom="100dp"
+            android:backgroundTint="@color/primary"
+            android:rotation="45"
+            android:src="@drawable/ic_add"
+            app:elevation="12dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:tint="@android:color/white" />
+
+            <LinearLayout
+                android:id="@+id/fabOptionEvent"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:visibility="invisible"
+                app:layout_constraintBottom_toTopOf="@id/fabCloseMenu"
+                app:layout_constraintEnd_toEndOf="@id/fabCloseMenu">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="12dp"
+                    android:background="@color/white"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="6dp"
+                    android:text="Event"
+                    android:textColor="@color/slate_900"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <com.google.android.material.floatingactionbutton.FloatingActionButton
+                    android:id="@+id/btnFabEvent"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:backgroundTint="@android:color/white"
+                    android:src="@drawable/ic_calendar"
+                    app:elevation="6dp"
+                    app:fabSize="mini"
+                    app:tint="@color/primary" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/fabOptionTask"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:visibility="invisible"
+                app:layout_constraintBottom_toTopOf="@id/fabOptionEvent"
+                app:layout_constraintEnd_toEndOf="@id/fabOptionEvent">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="12dp"
+                    android:background="@color/white"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="6dp"
+                    android:text="Task"
+                    android:textColor="@color/slate_900"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <com.google.android.material.floatingactionbutton.FloatingActionButton
+                    android:id="@+id/btnFabTask"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:backgroundTint="@android:color/white"
+                    android:src="@drawable/ic_check"
+                    app:elevation="6dp"
+                    app:fabSize="mini"
+                    app:tint="@color/primary" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/fabOptionReminder"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:visibility="invisible"
+                app:layout_constraintBottom_toTopOf="@id/fabOptionTask"
+                app:layout_constraintEnd_toEndOf="@id/fabOptionTask">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="12dp"
+                    android:background="@color/white"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="6dp"
+                    android:text="Reminder"
+                    android:textColor="@color/slate_900"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <com.google.android.material.floatingactionbutton.FloatingActionButton
+                    android:id="@+id/btnFabReminder"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:backgroundTint="@android:color/white"
+                    android:src="@drawable/ic_notifications"
+                    app:elevation="6dp"
+                    app:fabSize="mini"
+                    app:tint="@color/primary" />
+            </LinearLayout>
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <com.google.android.material.bottomnavigation.BottomNavigationView
+            android:id="@+id/bottomNav"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:background="@color/background_light"
+            app:menu="@menu/bottom_nav_menu"
+            app:itemIconTint="@color/slate_500"
+            app:itemTextColor="@color/slate_500" />
+
+    </androidx.coordinatorlayout.widget.CoordinatorLayout>
+
+    <com.google.android.material.navigation.NavigationView
+        android:id="@+id/navView"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Hello World!"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        app:headerLayout="@layout/layout_drawer_header"
+        app:menu="@menu/drawer_menu" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.drawerlayout.widget.DrawerLayout>

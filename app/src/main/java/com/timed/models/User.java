@@ -22,36 +22,100 @@ public class User {
     @PropertyName("updated_at")
     private Timestamp updatedAt;
 
-    public User() {}
+    public User() {
+    }
 
-    public String getUid() { return uid; }
-    public void setUid(String uid) { this.uid = uid; }
-    public String getAvatar() { return avatar; }
-    public void setAvatar(String avatar) { this.avatar = avatar; }
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-    public String getAuthProvider() { return auth_provider; }
-    public void setAuthProvider(String provider) { this.auth_provider = provider; }
-    public Boolean getEmailVerified() { return email_verified; }
-    public void setEmailVerified(Boolean email_verified) { this.email_verified = email_verified; }
-    public String getTimezone() { return timezone; }
-    public void setTimezone(String timezone) { this.timezone = timezone; }
-    public Security getSecurity() { return security; }
-    public void setSecurity(Security security) { this.security = security; }
-    public Settings getSettings() { return settings; }
-    public void setSettings(Settings settings) { this.settings = settings; }
+    public String getUid() {
+        return uid;
+    }
+
+    public void setUid(String uid) {
+        this.uid = uid;
+    }
+
+    public String getAvatar() {
+        return avatar;
+    }
+
+    public void setAvatar(String avatar) {
+        this.avatar = avatar;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getAuthProvider() {
+        return auth_provider;
+    }
+
+    public void setAuthProvider(String provider) {
+        this.auth_provider = provider;
+    }
+
+    public Boolean getEmailVerified() {
+        return email_verified;
+    }
+
+    public void setEmailVerified(Boolean email_verified) {
+        this.email_verified = email_verified;
+    }
+
+    public String getTimezone() {
+        return timezone;
+    }
+
+    public void setTimezone(String timezone) {
+        this.timezone = timezone;
+    }
+
+    public Security getSecurity() {
+        return security;
+    }
+
+    public void setSecurity(Security security) {
+        this.security = security;
+    }
+
+    public Settings getSettings() {
+        return settings;
+    }
+
+    public void setSettings(Settings settings) {
+        this.settings = settings;
+    }
 
     @PropertyName("created_at")
-    public Timestamp getCreatedAt() { return createdAt; }
+    public Timestamp getCreatedAt() {
+        return createdAt;
+    }
+
     @PropertyName("created_at")
-    public void setCreatedAt(Timestamp createdAt) { this.createdAt = createdAt; }
+    public void setCreatedAt(Timestamp createdAt) {
+        this.createdAt = createdAt;
+    }
 
     @PropertyName("updated_at")
-    public Timestamp getUpdatedAt() { return updatedAt; }
+    public Timestamp getUpdatedAt() {
+        return updatedAt;
+    }
+
     @PropertyName("updated_at")
-    public void setUpdatedAt(Timestamp updatedAt) { this.updatedAt = updatedAt; }
+    public void setUpdatedAt(Timestamp updatedAt) {
+        this.updatedAt = updatedAt;
+    }
 
     public static class Security {
         @PropertyName("last_login")
@@ -60,29 +124,52 @@ public class User {
         @PropertyName("two_factor_enabled")
         private boolean twoFactorEnabled;
 
-        public Security() {}
+        public Security() {
+        }
 
         @PropertyName("last_login")
-        public Timestamp getLastLogin() { return lastLogin; }
+        public Timestamp getLastLogin() {
+            return lastLogin;
+        }
+
         @PropertyName("last_login")
-        public void setLastLogin(Timestamp lastLogin) { this.lastLogin = lastLogin; }
+        public void setLastLogin(Timestamp lastLogin) {
+            this.lastLogin = lastLogin;
+        }
 
         @PropertyName("two_factor_enabled")
-        public boolean isTwoFactorEnabled() { return twoFactorEnabled; }
+        public boolean isTwoFactorEnabled() {
+            return twoFactorEnabled;
+        }
+
         @PropertyName("two_factor_enabled")
-        public void setTwoFactorEnabled(boolean twoFactorEnabled) { this.twoFactorEnabled = twoFactorEnabled; }
+        public void setTwoFactorEnabled(boolean twoFactorEnabled) {
+            this.twoFactorEnabled = twoFactorEnabled;
+        }
     }
 
     public static class Settings {
         private String theme;
         private Notifications notifications;
 
-        public Settings() {}
+        public Settings() {
+        }
 
-        public String getTheme() { return theme; }
-        public void setTheme(String theme) { this.theme = theme; }
-        public Notifications getNotifications() { return notifications; }
-        public void setNotifications(Notifications notifications) { this.notifications = notifications; }
+        public String getTheme() {
+            return theme;
+        }
+
+        public void setTheme(String theme) {
+            this.theme = theme;
+        }
+
+        public Notifications getNotifications() {
+            return notifications;
+        }
+
+        public void setNotifications(Notifications notifications) {
+            this.notifications = notifications;
+        }
     }
 
     public static class Notifications {
@@ -92,16 +179,33 @@ public class User {
         @PropertyName("snooze_default_minutes")
         private int snoozeDefaultMinutes;
 
-        public Notifications() {}
+        public Notifications() {
+        }
 
-        public boolean isEmail() { return email; }
-        public void setEmail(boolean email) { this.email = email; }
-        public boolean isPush() { return push; }
-        public void setPush(boolean push) { this.push = push; }
+        public boolean isEmail() {
+            return email;
+        }
+
+        public void setEmail(boolean email) {
+            this.email = email;
+        }
+
+        public boolean isPush() {
+            return push;
+        }
+
+        public void setPush(boolean push) {
+            this.push = push;
+        }
 
         @PropertyName("snooze_default_minutes")
-        public int getSnoozeDefaultMinutes() { return snoozeDefaultMinutes; }
+        public int getSnoozeDefaultMinutes() {
+            return snoozeDefaultMinutes;
+        }
+
         @PropertyName("snooze_default_minutes")
-        public void setSnoozeDefaultMinutes(int snoozeDefaultMinutes) { this.snoozeDefaultMinutes = snoozeDefaultMinutes; }
+        public void setSnoozeDefaultMinutes(int snoozeDefaultMinutes) {
+            this.snoozeDefaultMinutes = snoozeDefaultMinutes;
+        }
     }
 }

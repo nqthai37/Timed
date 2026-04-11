@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="12dp"
+    android:background="@drawable/bg_rounded"
+    android:backgroundTint="#FFFFFF"
+    android:elevation="2dp"
+    android:padding="16dp">
+
+    <View
+        android:id="@+id/viewIndicator"
+        android:layout_width="4dp"
+        android:layout_height="0dp"
+        android:background="#EF4444"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/tv_title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:textColor="#0F172A"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toStartOf="@+id/iv_more"
+        app:layout_constraintStart_toEndOf="@+id/viewIndicator"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="Project Sync" />
+
+    <TextView
+        android:id="@+id/tv_time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:textColor="#64748B"
+        android:textSize="14sp"
+        app:layout_constraintStart_toStartOf="@+id/tv_title"
+        app:layout_constraintTop_toBottomOf="@+id/tv_title"
+        tools:text="10:00 AM - 11:30 PM" />
+
+    <ImageView
+        android:id="@+id/iv_warning_time"
+        android:layout_width="14dp"
+        android:layout_height="14dp"
+        android:layout_marginStart="8dp"
+        android:src="@drawable/ic_warning"
+        app:layout_constraintBottom_toBottomOf="@+id/tv_time"
+        app:layout_constraintStart_toEndOf="@+id/tv_time"
+        app:layout_constraintTop_toTopOf="@+id/tv_time"
+        app:tint="#EF4444" />
+
+    <TextView
+        android:id="@+id/tv_conflict_description"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:textColor="#64748B"
+        android:textSize="13sp"
+        app:layout_constraintEnd_toStartOf="@+id/iv_more"
+        app:layout_constraintStart_toStartOf="@+id/tv_title"
+        app:layout_constraintTop_toBottomOf="@+id/tv_time"
+        tools:text="Conflicts with: Team standup" />
+
+    <ImageView
+        android:id="@+id/iv_more"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="#64748B" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
