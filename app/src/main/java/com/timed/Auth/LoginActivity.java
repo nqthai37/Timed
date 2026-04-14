@@ -6,13 +6,14 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.util.Patterns;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.content.SharedPreferences;
 
-import com.timed.MainActivity;
+import com.timed.activities.MainActivity;
 import com.timed.R;
 import com.timed.managers.GoogleAuthManager;
 import com.timed.repositories.AuthRepository;
@@ -23,6 +24,7 @@ import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.FirebaseAuth;
 
 public class LoginActivity extends AppCompatActivity {
+    private static final String TAG = "LoginActivity";
     private TextInputEditText etEmail, etPassword;
     private TextInputLayout tilEmail, tilPassword;
     private MaterialButton btnLogin, btnGoogleSignIn;
@@ -137,6 +139,7 @@ public class LoginActivity extends AppCompatActivity {
             @Override
             public void onError(String errorMessage) {
                 btnGoogleSignIn.setEnabled(true);
+                Log.e(TAG, "Google sign-in UI error: " + errorMessage);
                 if (!errorMessage.equals("cancelled")) {
                     Toast.makeText(LoginActivity.this, "Google UI Failed: " + errorMessage, Toast.LENGTH_LONG).show();
                 }
@@ -160,6 +163,7 @@ public class LoginActivity extends AppCompatActivity {
                 })
                 .addOnFailureListener(e -> {
                     btnGoogleSignIn.setEnabled(true);
+                    Log.e(TAG, "Google auth failed", e);
                     Toast.makeText(this, "Auth Failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
                 });
     }
@@ -207,6 +211,8 @@ public class LoginActivity extends AppCompatActivity {
                 .addOnFailureListener(e -> {
                     btnLogin.setEnabled(true);
                     btnLogin.setText("Log In");
+
+                    Log.e(TAG, "Email/password login failed", e);
 
                     if (e.getMessage() != null && e.getMessage().contains("Please verify your email")) {
 

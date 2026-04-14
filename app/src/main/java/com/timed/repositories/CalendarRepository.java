@@ -1,9 +1,9 @@
-package com.timed.data.repository;
+package com.timed.repositories;
 
 import android.util.Log;
 
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.timed.data.models.CalendarModel;
+import com.timed.models.CalendarModel;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +24,7 @@ public class CalendarRepository {
     /**
      * Create a new calendar
      */
-    public void createCalendar(CalendarModel calendar, EventRepository.OnEventListener<String> callback) {
+    public void createCalendar(CalendarModel calendar, RepositoryCallback<String> callback) {
         db.collection(CALENDARS_COLLECTION)
                 .add(calendar)
                 .addOnSuccessListener(documentReference -> {
@@ -49,7 +49,7 @@ public class CalendarRepository {
     /**
      * Get calendar by ID
      */
-    public void getCalendarById(String calendarId, EventRepository.OnEventListener<CalendarModel> callback) {
+    public void getCalendarById(String calendarId, RepositoryCallback<CalendarModel> callback) {
         db.collection(CALENDARS_COLLECTION)
                 .document(calendarId)
                 .get()
@@ -70,7 +70,7 @@ public class CalendarRepository {
     /**
      * Get all calendars for a user (owner or member)
      */
-    public void getCalendarsByUser(String userId, EventRepository.OnEventListener<List<CalendarModel>> callback) {
+    public void getCalendarsByUser(String userId, RepositoryCallback<List<CalendarModel>> callback) {
         db.collection(CALENDARS_COLLECTION)
                 .whereArrayContains("member_ids", userId)
                 .get()
@@ -91,7 +91,7 @@ public class CalendarRepository {
     /**
      * Get calendars owned by a user
      */
-    public void getOwnedCalendars(String userId, EventRepository.OnEventListener<List<CalendarModel>> callback) {
+    public void getOwnedCalendars(String userId, RepositoryCallback<List<CalendarModel>> callback) {
         db.collection(CALENDARS_COLLECTION)
                 .whereEqualTo("owner_id", userId)
                 .get()
@@ -112,7 +112,7 @@ public class CalendarRepository {
     /**
      * Update a calendar
      */
-    public void updateCalendar(String calendarId, CalendarModel calendar, EventRepository.OnEventListener<Void> callback) {
+    public void updateCalendar(String calendarId, CalendarModel calendar, RepositoryCallback<Void> callback) {
         db.collection(CALENDARS_COLLECTION)
                 .document(calendarId)
                 .set(calendar)
@@ -129,7 +129,7 @@ public class CalendarRepository {
     /**
      * Delete a calendar
      */
-    public void deleteCalendar(String calendarId, EventRepository.OnEventListener<Void> callback) {
+    public void deleteCalendar(String calendarId, RepositoryCallback<Void> callback) {
         db.collection(CALENDARS_COLLECTION)
                 .document(calendarId)
                 .delete()
@@ -146,7 +146,7 @@ public class CalendarRepository {
     /**
      * Add a member to a calendar
      */
-    public void addMember(String calendarId, String userId, String role, EventRepository.OnEventListener<Void> callback) {
+    public void addMember(String calendarId, String userId, String role, RepositoryCallback<Void> callback) {
         db.collection(CALENDARS_COLLECTION)
                 .document(calendarId)
                 .update(
@@ -166,7 +166,7 @@ public class CalendarRepository {
     /**
      * Remove a member from a calendar
      */
-    public void removeMember(String calendarId, String userId, EventRepository.OnEventListener<Void> callback) {
+    public void removeMember(String calendarId, String userId, RepositoryCallback<Void> callback) {
         db.collection(CALENDARS_COLLECTION)
                 .document(calendarId)
                 .update(

@@ -20,11 +20,13 @@ import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.timed.R;
-import com.timed.data.models.EventModel;
-import com.timed.utils.EventIntegrationService;
-import com.timed.utils.EventModelAdapter;
+import com.google.firebase.Timestamp;
+import com.timed.managers.EventsManager;
+import com.timed.models.Event;
+import com.timed.utils.FirebaseInitializer;
 
 import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Calendar;
 import java.util.Locale;
 
@@ -49,11 +51,12 @@ public class CreateEventActivity extends AppCompatActivity {
 
     private long startTime = 0;
     private long endTime = 0;
-    private EventIntegrationService eventService;
+    private EventsManager eventsManager;
+    private FirebaseInitializer firebaseInitializer;
     private String mode = "create";
     private String eventId;
     private String calendarId = "default_calendar";
-    private EventModel editingEvent;
+    private Event editingEvent;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -109,7 +112,9 @@ public class CreateEventActivity extends AppCompatActivity {
      * Khởi tạo services
      */
     private void initializeServices() {
-        eventService = new EventIntegrationService();
+        firebaseInitializer = FirebaseInitializer.getInstance();
+        firebaseInitializer.initialize(this);
+        eventsManager = EventsManager.getInstance(this);
     }
 
     private void readIntentData() {
@@ -137,32 +142,29 @@ public class CreateEventActivity extends AppCompatActivity {
         cbAllDay.setChecked(incomingAllDay);
 
         if (isEditMode() && eventId != null && !eventId.isEmpty()) {
-            eventService.getEventById(eventId, new EventIntegrationService.EventDetailListener() {
-                @Override
-                public void onEventLoaded(EventModel event) {
-                    editingEvent = event;
-                    if (etTitle.getText().toString().trim().isEmpty()) etTitle.setText(event.getTitle());
-                    if (etDescription.getText().toString().trim().isEmpty()) etDescription.setText(event.getDescription());
-                    if (etLocation.getText().toString().trim().isEmpty()) etLocation.setText(event.getLocation());
-                    if (event.getCalendarId() != null && !event.getCalendarId().isEmpty()) {
-                        calendarId = event.getCalendarId();
-                    }
-                    if (startTime <= 0) startTime = event.getStartTime();
-                    if (endTime <= 0) endTime = event.getEndTime();
-                    cbAllDay.setChecked(event.isAllDay());
-                    ensureValidTimeRange();
-                    updateStartDateButton();
-                    updateStartTimeButton();
-                    updateEndDateButton();
-                    updateEndTimeButton();
-                    updateCalendarLabel();
-                }
-
-                @Override
-                public void onError(String errorMessage) {
-                    Log.w(TAG, "Cannot load event detail for edit: " + errorMessage);
-                }
-            });
+            eventsManager.getEventById(eventId)
+                    .addOnSuccessListener(event -> {
+                        editingEvent = event;
+                        if (event == null) {
+                            return;
+                        }
+                        if (etTitle.getText().toString().trim().isEmpty()) etTitle.setText(event.getTitle());
+                        if (etDescription.getText().toString().trim().isEmpty()) etDescription.setText(event.getDescription());
+                        if (etLocation.getText().toString().trim().isEmpty()) etLocation.setText(event.getLocation());
+                        if (event.getCalendarId() != null && !event.getCalendarId().isEmpty()) {
+                            calendarId = event.getCalendarId();
+                        }
+                        if (startTime <= 0 && event.getStartTime() != null) startTime = event.getStartTime().toDate().getTime();
+                        if (endTime <= 0 && event.getEndTime() != null) endTime = event.getEndTime().toDate().getTime();
+                        cbAllDay.setChecked(event.getAllDay() != null && event.getAllDay());
+                        ensureValidTimeRange();
+                        updateStartDateButton();
+                        updateStartTimeButton();
+                        updateEndDateButton();
+                        updateEndTimeButton();
+                        updateCalendarLabel();
+                    })
+                    .addOnFailureListener(e -> Log.w(TAG, "Cannot load event detail for edit: " + e.getMessage()));
         }
     }
 
@@ -489,21 +491,29 @@ public class CreateEventActivity extends AppCompatActivity {
             return;
         }
 
-        eventService.createSingleEvent(calendarId, title, startTime, endTime,
-            description, location, isAllDay,
-            new EventIntegrationService.EventSaveListener() {
-                @Override
-                public void onSuccess(String eventId) {
-                    Log.d(TAG, "Event saved: " + eventId);
-                    finish();
-                }
+        Event newEvent = new Event();
+        newEvent.setCalendarId(calendarId);
+        newEvent.setTitle(title);
+        newEvent.setDescription(description);
+        newEvent.setLocation(location);
+        newEvent.setAllDay(isAllDay);
+        newEvent.setStartTime(new Timestamp(new Date(startTime)));
+        newEvent.setEndTime(new Timestamp(new Date(endTime)));
 
-                @Override
-                public void onError(String errorMessage) {
-                    Log.e(TAG, "Error saving event: " + errorMessage);
-                    Toast.makeText(CreateEventActivity.this, "Lỗi: " + errorMessage, Toast.LENGTH_SHORT).show();
-                }
-            });
+        String userId = firebaseInitializer.getCurrentUserId();
+        if (userId != null) {
+            newEvent.setCreatedBy(userId);
+        }
+
+        eventsManager.createEvent(newEvent)
+                .addOnSuccessListener(docRef -> {
+                    Log.d(TAG, "Event saved: " + docRef.getId());
+                    finish();
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error saving event: " + e.getMessage(), e);
+                    Toast.makeText(CreateEventActivity.this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
     }
 
     private void updateExistingEvent(String title, String description, String location, boolean isAllDay) {
@@ -512,27 +522,20 @@ public class CreateEventActivity extends AppCompatActivity {
             return;
         }
 
-        EventModel target = editingEvent != null ? editingEvent : new EventModel();
+        Event target = editingEvent != null ? editingEvent : new Event();
         target.setId(eventId);
         target.setCalendarId(calendarId);
         target.setTitle(title);
         target.setDescription(description);
         target.setLocation(location);
-        target.setStartTime(startTime);
-        target.setEndTime(endTime);
         target.setAllDay(isAllDay);
+        target.setStartTime(new Timestamp(new Date(startTime)));
+        target.setEndTime(new Timestamp(new Date(endTime)));
 
-        eventService.updateEvent(eventId, target, new EventIntegrationService.EventSaveListener() {
-            @Override
-            public void onSuccess(String updatedEventId) {
-                finish();
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                Toast.makeText(CreateEventActivity.this, "Lỗi: " + errorMessage, Toast.LENGTH_SHORT).show();
-            }
-        });
+        eventsManager.updateEvent(eventId, target)
+                .addOnSuccessListener(aVoid -> finish())
+                .addOnFailureListener(e -> Toast.makeText(CreateEventActivity.this,
+                        "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show());
     }
 
     private void deleteEvent() {
@@ -540,17 +543,10 @@ public class CreateEventActivity extends AppCompatActivity {
             return;
         }
 
-        eventService.deleteEvent(eventId, new EventIntegrationService.EventSaveListener() {
-            @Override
-            public void onSuccess(String deletedEventId) {
-                finish();
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                Toast.makeText(CreateEventActivity.this, "Lỗi xóa sự kiện: " + errorMessage, Toast.LENGTH_SHORT).show();
-            }
-        });
+        eventsManager.deleteEvent(eventId)
+                .addOnSuccessListener(aVoid -> finish())
+                .addOnFailureListener(e -> Toast.makeText(CreateEventActivity.this,
+                        "Lỗi xóa sự kiện: " + e.getMessage(), Toast.LENGTH_SHORT).show());
     }
 
     private int dpToPx(int dp) {

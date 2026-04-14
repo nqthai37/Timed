@@ -1,4 +1,4 @@
-package com.timed;
+package com.timed.models;
 
 import java.time.LocalDate;
 

@@ -2,9 +2,9 @@ package com.timed.managers;
 
 import android.util.Log;
 
-import com.timed.data.models.CalendarModel;
-import com.timed.data.repository.CalendarRepository;
-import com.timed.data.repository.EventRepository;
+import com.timed.models.CalendarModel;
+import com.timed.repositories.CalendarRepository;
+import com.timed.repositories.RepositoryCallback;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,7 +25,7 @@ public class CalendarManager {
      */
     public void createCalendar(String name, String description, String ownerId,
                               String color, boolean isPublic,
-                              EventRepository.OnEventListener<String> callback) {
+                              RepositoryCallback<String> callback) {
         CalendarModel calendar = new CalendarModel();
         calendar.setName(name);
         calendar.setDescription(description);
@@ -43,7 +43,7 @@ public class CalendarManager {
      * Get calendar details
      */
     public void getCalendar(String calendarId,
-                           EventRepository.OnEventListener<CalendarModel> callback) {
+                           RepositoryCallback<CalendarModel> callback) {
         calendarRepository.getCalendarById(calendarId, callback);
     }
 
@@ -51,7 +51,7 @@ public class CalendarManager {
      * Get all calendars for current user
      */
     public void getUserCalendars(String userId,
-                                EventRepository.OnEventListener<List<CalendarModel>> callback) {
+                                RepositoryCallback<List<CalendarModel>> callback) {
         calendarRepository.getCalendarsByUser(userId, callback);
     }
 
@@ -59,7 +59,7 @@ public class CalendarManager {
      * Get calendars owned by user
      */
     public void getOwnedCalendars(String userId,
-                                 EventRepository.OnEventListener<List<CalendarModel>> callback) {
+                                 RepositoryCallback<List<CalendarModel>> callback) {
         calendarRepository.getOwnedCalendars(userId, callback);
     }
 
@@ -68,8 +68,8 @@ public class CalendarManager {
      */
     public void updateCalendar(String calendarId, String name, String description,
                               String color, boolean isPublic,
-                              EventRepository.OnEventListener<Void> callback) {
-        calendarRepository.getCalendarById(calendarId, new EventRepository.OnEventListener<CalendarModel>() {
+                              RepositoryCallback<Void> callback) {
+        calendarRepository.getCalendarById(calendarId, new RepositoryCallback<CalendarModel>() {
             @Override
             public void onSuccess(CalendarModel calendar) {
                 calendar.setName(name);
@@ -90,7 +90,7 @@ public class CalendarManager {
      * Delete a calendar
      */
     public void deleteCalendar(String calendarId,
-                              EventRepository.OnEventListener<Void> callback) {
+                              RepositoryCallback<Void> callback) {
         calendarRepository.deleteCalendar(calendarId, callback);
     }
 
@@ -98,7 +98,7 @@ public class CalendarManager {
      * Add a member to calendar
      */
     public void addMember(String calendarId, String userId, String role,
-                         EventRepository.OnEventListener<Void> callback) {
+                         RepositoryCallback<Void> callback) {
         calendarRepository.addMember(calendarId, userId, role, callback);
     }
 
@@ -106,7 +106,7 @@ public class CalendarManager {
      * Remove a member from calendar
      */
     public void removeMember(String calendarId, String userId,
-                            EventRepository.OnEventListener<Void> callback) {
+                            RepositoryCallback<Void> callback) {
         calendarRepository.removeMember(calendarId, userId, callback);
     }
 
@@ -114,8 +114,8 @@ public class CalendarManager {
      * Update member's role
      */
     public void updateMemberRole(String calendarId, String userId, String newRole,
-                                EventRepository.OnEventListener<Void> callback) {
-        calendarRepository.getCalendarById(calendarId, new EventRepository.OnEventListener<CalendarModel>() {
+                                RepositoryCallback<Void> callback) {
+        calendarRepository.getCalendarById(calendarId, new RepositoryCallback<CalendarModel>() {
             @Override
             public void onSuccess(CalendarModel calendar) {
                 if (calendar.getMemberIds().contains(userId)) {
@@ -137,7 +137,7 @@ public class CalendarManager {
      * Share calendar with another user
      */
     public void shareCalendar(String calendarId, String userEmail, String role,
-                             EventRepository.OnEventListener<Void> callback) {
+                             RepositoryCallback<Void> callback) {
         // Note: In a real implementation, you would look up the user by email
         // and get their UID from your user database
         // For now, we'll just add them directly
@@ -148,8 +148,8 @@ public class CalendarManager {
      * Get members of a calendar
      */
     public void getCalendarMembers(String calendarId,
-                                  EventRepository.OnEventListener<List<String>> callback) {
-        calendarRepository.getCalendarById(calendarId, new EventRepository.OnEventListener<CalendarModel>() {
+                                  RepositoryCallback<List<String>> callback) {
+        calendarRepository.getCalendarById(calendarId, new RepositoryCallback<CalendarModel>() {
             @Override
             public void onSuccess(CalendarModel calendar) {
                 callback.onSuccess(calendar.getMemberIds());
@@ -166,8 +166,8 @@ public class CalendarManager {
      * Check if user has permission to edit calendar
      */
     public void canEditCalendar(String calendarId, String userId,
-                               EventRepository.OnEventListener<Boolean> callback) {
-        calendarRepository.getCalendarById(calendarId, new EventRepository.OnEventListener<CalendarModel>() {
+                               RepositoryCallback<Boolean> callback) {
+        calendarRepository.getCalendarById(calendarId, new RepositoryCallback<CalendarModel>() {
             @Override
             public void onSuccess(CalendarModel calendar) {
                 String role = calendar.getMemberRole(userId);
@@ -187,7 +187,7 @@ public class CalendarManager {
      */
     public void createSharedCalendar(String name, String description, String ownerId,
                                     String color, List<String> memberIds,
-                                    EventRepository.OnEventListener<String> callback) {
+                                    RepositoryCallback<String> callback) {
         CalendarModel calendar = new CalendarModel();
         calendar.setName(name);
         calendar.setDescription(description);
