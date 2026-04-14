@@ -24,8 +24,8 @@ public class CalendarManager {
      * Create a new calendar
      */
     public void createCalendar(String name, String description, String ownerId,
-                              String color, boolean isPublic,
-                              RepositoryCallback<String> callback) {
+            String color, boolean isPublic,
+            RepositoryCallback<String> callback) {
         CalendarModel calendar = new CalendarModel();
         calendar.setName(name);
         calendar.setDescription(description);
@@ -40,10 +40,28 @@ public class CalendarManager {
     }
 
     /**
+     * Create a default calendar with a deterministic ID
+     */
+    public void createDefaultCalendarWithId(String calendarId, String name, String description, String ownerId,
+            String color, boolean isPublic, RepositoryCallback<String> callback) {
+        CalendarModel calendar = new CalendarModel();
+        calendar.setName(name);
+        calendar.setDescription(description);
+        calendar.setOwnerId(ownerId);
+        calendar.setColor(color);
+        calendar.setPublic(isPublic);
+
+        // Add owner as member with admin role
+        calendar.addMember(ownerId, "admin");
+
+        calendarRepository.createCalendarWithId(calendarId, calendar, callback);
+    }
+
+    /**
      * Get calendar details
      */
     public void getCalendar(String calendarId,
-                           RepositoryCallback<CalendarModel> callback) {
+            RepositoryCallback<CalendarModel> callback) {
         calendarRepository.getCalendarById(calendarId, callback);
     }
 
@@ -51,7 +69,7 @@ public class CalendarManager {
      * Get all calendars for current user
      */
     public void getUserCalendars(String userId,
-                                RepositoryCallback<List<CalendarModel>> callback) {
+            RepositoryCallback<List<CalendarModel>> callback) {
         calendarRepository.getCalendarsByUser(userId, callback);
     }
 
@@ -59,7 +77,7 @@ public class CalendarManager {
      * Get calendars owned by user
      */
     public void getOwnedCalendars(String userId,
-                                 RepositoryCallback<List<CalendarModel>> callback) {
+            RepositoryCallback<List<CalendarModel>> callback) {
         calendarRepository.getOwnedCalendars(userId, callback);
     }
 
@@ -67,8 +85,8 @@ public class CalendarManager {
      * Update calendar details
      */
     public void updateCalendar(String calendarId, String name, String description,
-                              String color, boolean isPublic,
-                              RepositoryCallback<Void> callback) {
+            String color, boolean isPublic,
+            RepositoryCallback<Void> callback) {
         calendarRepository.getCalendarById(calendarId, new RepositoryCallback<CalendarModel>() {
             @Override
             public void onSuccess(CalendarModel calendar) {
@@ -90,7 +108,7 @@ public class CalendarManager {
      * Delete a calendar
      */
     public void deleteCalendar(String calendarId,
-                              RepositoryCallback<Void> callback) {
+            RepositoryCallback<Void> callback) {
         calendarRepository.deleteCalendar(calendarId, callback);
     }
 
@@ -98,7 +116,7 @@ public class CalendarManager {
      * Add a member to calendar
      */
     public void addMember(String calendarId, String userId, String role,
-                         RepositoryCallback<Void> callback) {
+            RepositoryCallback<Void> callback) {
         calendarRepository.addMember(calendarId, userId, role, callback);
     }
 
@@ -106,7 +124,7 @@ public class CalendarManager {
      * Remove a member from calendar
      */
     public void removeMember(String calendarId, String userId,
-                            RepositoryCallback<Void> callback) {
+            RepositoryCallback<Void> callback) {
         calendarRepository.removeMember(calendarId, userId, callback);
     }
 
@@ -114,7 +132,7 @@ public class CalendarManager {
      * Update member's role
      */
     public void updateMemberRole(String calendarId, String userId, String newRole,
-                                RepositoryCallback<Void> callback) {
+            RepositoryCallback<Void> callback) {
         calendarRepository.getCalendarById(calendarId, new RepositoryCallback<CalendarModel>() {
             @Override
             public void onSuccess(CalendarModel calendar) {
@@ -137,7 +155,7 @@ public class CalendarManager {
      * Share calendar with another user
      */
     public void shareCalendar(String calendarId, String userEmail, String role,
-                             RepositoryCallback<Void> callback) {
+            RepositoryCallback<Void> callback) {
         // Note: In a real implementation, you would look up the user by email
         // and get their UID from your user database
         // For now, we'll just add them directly
@@ -148,7 +166,7 @@ public class CalendarManager {
      * Get members of a calendar
      */
     public void getCalendarMembers(String calendarId,
-                                  RepositoryCallback<List<String>> callback) {
+            RepositoryCallback<List<String>> callback) {
         calendarRepository.getCalendarById(calendarId, new RepositoryCallback<CalendarModel>() {
             @Override
             public void onSuccess(CalendarModel calendar) {
@@ -166,7 +184,7 @@ public class CalendarManager {
      * Check if user has permission to edit calendar
      */
     public void canEditCalendar(String calendarId, String userId,
-                               RepositoryCallback<Boolean> callback) {
+            RepositoryCallback<Boolean> callback) {
         calendarRepository.getCalendarById(calendarId, new RepositoryCallback<CalendarModel>() {
             @Override
             public void onSuccess(CalendarModel calendar) {
@@ -186,8 +204,8 @@ public class CalendarManager {
      * Create a public shared calendar
      */
     public void createSharedCalendar(String name, String description, String ownerId,
-                                    String color, List<String> memberIds,
-                                    RepositoryCallback<String> callback) {
+            String color, List<String> memberIds,
+            RepositoryCallback<String> callback) {
         CalendarModel calendar = new CalendarModel();
         calendar.setName(name);
         calendar.setDescription(description);
@@ -208,4 +226,3 @@ public class CalendarManager {
         calendarRepository.createCalendar(calendar, callback);
     }
 }
-

@@ -96,50 +96,45 @@ public class CalendarIntegrationService {
         }
 
         String cachedId = getCachedDefaultCalendarId(context);
+        String defaultCalendarId = cachedId != null && !cachedId.isEmpty() ? cachedId : userId;
 
         calendarManager.getUserCalendars(userId, new RepositoryCallback<List<CalendarModel>>() {
             @Override
             public void onSuccess(List<CalendarModel> calendars) {
                 if (calendars != null && !calendars.isEmpty()) {
-                    String resolvedId = resolveCalendarId(cachedId, calendars);
+                    String resolvedId = resolveCalendarId(defaultCalendarId, calendars);
                     setCachedDefaultCalendarId(context, resolvedId);
                     listener.onReady(resolvedId, calendars);
                     return;
                 }
-
-                calendarManager.createCalendar("My Calendar", "Default personal calendar", userId, "#741ce9", false,
-                        new RepositoryCallback<String>() {
-                            @Override
-                            public void onSuccess(String calendarId) {
-                                calendarManager.getCalendar(calendarId, new RepositoryCallback<CalendarModel>() {
-                                    @Override
-                                    public void onSuccess(CalendarModel calendar) {
-                                        List<CalendarModel> list = new java.util.ArrayList<>();
-                                        if (calendar != null) {
-                                            list.add(calendar);
-                                        }
-                                        setCachedDefaultCalendarId(context, calendarId);
-                                        listener.onReady(calendarId, list);
-                                    }
-
-                                    @Override
-                                    public void onFailure(String errorMessage) {
-                                        listener.onError(errorMessage);
-                                    }
-                                });
-                            }
-
-                            @Override
-                            public void onFailure(String errorMessage) {
-                                listener.onError(errorMessage);
-                            }
-                        });
+                createDefaultCalendarIfMissing(context, userId, defaultCalendarId, listener);
             }
 
             @Override
             public void onFailure(String errorMessage) {
-                Log.w(TAG, "Calendar read failed, attempting create: " + errorMessage);
-                calendarManager.createCalendar("My Calendar", "Default personal calendar", userId, "#741ce9", false,
+                Log.w(TAG, "Calendar read failed, attempting default lookup: " + errorMessage);
+                createDefaultCalendarIfMissing(context, userId, defaultCalendarId, listener);
+            }
+        });
+    }
+
+    private void createDefaultCalendarIfMissing(Context context, String userId, String defaultCalendarId,
+            DefaultCalendarListener listener) {
+        calendarManager.getCalendar(defaultCalendarId, new RepositoryCallback<CalendarModel>() {
+            @Override
+            public void onSuccess(CalendarModel calendar) {
+                List<CalendarModel> list = new java.util.ArrayList<>();
+                if (calendar != null) {
+                    list.add(calendar);
+                }
+                setCachedDefaultCalendarId(context, defaultCalendarId);
+                listener.onReady(defaultCalendarId, list);
+            }
+
+            @Override
+            public void onFailure(String errorMessage) {
+                calendarManager.createDefaultCalendarWithId(defaultCalendarId, "My Calendar",
+                        "Default personal calendar", userId, "#741ce9", false,
                         new RepositoryCallback<String>() {
                             @Override
                             public void onSuccess(String calendarId) {
@@ -170,11 +165,11 @@ public class CalendarIntegrationService {
         });
     }
 
-    private String resolveCalendarId(String cachedId, List<CalendarModel> calendars) {
-        if (cachedId != null) {
+    private String resolveCalendarId(String preferredId, List<CalendarModel> calendars) {
+        if (preferredId != null) {
             for (CalendarModel calendar : calendars) {
-                if (calendar != null && cachedId.equals(calendar.getId())) {
-                    return cachedId;
+                if (calendar != null && preferredId.equals(calendar.getId())) {
+                    return preferredId;
                 }
             }
         }

@@ -1,6 +1,14 @@
 package com.timed.activities;
 
 import android.content.Intent;
+import android.app.AlertDialog;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.PopupMenu;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.SubMenu;
+import android.util.Patterns;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageButton;
@@ -31,16 +39,23 @@ import com.timed.models.CalendarModel;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.Timestamp;
 import com.timed.activities.CreateEventActivity;
 import com.timed.activities.SearchFilterActivity;
 import com.timed.activities.SettingsActivity;
+import com.timed.Auth.LoginActivity;
 import com.timed.managers.EventsManager;
 import com.timed.models.Event;
+import com.timed.models.User;
+import com.timed.managers.UserManager;
+import com.timed.repositories.AuthRepository;
+import com.timed.repositories.UserRepository;
 import com.timed.utils.CalendarIntegrationService;
 import com.timed.utils.FirebaseAuthManager;
 import com.timed.utils.FirebaseHelper;
 import com.timed.utils.FirebaseInitializer;
+import com.bumptech.glide.Glide;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -49,10 +64,10 @@ import java.util.Date;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.HashMap;
 
 public class MainActivity extends AppCompatActivity implements CalendarAdapter.OnItemListener {
 
@@ -91,6 +106,12 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
     private String defaultCalendarId;
     private final List<String> visibleCalendarIds = new ArrayList<>();
 
+    private ImageView imgProfile;
+    private UserRepository userRepository;
+    private NavigationView navView;
+    private TextView tvDrawerName;
+    private final Map<Integer, String> drawerCalendarIdMap = new HashMap<>();
+
     private EventsManager eventsManager;
 
     @Override
@@ -117,6 +138,12 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             btnMenu.setOnClickListener(v -> drawerLayout.openDrawer(GravityCompat.START));
         }
 
+        navView = findViewById(R.id.navView);
+        setupDrawerHeader();
+        setupDrawerSelection(drawerLayout);
+        ensureDefaultCalendarReady(() -> {
+        });
+
         layoutMonthView = findViewById(R.id.layoutMonthView);
         layoutDayView = findViewById(R.id.layoutDayView);
         layout3DaysView = findViewById(R.id.layout3DaysView);
@@ -130,6 +157,13 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         if (btnSearch != null) {
             btnSearch.setOnClickListener(v -> startActivity(new Intent(this, SearchFilterActivity.class)));
         }
+
+        imgProfile = findViewById(R.id.imgProfile);
+        if (imgProfile != null) {
+            imgProfile.setOnClickListener(v -> showProfileMenu(v));
+        }
+        userRepository = new UserRepository();
+        refreshProfileAvatar();
 
         selectedDate = LocalDate.now();
         startDate3Days = LocalDate.now();
@@ -759,6 +793,167 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         List<CalendarDay> daysInMonth = daysInMonthArray(selectedDate);
         CalendarAdapter adapter = new CalendarAdapter(daysInMonth, this);
         rvCalendar.setAdapter(adapter);
+        loadMonthEventIndicators(selectedDate, daysInMonth, adapter);
+    }
+
+    private void loadMonthEventIndicators(LocalDate month, List<CalendarDay> days, CalendarAdapter adapter) {
+        List<String> calendarIds = getVisibleCalendarIds();
+        if (calendarIds.isEmpty()) {
+            ensureDefaultCalendarReady(() -> loadMonthEventIndicators(month, days, adapter));
+            return;
+        }
+
+        LocalDate startOfMonth = month.withDayOfMonth(1);
+        LocalDate endOfMonth = month.withDayOfMonth(month.lengthOfMonth());
+
+        fetchEventsForCalendars(startOfMonth, endOfMonth, calendarIds, events -> {
+            Map<LocalDate, Integer> counts = new HashMap<>();
+            for (Event event : events) {
+                if (event == null || event.getStartTime() == null) {
+                    continue;
+                }
+                LocalDate eventDate = toLocalDate(event.getStartTime());
+                if (eventDate == null) {
+                    continue;
+                }
+                counts.put(eventDate, counts.getOrDefault(eventDate, 0) + 1);
+            }
+
+            for (CalendarDay day : days) {
+                if (day != null && day.date != null) {
+                    day.eventCount = counts.getOrDefault(day.date, 0);
+                }
+            }
+            adapter.notifyDataSetChanged();
+        });
+    }
+
+    private void showProfileMenu(View anchor) {
+        PopupMenu menu = new PopupMenu(this, anchor);
+        menu.getMenu().add("Change avatar");
+        menu.getMenu().add("Sign out");
+        menu.setOnMenuItemClickListener(item -> {
+            String title = String.valueOf(item.getTitle());
+            if ("Change avatar".equals(title)) {
+                showChangeAvatarDialog();
+                return true;
+            }
+            if ("Sign out".equals(title)) {
+                showSignOutDialog();
+                return true;
+            }
+            return false;
+        });
+        menu.show();
+    }
+
+    private void showChangeAvatarDialog() {
+        EditText input = new EditText(this);
+        input.setHint("https://...");
+        User currentUser = UserManager.getInstance().getCurrentUser();
+        if (currentUser != null && currentUser.getAvatar() != null) {
+            input.setText(currentUser.getAvatar());
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("Update avatar")
+                .setView(input)
+                .setPositiveButton("Save", (dialog, which) -> {
+                    String url = input.getText() != null ? input.getText().toString().trim() : "";
+                    if (!isValidAvatarUrl(url)) {
+                        Toast.makeText(this, "Invalid image URL", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    updateAvatarUrl(url);
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void updateAvatarUrl(String url) {
+        String userId = firebaseInitializer.getCurrentUserId();
+        if (userId == null) {
+            Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("avatar", url);
+        userRepository.updateUser(userId, updates)
+                .addOnSuccessListener(unused -> {
+                    User currentUser = UserManager.getInstance().getCurrentUser();
+                    if (currentUser != null) {
+                        currentUser.setAvatar(url);
+                    }
+                    loadAvatar(url);
+                })
+                .addOnFailureListener(e -> Toast.makeText(this,
+                        "Failed to update avatar: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+    }
+
+    private void refreshProfileAvatar() {
+        User currentUser = UserManager.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            updateDrawerHeader(currentUser);
+            if (isValidAvatarUrl(currentUser.getAvatar())) {
+                loadAvatar(currentUser.getAvatar());
+                return;
+            }
+        }
+
+        String userId = firebaseInitializer.getCurrentUserId();
+        if (userId == null) {
+            return;
+        }
+
+        userRepository.getUser(userId)
+                .addOnSuccessListener(snapshot -> {
+                    User user = snapshot.toObject(User.class);
+                    if (user != null) {
+                        UserManager.getInstance().setCurrentUser(user);
+                        if (isValidAvatarUrl(user.getAvatar())) {
+                            loadAvatar(user.getAvatar());
+                        }
+                        updateDrawerHeader(user);
+                    }
+                });
+    }
+
+    private void loadAvatar(String url) {
+        if (imgProfile == null) {
+            return;
+        }
+        Glide.with(this)
+                .load(url)
+                .circleCrop()
+                .error(R.drawable.ic_account_circle)
+                .into(imgProfile);
+    }
+
+    private boolean isValidAvatarUrl(String url) {
+        return url != null && !url.isEmpty() && Patterns.WEB_URL.matcher(url).matches();
+    }
+
+    private void showSignOutDialog() {
+        new AlertDialog.Builder(this)
+                .setTitle("Sign out")
+                .setMessage("Do you want to sign out?")
+                .setPositiveButton("Sign out", (dialog, which) -> handleSignOut())
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void handleSignOut() {
+        new AuthRepository().logout();
+        getSharedPreferences("TimedAppPrefs", MODE_PRIVATE)
+                .edit()
+                .putBoolean("REMEMBER_ME", false)
+                .apply();
+
+        Intent intent = new Intent(MainActivity.this, LoginActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
     }
 
     private List<CalendarDay> daysInMonthArray(LocalDate date) {
@@ -971,6 +1166,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                     public void onReady(String calendarId, java.util.List<com.timed.models.CalendarModel> calendars) {
                         defaultCalendarId = calendarId;
                         updateVisibleCalendarIds(calendars);
+                        updateDrawerCalendars(calendars);
                         if (onReady != null) {
                             onReady.run();
                         }
@@ -998,14 +1194,106 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
 
     private void updateVisibleCalendarIds(List<CalendarModel> calendars) {
         visibleCalendarIds.clear();
-        if (calendars == null) {
+        if (defaultCalendarId != null && !defaultCalendarId.isEmpty()) {
+            visibleCalendarIds.add(defaultCalendarId);
+        }
+    }
+
+    private void setupDrawerHeader() {
+        if (navView == null) {
             return;
         }
+        View header = navView.getHeaderView(0);
+        if (header == null) {
+            return;
+        }
+        tvDrawerName = header.findViewById(R.id.tvDrawerName);
+        updateDrawerHeader(UserManager.getInstance().getCurrentUser());
+    }
+
+    private void updateDrawerHeader(User user) {
+        if (user == null) {
+            return;
+        }
+        if (tvDrawerName != null && user.getName() != null) {
+            tvDrawerName.setText(user.getName());
+        }
+        // Drawer header now shows only the username.
+    }
+
+    private void setupDrawerSelection(DrawerLayout drawerLayout) {
+        if (navView == null) {
+            return;
+        }
+        navView.setNavigationItemSelectedListener(item -> {
+            String calendarId = drawerCalendarIdMap.get(item.getItemId());
+            if (calendarId == null) {
+                return false;
+            }
+            setSelectedCalendar(calendarId);
+            item.setChecked(true);
+            if (drawerLayout != null) {
+                drawerLayout.closeDrawer(GravityCompat.START);
+            }
+            return true;
+        });
+    }
+
+    private void updateDrawerCalendars(List<CalendarModel> calendars) {
+        if (navView == null || calendars == null) {
+            return;
+        }
+        Menu menu = navView.getMenu();
+        menu.clear();
+        drawerCalendarIdMap.clear();
+
+        String userId = firebaseInitializer.getCurrentUserId();
+        List<CalendarModel> owned = new ArrayList<>();
+        List<CalendarModel> others = new ArrayList<>();
         for (CalendarModel calendar : calendars) {
-            if (calendar != null && calendar.getId() != null && !calendar.getId().isEmpty()) {
-                visibleCalendarIds.add(calendar.getId());
+            if (calendar == null || calendar.getId() == null) {
+                continue;
+            }
+            if (userId != null && userId.equals(calendar.getOwnerId())) {
+                owned.add(calendar);
+            } else {
+                others.add(calendar);
             }
         }
+
+        if (!owned.isEmpty()) {
+            SubMenu myMenu = menu.addSubMenu("MY CALENDARS");
+            addCalendarMenuItems(myMenu, owned);
+        }
+        if (!others.isEmpty()) {
+            SubMenu otherMenu = menu.addSubMenu("OTHER CALENDARS");
+            addCalendarMenuItems(otherMenu, others);
+        }
+    }
+
+    private void addCalendarMenuItems(SubMenu menu, List<CalendarModel> calendars) {
+        for (CalendarModel calendar : calendars) {
+            String name = calendar.getName() != null ? calendar.getName() : "Calendar";
+            int itemId = View.generateViewId();
+            MenuItem item = menu.add(Menu.NONE, itemId, Menu.NONE, name);
+            item.setCheckable(true);
+            if (calendar.getId().equals(defaultCalendarId)) {
+                item.setChecked(true);
+            }
+            drawerCalendarIdMap.put(itemId, calendar.getId());
+        }
+    }
+
+    private void setSelectedCalendar(String calendarId) {
+        if (calendarId == null || calendarId.isEmpty()) {
+            return;
+        }
+        defaultCalendarId = calendarId;
+        calendarIntegrationService.setCachedDefaultCalendarId(this, calendarId);
+        visibleCalendarIds.clear();
+        visibleCalendarIds.add(calendarId);
+        setMonthView();
+        updateEventsForDate(selectedDate);
     }
 
     private void fetchEventsForCalendars(LocalDate startDate, LocalDate endDate, List<String> calendarIds,

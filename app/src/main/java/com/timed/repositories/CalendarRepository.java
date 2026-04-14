@@ -45,6 +45,28 @@ public class CalendarRepository {
     }
 
     /**
+     * Create or overwrite a calendar with a fixed ID
+     */
+    public void createCalendarWithId(String calendarId, CalendarModel calendar, RepositoryCallback<String> callback) {
+        if (calendarId == null || calendarId.isEmpty()) {
+            callback.onFailure("Calendar ID is required");
+            return;
+        }
+        Map<String, Object> payload = buildCalendarPayload(calendar, calendarId, true);
+        db.collection(CALENDARS_COLLECTION)
+                .document(calendarId)
+                .set(payload)
+                .addOnSuccessListener(unused -> {
+                    callback.onSuccess(calendarId);
+                    Log.d(TAG, "Calendar created with fixed ID: " + calendarId);
+                })
+                .addOnFailureListener(e -> {
+                    callback.onFailure(e.getMessage());
+                    Log.e(TAG, "Failed to create calendar with fixed ID: " + e.getMessage());
+                });
+    }
+
+    /**
      * Get calendar by ID
      */
     public void getCalendarById(String calendarId, RepositoryCallback<CalendarModel> callback) {
