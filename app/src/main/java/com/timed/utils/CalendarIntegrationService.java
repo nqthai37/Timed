@@ -2,10 +2,9 @@ package com.timed.utils;
 
 import android.util.Log;
 
-import com.timed.data.models.CalendarModel;
 import com.timed.managers.CalendarManager;
-import com.timed.data.repository.CalendarRepository;
-import com.timed.data.repository.EventRepository;
+import com.timed.models.CalendarModel;
+import com.timed.repositories.RepositoryCallback;
 
 import java.util.List;
 
@@ -43,7 +42,7 @@ public class CalendarIntegrationService {
             return;
         }
 
-        calendarManager.getUserCalendars(userId, new EventRepository.OnEventListener<List<CalendarModel>>() {
+        calendarManager.getUserCalendars(userId, new RepositoryCallback<List<CalendarModel>>() {
             @Override
             public void onSuccess(List<CalendarModel> calendars) {
                 Log.d(TAG, "User calendars loaded: " + calendars.size());
@@ -67,7 +66,7 @@ public class CalendarIntegrationService {
     }
 
     public void getCalendar(String calendarId, CalendarLoadDetailListener listener) {
-        calendarManager.getCalendar(calendarId, new EventRepository.OnEventListener<CalendarModel>() {
+        calendarManager.getCalendar(calendarId, new RepositoryCallback<CalendarModel>() {
             @Override
             public void onSuccess(CalendarModel calendar) {
                 Log.d(TAG, "Calendar loaded: " + calendarId);
@@ -94,7 +93,7 @@ public class CalendarIntegrationService {
         }
 
         calendarManager.createCalendar(name, description, userId, color, isPublic,
-            new EventRepository.OnEventListener<String>() {
+            new RepositoryCallback<String>() {
                 @Override
                 public void onSuccess(String calendarId) {
                     Log.d(TAG, "Calendar created: " + calendarId);
@@ -111,7 +110,7 @@ public class CalendarIntegrationService {
 
     public void updateCalendar(String calendarId, String name, String description, String color, boolean isPublic, CalendarSaveListener listener) {
         calendarManager.updateCalendar(calendarId, name, description, color, isPublic,
-            new EventRepository.OnEventListener<Void>() {
+            new RepositoryCallback<Void>() {
                 @Override
                 public void onSuccess(Void result) {
                     Log.d(TAG, "Calendar updated: " + calendarId);
@@ -131,7 +130,7 @@ public class CalendarIntegrationService {
      */
     public void deleteCalendar(String calendarId, CalendarSaveListener listener) {
         calendarManager.deleteCalendar(calendarId,
-            new EventRepository.OnEventListener<Void>() {
+            new RepositoryCallback<Void>() {
                 @Override
                 public void onSuccess(Void result) {
                     Log.d(TAG, "Calendar deleted: " + calendarId);
@@ -151,7 +150,7 @@ public class CalendarIntegrationService {
      */
     public void shareCalendar(String calendarId, String userId, String role, CalendarSaveListener listener) {
         calendarManager.addMember(calendarId, userId, role,
-            new EventRepository.OnEventListener<Void>() {
+            new RepositoryCallback<Void>() {
                 @Override
                 public void onSuccess(Void result) {
                     Log.d(TAG, "Calendar shared: " + calendarId);
@@ -171,7 +170,7 @@ public class CalendarIntegrationService {
      */
     public void removeMember(String calendarId, String userId, CalendarSaveListener listener) {
         calendarManager.removeMember(calendarId, userId,
-            new EventRepository.OnEventListener<Void>() {
+            new RepositoryCallback<Void>() {
                 @Override
                 public void onSuccess(Void result) {
                     Log.d(TAG, "Member removed: " + calendarId);
@@ -191,7 +190,7 @@ public class CalendarIntegrationService {
      */
     public void updateMemberRole(String calendarId, String userId, String newRole, CalendarSaveListener listener) {
         calendarManager.updateMemberRole(calendarId, userId, newRole,
-            new EventRepository.OnEventListener<Void>() {
+            new RepositoryCallback<Void>() {
                 @Override
                 public void onSuccess(Void result) {
                     Log.d(TAG, "Member role updated: " + calendarId);
@@ -209,7 +208,7 @@ public class CalendarIntegrationService {
     /**
      * Kiểm tra quyền chỉnh sửa lịch
      */
-    public void canEditCalendar(String calendarId, String userId, EventRepository.OnEventListener<Boolean> listener) {
+    public void canEditCalendar(String calendarId, String userId, RepositoryCallback<Boolean> listener) {
         calendarManager.canEditCalendar(calendarId, userId, listener);
     }
 }

@@ -1,6 +1,5 @@
-package com.timed;
+package com.timed.activities;
 
-import android.content.Intent;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
@@ -21,23 +20,32 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.timed.Setting.Main.SettingActivity;
 
+import com.timed.R;
+import com.timed.adapters.CalendarAdapter;
+import com.timed.adapters.EventAdapter;
+import com.timed.adapters.HorizontalCalendarAdapter;
+import com.timed.adapters.WeekEventAdapter;
+import com.timed.models.CalendarDay;
+
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.tabs.TabLayout;
-import com.timed.activities.CreateEventActivity;
-import com.timed.activities.SettingsActivity;
-import com.timed.data.models.EventModel;
-import com.timed.utils.FirebaseInitializer;
-import com.timed.utils.FirebaseHelper;
-import com.timed.utils.FirebaseAuthManager;
-import com.timed.utils.EventIntegrationService;
-import com.timed.utils.CalendarIntegrationService;
-import com.timed.utils.EventModelAdapter;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.firebase.Timestamp;
+import com.timed.activities.CreateEventActivity;
+import com.timed.activities.SearchFilterActivity;
+import com.timed.activities.SettingsActivity;
+import com.timed.managers.EventsManager;
+import com.timed.models.Event;
+import com.timed.utils.FirebaseAuthManager;
+import com.timed.utils.FirebaseHelper;
+import com.timed.utils.FirebaseInitializer;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.util.Date;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
 
@@ -76,9 +84,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
     private FirebaseHelper firebaseHelper;
     private FirebaseAuthManager firebaseAuthManager;
 
-    // Integration services
-    private EventIntegrationService eventIntegrationService;
-    private CalendarIntegrationService calendarIntegrationService;
+    private EventsManager eventsManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,8 +94,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
 
         // Khởi tạo Firebase
         initializeFirebase();
-        // Khởi tạo integration services
-        initializeIntegrationServices();
+        eventsManager = EventsManager.getInstance(this);
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.mainContent), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -111,6 +116,11 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         tvCurrentDayFull = findViewById(R.id.tvCurrentDayFull);
         rvHorizontalCalendar = findViewById(R.id.rvHorizontalCalendar);
         tvTopTitle = findViewById(R.id.tvTopTitle);
+
+        ImageButton btnSearch = findViewById(R.id.btnSearch);
+        if (btnSearch != null) {
+            btnSearch.setOnClickListener(v -> startActivity(new Intent(this, SearchFilterActivity.class)));
+        }
 
         selectedDate = LocalDate.now();
         startDate3Days = LocalDate.now();
@@ -341,7 +351,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEEE, MMMM d", Locale.ENGLISH);
                 tvCurrentDayFull.setText(selectedDate.format(formatter));
             }
-            renderDayViewTimeline(date);
+            loadDayEvents(date);
         });
 
         rvHorizontalCalendar.setAdapter(horizontalAdapter);
@@ -349,10 +359,10 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEEE, MMMM d", Locale.ENGLISH);
             tvCurrentDayFull.setText(selectedDate.format(formatter));
         }
-        renderDayViewTimeline(selectedDate);
+        loadDayEvents(selectedDate);
     }
 
-    private void renderDayViewTimeline(LocalDate date) {
+    private void renderDayViewTimeline(LocalDate date, List<Event> events) {
         android.widget.RelativeLayout timelineContainer = findViewById(R.id.timelineContainer);
         if (timelineContainer == null)
             return;
@@ -384,15 +394,25 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             timelineContainer.addView(line, lineParams);
         }
 
-        if (date.getDayOfMonth() % 2 == 0 || date.equals(LocalDate.now())) {
-            addEventCardToTimeline(timelineContainer, hourHeightPx, "Morning Standup", "09:00 - 10:00 • Office", 9, 0,
-                    60, R.drawable.bg_day_event_primary, "#FFFFFF", "#E6FFFFFF");
-            addEventCardToTimeline(timelineContainer, hourHeightPx, "Client Strategy Meeting", "11:30 - 13:00 • Zoom",
-                    11, 30, 90, R.drawable.bg_day_event_light, "#741ce9", "#64748b");
-            addEventCardToTimeline(timelineContainer, hourHeightPx, "Lunch with Design Team", "13:00 - 14:00 • Bistro",
-                    13, 0, 60, R.drawable.bg_day_event_emerald, "#047857", "#059669");
-            addEventCardToTimeline(timelineContainer, hourHeightPx, "Product Sync", "15:30 - 16:30 • Room 4B", 15, 30,
-                    60, R.drawable.bg_day_event_light, "#741ce9", "#64748b");
+        if (events == null || events.isEmpty()) {
+            return;
+        }
+
+        int colorIndex = 0;
+        for (Event event : events) {
+            EventTimeParts parts = toTimeParts(event);
+            if (parts == null) {
+            continue;
+            }
+
+            String title = event.getTitle() != null ? event.getTitle() : "(Untitled)";
+            String details = buildEventDetails(event);
+            int bgRes = pickEventBackground(colorIndex++);
+            String titleColor = bgRes == R.drawable.bg_day_event_light ? "#741ce9" : "#FFFFFF";
+            String detailsColor = bgRes == R.drawable.bg_day_event_light ? "#64748b" : "#E6FFFFFF";
+
+            addEventCardToTimeline(timelineContainer, hourHeightPx, title, details, parts.startHour,
+                parts.startMinute, parts.durationMinutes, bgRes, titleColor, detailsColor);
         }
     }
 
@@ -459,10 +479,10 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                     startDate3Days.format(titleFormatter) + " - " + startDate3Days.plusDays(2).getDayOfMonth());
         }
 
-        render3DaysTimeline();
+        loadThreeDaysEvents(startDate3Days);
     }
 
-    private void render3DaysTimeline() {
+    private void render3DaysTimeline(LocalDate startDate, List<Event> events) {
         android.widget.RelativeLayout container = findViewById(R.id.timeline3DaysContainer);
         if (container == null)
             return;
@@ -507,12 +527,35 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                 container.addView(verticalLine, vParams);
             }
 
-            addEventTo3Days(container, hourHeightPx, timeColumnWidth, colWidth, 0, "Team Sync", "Room 302", 9, 0, 90,
-                    R.drawable.bg_day_event_primary, "#FFFFFF", "#E6FFFFFF");
-            addEventTo3Days(container, hourHeightPx, timeColumnWidth, colWidth, 1, "Design Sprint", "Virtual", 13, 0,
-                    120, R.drawable.bg_day_event_primary, "#FFFFFF", "#E6FFFFFF");
-            addEventTo3Days(container, hourHeightPx, timeColumnWidth, colWidth, 2, "Deep Work", "", 10, 0, 60,
-                    R.drawable.bg_day_event_light, "#334155", "#64748b");
+            if (events == null || events.isEmpty()) {
+                return;
+            }
+
+            int colorIndex = 0;
+            for (Event event : events) {
+                LocalDate eventDate = toLocalDate(event.getStartTime());
+                if (eventDate == null) {
+                    continue;
+                }
+                int dayIndex = (int) java.time.temporal.ChronoUnit.DAYS.between(startDate, eventDate);
+                if (dayIndex < 0 || dayIndex > 2) {
+                    continue;
+                }
+
+                EventTimeParts parts = toTimeParts(event);
+                if (parts == null) {
+                    continue;
+                }
+
+                int bgRes = pickEventBackground(colorIndex++);
+                String titleColor = bgRes == R.drawable.bg_day_event_light ? "#334155" : "#FFFFFF";
+                String detailColor = bgRes == R.drawable.bg_day_event_light ? "#64748b" : "#E6FFFFFF";
+
+                addEventTo3Days(container, hourHeightPx, timeColumnWidth, colWidth, dayIndex,
+                        event.getTitle() != null ? event.getTitle() : "(Untitled)",
+                        buildEventLocation(event), parts.startHour, parts.startMinute,
+                        parts.durationMinutes, bgRes, titleColor, detailColor);
+            }
         });
     }
 
@@ -599,10 +642,10 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             }
         }
 
-        renderWeekGridTimeline(startOfWeek);
+        loadWeekEvents(startOfWeek);
     }
 
-    private void renderWeekGridTimeline(LocalDate startOfWeek) {
+    private void renderWeekGridTimeline(LocalDate startOfWeek, List<Event> events) {
         android.widget.RelativeLayout container = findViewById(R.id.timelineWeekContainer);
         if (container == null)
             return;
@@ -647,12 +690,31 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                 container.addView(verticalLine, vParams);
             }
 
-            addEventToWeekGrid(container, hourHeightPx, timeColumnWidth, colWidth, 1, "Standup", 9, 0, 60,
-                    R.drawable.bg_day_event_primary);
-            addEventToWeekGrid(container, hourHeightPx, timeColumnWidth, colWidth, 2, "Client", 11, 30, 90,
-                    R.drawable.bg_day_event_emerald);
-            addEventToWeekGrid(container, hourHeightPx, timeColumnWidth, colWidth, 4, "Review", 15, 0, 120,
-                    R.drawable.bg_day_event_light);
+            if (events == null || events.isEmpty()) {
+                return;
+            }
+
+            int colorIndex = 0;
+            for (Event event : events) {
+                LocalDate eventDate = toLocalDate(event.getStartTime());
+                if (eventDate == null) {
+                    continue;
+                }
+                int dayIndex = (int) java.time.temporal.ChronoUnit.DAYS.between(startOfWeek, eventDate);
+                if (dayIndex < 0 || dayIndex > 6) {
+                    continue;
+                }
+
+                EventTimeParts parts = toTimeParts(event);
+                if (parts == null) {
+                    continue;
+                }
+
+                int bgRes = pickEventBackground(colorIndex++);
+                String title = event.getTitle() != null ? event.getTitle() : "(Untitled)";
+                addEventToWeekGrid(container, hourHeightPx, timeColumnWidth, colWidth, dayIndex,
+                        title, parts.startHour, parts.startMinute, parts.durationMinutes, bgRes);
+            }
         });
     }
 
@@ -747,32 +809,13 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         String formattedDate = date.format(formatter).toUpperCase();
         tvUpcomingTitle.setText("UPCOMING FOR " + formattedDate);
 
-        if (eventIntegrationService == null) {
-            currentEvents.clear();
-            eventAdapter.notifyDataSetChanged();
-            return;
-        }
-
-        long startOfDay = date.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
-        long endOfDay = date.plusDays(1).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli() - 1;
         String calendarId = "default_calendar";
-
-        eventIntegrationService.getEventsInDateRange(calendarId, startOfDay, endOfDay,
-            new EventIntegrationService.EventLoadListener() {
-                @Override
-                public void onEventsLoaded(List<EventModel> events) {
-                    currentEvents.clear();
-                    currentEvents.addAll(EventModelAdapter.toUIEventList(events));
-                    eventAdapter.notifyDataSetChanged();
-                }
-
-                @Override
-                public void onError(String errorMessage) {
-                    Log.e(TAG, "Error loading selected day events: " + errorMessage);
-                    currentEvents.clear();
-                    eventAdapter.notifyDataSetChanged();
-                }
-            });
+        fetchEventsForRange(date, date, calendarId, events -> {
+            currentEvents.clear();
+            currentEvents.addAll(events);
+            eventAdapter.notifyDataSetChanged();
+            renderDayViewTimeline(date, events);
+        });
     }
 
     private void openEditEvent(Event event) {
@@ -781,11 +824,11 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         intent.putExtra("eventId", event.getId());
         intent.putExtra("calendarId", event.getCalendarId() != null ? event.getCalendarId() : "default_calendar");
         intent.putExtra("title", event.getTitle());
-        intent.putExtra("description", event.getDetails());
+        intent.putExtra("description", event.getDescription());
         intent.putExtra("location", event.getLocation());
-        intent.putExtra("startTime", event.getStartTime());
-        intent.putExtra("endTime", event.getEndTime());
-        intent.putExtra("allDay", event.isAllDay());
+        intent.putExtra("startTime", event.getStartTime() != null ? event.getStartTime().toDate().getTime() : 0L);
+        intent.putExtra("endTime", event.getEndTime() != null ? event.getEndTime().toDate().getTime() : 0L);
+        intent.putExtra("allDay", event.getAllDay() != null && event.getAllDay());
         startActivity(intent);
     }
 
@@ -893,77 +936,140 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         return firebaseInitializer;
     }
 
-    /**
-     * Khởi tạo integration services
-     */
-    private void initializeIntegrationServices() {
-        try {
-            eventIntegrationService = new EventIntegrationService();
-            calendarIntegrationService = new CalendarIntegrationService();
-            Log.d(TAG, "Integration services initialized");
-        } catch (Exception e) {
-            Log.e(TAG, "Error initializing integration services: " + e.getMessage(), e);
-        }
+    private void loadDayEvents(LocalDate date) {
+        fetchEventsForRange(date, date, "default_calendar", events -> renderDayViewTimeline(date, events));
     }
 
-    /**
-     * Load events từ backend
-     */
-    private void loadEventsFromBackend() {
-        if (eventIntegrationService == null) {
-            Log.w(TAG, "Event integration service not initialized");
+    private void loadThreeDaysEvents(LocalDate startDate) {
+        fetchEventsForRange(startDate, startDate.plusDays(2), "default_calendar",
+                events -> render3DaysTimeline(startDate, events));
+    }
+
+    private void loadWeekEvents(LocalDate startOfWeek) {
+        fetchEventsForRange(startOfWeek, startOfWeek.plusDays(6), "default_calendar",
+                events -> renderWeekGridTimeline(startOfWeek, events));
+    }
+
+    private void fetchEventsForRange(LocalDate startDate, LocalDate endDate, String calendarId,
+            EventsLoadCallback callback) {
+        if (eventsManager == null) {
+            callback.onLoaded(new ArrayList<>());
             return;
         }
 
-        // Load sự kiện cho ngày hôm nay
-        long today = System.currentTimeMillis();
-        long tomorrow = today + (24 * 60 * 60 * 1000);
+        Timestamp startTimestamp = toTimestamp(startDate.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
+        long endMillis = endDate.plusDays(1).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli() - 1;
+        Timestamp endTimestamp = toTimestamp(endMillis);
 
-        String calendarId = "default_calendar"; // Or get from preferences
-
-        eventIntegrationService.getEventsInDateRange(calendarId, today, tomorrow,
-            new EventIntegrationService.EventLoadListener() {
-                @Override
-                public void onEventsLoaded(List<EventModel> events) {
-                    Log.d(TAG, "Events loaded from backend: " + events.size());
-                    // Convert backend events to UI events
-                    List<Event> uiEvents = new ArrayList<>();
-                    for (EventModel backendEvent : events) {
-                        Event uiEvent = EventModelAdapter.toUIEvent(backendEvent);
-                        uiEvents.add(uiEvent);
-                    }
-                    currentEvents = uiEvents;
-                    updateUI();
-                }
-
-                @Override
-                public void onError(String errorMessage) {
-                    Log.e(TAG, "Error loading events: " + errorMessage);
-                    Toast.makeText(MainActivity.this, "Lỗi tải sự kiện: " + errorMessage, Toast.LENGTH_SHORT).show();
-                }
-            });
+        eventsManager.getEventsByDateRange(calendarId, startTimestamp, endTimestamp)
+                .addOnSuccessListener(callback::onLoaded)
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error loading events: " + e.getMessage(), e);
+                    callback.onLoaded(new ArrayList<>());
+                });
     }
 
-    /**
-     * Cập nhật UI với các sự kiện mới
-     */
-    private void updateUI() {
-        if (eventAdapter != null) {
-            eventAdapter.notifyDataSetChanged();
+    private Timestamp toTimestamp(long millis) {
+        return new Timestamp(new Date(millis));
+    }
+
+    private LocalDate toLocalDate(Timestamp timestamp) {
+        if (timestamp == null) {
+            return null;
         }
+        return timestamp.toDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
     }
 
-    /**
-     * Lấy Event Integration Service
-     */
-    public EventIntegrationService getEventIntegrationService() {
-        return eventIntegrationService;
+    private EventTimeParts toTimeParts(Event event) {
+        if (event == null || event.getStartTime() == null) {
+            return null;
+        }
+
+        Date start = event.getStartTime().toDate();
+        Date end = event.getEndTime() != null ? event.getEndTime().toDate() : start;
+
+        Calendar startCal = Calendar.getInstance();
+        startCal.setTime(start);
+        int startHour = startCal.get(Calendar.HOUR_OF_DAY);
+        int startMinute = startCal.get(Calendar.MINUTE);
+
+        long durationMillis = Math.max(30 * 60 * 1000L, end.getTime() - start.getTime());
+        int durationMinutes = (int) Math.max(15, durationMillis / 60000L);
+
+        if (event.getAllDay() != null && event.getAllDay()) {
+            startHour = 0;
+            startMinute = 0;
+            durationMinutes = 60;
+        }
+
+        return new EventTimeParts(startHour, startMinute, durationMinutes);
     }
 
-    /**
-     * Lấy Calendar Integration Service
-     */
-    public CalendarIntegrationService getCalendarIntegrationService() {
-        return calendarIntegrationService;
+    private String buildEventDetails(Event event) {
+        String timeRange = buildTimeRange(event);
+        String location = buildEventLocation(event);
+
+        if (!timeRange.isEmpty() && !location.isEmpty()) {
+            return timeRange + " • " + location;
+        }
+        if (!timeRange.isEmpty()) {
+            return timeRange;
+        }
+        return location;
+    }
+
+    private String buildEventLocation(Event event) {
+        if (event == null || event.getLocation() == null) {
+            return "";
+        }
+        return event.getLocation().trim();
+    }
+
+    private String buildTimeRange(Event event) {
+        if (event == null || event.getStartTime() == null) {
+            return "";
+        }
+
+        java.text.SimpleDateFormat formatter = new java.text.SimpleDateFormat("HH:mm", Locale.getDefault());
+        Date start = event.getStartTime().toDate();
+        String startText = formatter.format(start);
+
+        if (event.getAllDay() != null && event.getAllDay()) {
+            return "All day";
+        }
+
+        if (event.getEndTime() != null) {
+            String endText = formatter.format(event.getEndTime().toDate());
+            return startText + " - " + endText;
+        }
+
+        return startText;
+    }
+
+    private int pickEventBackground(int index) {
+        int mod = index % 3;
+        if (mod == 1) {
+            return R.drawable.bg_day_event_emerald;
+        }
+        if (mod == 2) {
+            return R.drawable.bg_day_event_light;
+        }
+        return R.drawable.bg_day_event_primary;
+    }
+
+    private interface EventsLoadCallback {
+        void onLoaded(List<Event> events);
+    }
+
+    private static class EventTimeParts {
+        final int startHour;
+        final int startMinute;
+        final int durationMinutes;
+
+        EventTimeParts(int startHour, int startMinute, int durationMinutes) {
+            this.startHour = startHour;
+            this.startMinute = startMinute;
+            this.durationMinutes = durationMinutes;
+        }
     }
 }

@@ -1,17 +1,28 @@
-package com.timed;
+package com.timed.adapters;
 
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.firebase.Timestamp;
+import com.timed.R;
+import com.timed.models.Event;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHolder> {
 
     private final List<Event> events;
     private final OnEventClickListener onEventClickListener;
+
+    private final SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
 
     public interface OnEventClickListener {
         void onEventClick(Event event);
@@ -37,9 +48,9 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
     @Override
     public void onBindViewHolder(@NonNull EventViewHolder holder, int position) {
         Event event = events.get(position);
-        holder.tvEventTime.setText(event.getTime());
+        holder.tvEventTime.setText(formatTime(event.getStartTime()));
         holder.tvEventTitle.setText(event.getTitle());
-        holder.tvEventDetails.setText(event.getDetails());
+        holder.tvEventDetails.setText(buildDetails(event));
 
         holder.itemView.setOnClickListener(v -> {
             if (onEventClickListener != null) {
@@ -51,6 +62,27 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
     @Override
     public int getItemCount() {
         return events.size();
+    }
+
+    private String buildDetails(Event event) {
+        String description = event.getDescription() != null ? event.getDescription().trim() : "";
+        String location = event.getLocation() != null ? event.getLocation().trim() : "";
+
+        if (!description.isEmpty() && !location.isEmpty()) {
+            return description + " • " + location;
+        }
+        if (!description.isEmpty()) {
+            return description;
+        }
+        return location;
+    }
+
+    private String formatTime(Timestamp timestamp) {
+        if (timestamp == null) {
+            return "";
+        }
+        Date date = timestamp.toDate();
+        return timeFormat.format(date);
     }
 
     static class EventViewHolder extends RecyclerView.ViewHolder {

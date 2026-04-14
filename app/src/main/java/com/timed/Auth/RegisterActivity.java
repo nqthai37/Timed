@@ -10,7 +10,7 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.timed.MainActivity;
+import com.timed.activities.MainActivity;
 import com.timed.R;
 import com.timed.managers.GoogleAuthManager;
 import com.timed.repositories.AuthRepository;

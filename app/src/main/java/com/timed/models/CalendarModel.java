@@ -1,4 +1,4 @@
-package com.timed.data.models;
+package com.timed.models;
 
 import com.google.firebase.firestore.ServerTimestamp;
 import com.google.gson.annotations.SerializedName;
