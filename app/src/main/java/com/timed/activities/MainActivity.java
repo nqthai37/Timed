@@ -904,13 +904,11 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             @Override
             public void onSuccess(Boolean result) {
                 Log.d(TAG, "Firebase connection verified");
-                Toast.makeText(MainActivity.this, "Kết nối Firebase thành công", Toast.LENGTH_SHORT).show();
             }
 
             @Override
             public void onFailure(String errorMessage) {
                 Log.e(TAG, "Firebase connection failed: " + errorMessage);
-                Toast.makeText(MainActivity.this, "Lỗi kết nối Firebase: " + errorMessage, Toast.LENGTH_SHORT).show();
             }
         });
     }
