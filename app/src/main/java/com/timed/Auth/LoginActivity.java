@@ -139,9 +139,8 @@ public class LoginActivity extends AppCompatActivity {
             @Override
             public void onError(String errorMessage) {
                 btnGoogleSignIn.setEnabled(true);
-                Log.e(TAG, "Google sign-in UI error: " + errorMessage);
                 if (!errorMessage.equals("cancelled")) {
-                    Toast.makeText(LoginActivity.this, "Google UI Failed: " + errorMessage, Toast.LENGTH_LONG).show();
+                    Toast.makeText(LoginActivity.this, "Google sign-in failed", Toast.LENGTH_LONG).show();
                 }
             }
         });
@@ -156,15 +155,14 @@ public class LoginActivity extends AppCompatActivity {
         authRepository.signInWithGoogle(idToken)
                 .addOnSuccessListener(user -> {
                     prefs.edit().putBoolean("REMEMBER_ME", cbRememberMe.isChecked()).apply();
-                    Toast.makeText(this, "Login Successful!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Login successful", Toast.LENGTH_SHORT).show();
                     Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                     startActivity(intent);
                 })
                 .addOnFailureListener(e -> {
                     btnGoogleSignIn.setEnabled(true);
-                    Log.e(TAG, "Google auth failed", e);
-                    Toast.makeText(this, "Auth Failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, "Authentication failed", Toast.LENGTH_LONG).show();
                 });
     }
 
@@ -212,8 +210,6 @@ public class LoginActivity extends AppCompatActivity {
                     btnLogin.setEnabled(true);
                     btnLogin.setText("Log In");
 
-                    Log.e(TAG, "Email/password login failed", e);
-
                     if (e.getMessage() != null && e.getMessage().contains("Please verify your email")) {
 
                         Toast.makeText(this, "Please verify your email before login", Toast.LENGTH_SHORT).show();
@@ -231,7 +227,7 @@ public class LoginActivity extends AppCompatActivity {
                         tilPassword.setError("Incorrect email or password");
 
                     } else {
-                        Toast.makeText(LoginActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                        Toast.makeText(LoginActivity.this, "Login failed", Toast.LENGTH_LONG).show();
                     }
                 });
     }

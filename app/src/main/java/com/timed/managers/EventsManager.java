@@ -129,14 +129,31 @@ public class EventsManager {
                     if (!task.isSuccessful()) {
                         throw task.getException();
                     }
-                    
+
                     List<Event> events = new ArrayList<>();
                     QuerySnapshot snapshot = task.getResult();
+
+                    long windowStart = startDate != null ? startDate.toDate().getTime() : Long.MIN_VALUE;
+
                     for (QueryDocumentSnapshot doc : snapshot) {
                         Event event = doc.toObject(Event.class);
                         event.setId(doc.getId());
-                        events.add(event);
+
+                        // Determine effective event end time (fallback to startTime if missing)
+                        com.google.firebase.Timestamp eventEnd = event.getEndTime() != null ? event.getEndTime()
+                                : event.getStartTime();
+
+                        if (eventEnd == null || event.getStartTime() == null) {
+                            // skip malformed entries
+                            continue;
+                        }
+
+                        // Include events that end at or after the window start (i.e., they overlap)
+                        if (eventEnd.toDate().getTime() >= windowStart) {
+                            events.add(event);
+                        }
                     }
+
                     return events;
                 });
     }
@@ -277,7 +294,7 @@ public class EventsManager {
                     Log.d(TAG, "Rescheduled reminders for " + events.size() + " events");
                 })
                 .addOnFailureListener(e -> {
-                    Log.e(TAG, "Failed to reschedule reminders: " + e.getMessage());
+                    Log.e(TAG, "Failed to reschedule reminders", e);
                 });
     }
 }
