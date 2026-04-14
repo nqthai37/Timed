@@ -1,7 +1,5 @@
 package com.timed.repositories;
 
-import androidx.annotation.NonNull;
-
 import com.timed.models.Event;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.Timestamp;
@@ -10,8 +8,6 @@ import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QuerySnapshot;
-
-import java.util.Date;
 
 public class EventsRepository {
     private final FirebaseFirestore db;
@@ -65,10 +61,39 @@ public class EventsRepository {
     public Task<QuerySnapshot> getEventsByDateRange(String calendarId, Timestamp startDate, Timestamp endDate) {
         Task<QuerySnapshot> t = db.collection(EVENTS_COLLECTION)
             .whereEqualTo("calendar_id", calendarId)
+            .whereGreaterThanOrEqualTo("start_time", startDate)
             .whereLessThanOrEqualTo("start_time", endDate)
             .orderBy("start_time", Query.Direction.ASCENDING)
             .get();
         t.addOnFailureListener(e -> logRepoError("getEventsByDateRange", e));
+        return t;
+    }
+
+    /**
+     * Get upcoming events for a participant
+     */
+    public Task<QuerySnapshot> getUpcomingEventsByParticipant(String userId, Timestamp now) {
+        Task<QuerySnapshot> t = db.collection(EVENTS_COLLECTION)
+            .whereArrayContains("participant_id", userId)
+            .whereGreaterThanOrEqualTo("start_time", now)
+            .orderBy("start_time", Query.Direction.ASCENDING)
+            .get();
+        t.addOnFailureListener(e -> logRepoError("getUpcomingEventsByParticipant", e));
+        return t;
+    }
+
+    /**
+     * Get events that need reminders scheduled within a time window
+     */
+    public Task<QuerySnapshot> getEventsThatNeedReminders(String userId, Timestamp beforeDate) {
+        Timestamp now = Timestamp.now();
+        Task<QuerySnapshot> t = db.collection(EVENTS_COLLECTION)
+            .whereArrayContains("participant_id", userId)
+            .whereGreaterThanOrEqualTo("start_time", now)
+            .whereLessThanOrEqualTo("start_time", beforeDate)
+            .orderBy("start_time", Query.Direction.ASCENDING)
+            .get();
+        t.addOnFailureListener(e -> logRepoError("getEventsThatNeedReminders", e));
         return t;
     }
 

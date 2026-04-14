@@ -21,11 +21,9 @@ public class EventsManager {
     private static EventsManager instance;
     private final EventsRepository eventsRepository;
     private final EventsNotificationManager notificationManager;
-    private final Context context;
     private static final String TAG = "EventsManager";
 
     private EventsManager(Context context) {
-        this.context = context;
         this.eventsRepository = new EventsRepository();
         this.notificationManager = new EventsNotificationManager(context);
     }
@@ -64,7 +62,9 @@ public class EventsManager {
                                 .document(eventId);
                         return Tasks.forResult(docRef);
                     }
-                    return Tasks.forException(task.getException());
+                        Exception exception = task.getException();
+                        return Tasks.forException(exception != null ? exception
+                            : new Exception("Failed to create event"));
                 });
     }
 
@@ -89,7 +89,9 @@ public class EventsManager {
                         // Update event in database
                         return eventsRepository.updateEvent(eventId, event);
                     }
-                    return Tasks.forException(task.getException());
+                    Exception exception = task.getException();
+                    return Tasks.forException(exception != null ? exception
+                            : new Exception("Failed to update event"));
                 })
                 .addOnSuccessListener(aVoid -> {
                     Log.d(TAG, "Event updated successfully: " + eventId);
@@ -105,7 +107,9 @@ public class EventsManager {
         return eventsRepository.getEventsByCalendarId(calendarId)
                 .continueWith(task -> {
                     if (!task.isSuccessful()) {
-                        throw task.getException();
+                        Exception exception = task.getException();
+                        throw (exception != null ? exception
+                                : new Exception("Failed to load events"));
                     }
                     
                     List<Event> events = new ArrayList<>();
@@ -127,7 +131,9 @@ public class EventsManager {
         return eventsRepository.getEventsByDateRange(calendarId, startDate, endDate)
                 .continueWith(task -> {
                     if (!task.isSuccessful()) {
-                        throw task.getException();
+                        Exception exception = task.getException();
+                        throw (exception != null ? exception
+                                : new Exception("Failed to load events by date range"));
                     }
 
                     List<Event> events = new ArrayList<>();
@@ -167,7 +173,9 @@ public class EventsManager {
         return eventsRepository.getUpcomingEventsByParticipant(userId, now)
                 .continueWith(task -> {
                     if (!task.isSuccessful()) {
-                        throw task.getException();
+                        Exception exception = task.getException();
+                        throw (exception != null ? exception
+                                : new Exception("Failed to load upcoming events"));
                     }
                     
                     List<Event> events = new ArrayList<>();
@@ -192,7 +200,9 @@ public class EventsManager {
         return eventsRepository.getEventsThatNeedReminders(userId, beforeDate)
                 .continueWith(task -> {
                     if (!task.isSuccessful()) {
-                        throw task.getException();
+                        Exception exception = task.getException();
+                        throw (exception != null ? exception
+                                : new Exception("Failed to load events for reminders"));
                     }
                     
                     List<Event> events = new ArrayList<>();
@@ -213,7 +223,9 @@ public class EventsManager {
         return eventsRepository.getEventById(eventId)
                 .continueWith(task -> {
                     if (!task.isSuccessful()) {
-                        throw task.getException();
+                        Exception exception = task.getException();
+                        throw (exception != null ? exception
+                                : new Exception("Failed to load event"));
                     }
                     
                     Event event = task.getResult().toObject(Event.class);
