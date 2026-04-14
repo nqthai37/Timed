@@ -42,12 +42,12 @@ public class EventsManager {
         if (event.getId() == null) {
             event.setId(UUID.randomUUID().toString());
         }
-        
+
         event.setCreatedAt(Timestamp.now());
         event.setUpdatedAt(Timestamp.now());
 
         final String eventId = event.getId();
-        
+
         return eventsRepository.createEvent(event)
                 .addOnSuccessListener(aVoid -> {
                     Log.d(TAG, "Event created successfully: " + eventId);
@@ -56,14 +56,13 @@ public class EventsManager {
                 })
                 .continueWithTask(task -> {
                     if (task.isSuccessful()) {
-                        DocumentReference docRef = 
-                                FirebaseFirestore.getInstance()
+                        DocumentReference docRef = FirebaseFirestore.getInstance()
                                 .collection("events")
                                 .document(eventId);
                         return Tasks.forResult(docRef);
                     }
-                        Exception exception = task.getException();
-                        return Tasks.forException(exception != null ? exception
+                    Exception exception = task.getException();
+                    return Tasks.forException(exception != null ? exception
                             : new Exception("Failed to create event"));
                 });
     }
@@ -73,7 +72,7 @@ public class EventsManager {
      */
     public Task<Void> updateEvent(String eventId, Event event) {
         event.setUpdatedAt(Timestamp.now());
-        
+
         return eventsRepository.getEventById(eventId)
                 .continueWithTask(task -> {
                     if (task.isSuccessful()) {
@@ -85,7 +84,7 @@ public class EventsManager {
                                 notificationManager.cancelEventReminders(oldEvent);
                             }
                         }
-                        
+
                         // Update event in database
                         return eventsRepository.updateEvent(eventId, event);
                     }
@@ -111,7 +110,7 @@ public class EventsManager {
                         throw (exception != null ? exception
                                 : new Exception("Failed to load events"));
                     }
-                    
+
                     List<Event> events = new ArrayList<>();
                     QuerySnapshot snapshot = task.getResult();
                     for (QueryDocumentSnapshot doc : snapshot) {
@@ -169,7 +168,7 @@ public class EventsManager {
      */
     public Task<List<Event>> getUpcomingEventsForUser(String userId) {
         Timestamp now = Timestamp.now();
-        
+
         return eventsRepository.getUpcomingEventsByParticipant(userId, now)
                 .continueWith(task -> {
                     if (!task.isSuccessful()) {
@@ -177,7 +176,7 @@ public class EventsManager {
                         throw (exception != null ? exception
                                 : new Exception("Failed to load upcoming events"));
                     }
-                    
+
                     List<Event> events = new ArrayList<>();
                     QuerySnapshot snapshot = task.getResult();
                     for (QueryDocumentSnapshot doc : snapshot) {
@@ -196,7 +195,7 @@ public class EventsManager {
         // Calculate time window: now to 24 hours from now
         long timeWindow = 24 * 60 * 60 * 1000; // 24 hours in ms
         Timestamp beforeDate = new Timestamp(new java.util.Date(System.currentTimeMillis() + timeWindow));
-        
+
         return eventsRepository.getEventsThatNeedReminders(userId, beforeDate)
                 .continueWith(task -> {
                     if (!task.isSuccessful()) {
@@ -204,7 +203,7 @@ public class EventsManager {
                         throw (exception != null ? exception
                                 : new Exception("Failed to load events for reminders"));
                     }
-                    
+
                     List<Event> events = new ArrayList<>();
                     QuerySnapshot snapshot = task.getResult();
                     for (QueryDocumentSnapshot doc : snapshot) {
@@ -227,7 +226,7 @@ public class EventsManager {
                         throw (exception != null ? exception
                                 : new Exception("Failed to load event"));
                     }
-                    
+
                     Event event = task.getResult().toObject(Event.class);
                     if (event != null) {
                         event.setId(task.getResult().getId());

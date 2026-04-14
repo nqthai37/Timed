@@ -2,11 +2,15 @@ package com.timed.repositories;
 
 import android.util.Log;
 
+import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.SetOptions;
 import com.timed.models.CalendarModel;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Repository for managing Calendar operations with Firebase Firestore
@@ -25,20 +29,14 @@ public class CalendarRepository {
      * Create a new calendar
      */
     public void createCalendar(CalendarModel calendar, RepositoryCallback<String> callback) {
-        db.collection(CALENDARS_COLLECTION)
-                .add(calendar)
-                .addOnSuccessListener(documentReference -> {
-                    String calendarId = documentReference.getId();
-                    // Update the calendar with its generated ID
-                    documentReference.update("id", calendarId)
-                            .addOnSuccessListener(unused -> {
-                                callback.onSuccess(calendarId);
-                                Log.d(TAG, "Calendar created with ID: " + calendarId);
-                            })
-                            .addOnFailureListener(e -> {
-                                callback.onFailure(e.getMessage());
-                                Log.e(TAG, "Failed to update calendar ID: " + e.getMessage());
-                            });
+        com.google.firebase.firestore.DocumentReference docRef = db.collection(CALENDARS_COLLECTION).document();
+        String calendarId = docRef.getId();
+        Map<String, Object> payload = buildCalendarPayload(calendar, calendarId, true);
+
+        docRef.set(payload)
+                .addOnSuccessListener(unused -> {
+                    callback.onSuccess(calendarId);
+                    Log.d(TAG, "Calendar created with ID: " + calendarId);
                 })
                 .addOnFailureListener(e -> {
                     callback.onFailure(e.getMessage());
@@ -113,9 +111,10 @@ public class CalendarRepository {
      * Update a calendar
      */
     public void updateCalendar(String calendarId, CalendarModel calendar, RepositoryCallback<Void> callback) {
+        Map<String, Object> payload = buildCalendarPayload(calendar, calendarId, false);
         db.collection(CALENDARS_COLLECTION)
                 .document(calendarId)
-                .set(calendar)
+                .set(payload, SetOptions.merge())
                 .addOnSuccessListener(unused -> {
                     callback.onSuccess(null);
                     Log.d(TAG, "Calendar updated: " + calendarId);
@@ -124,6 +123,28 @@ public class CalendarRepository {
                     callback.onFailure(e.getMessage());
                     Log.e(TAG, "Failed to update calendar: " + e.getMessage());
                 });
+    }
+
+    private Map<String, Object> buildCalendarPayload(CalendarModel calendar, String calendarId,
+            boolean includeCreateTimestamps) {
+        Map<String, Object> payload = new HashMap<>();
+        if (calendarId != null && !calendarId.isEmpty()) {
+            payload.put("id", calendarId);
+        }
+        if (calendar != null) {
+            payload.put("name", calendar.getName());
+            payload.put("description", calendar.getDescription());
+            payload.put("owner_id", calendar.getOwnerId());
+            payload.put("member_ids", calendar.getMemberIds());
+            payload.put("roles", calendar.getRoles());
+            payload.put("color", calendar.getColor());
+            payload.put("is_public", calendar.isPublic());
+        }
+        if (includeCreateTimestamps) {
+            payload.put("created_at", FieldValue.serverTimestamp());
+        }
+        payload.put("updated_at", FieldValue.serverTimestamp());
+        return payload;
     }
 
     /**
@@ -151,8 +172,7 @@ public class CalendarRepository {
                 .document(calendarId)
                 .update(
                         "member_ids", com.google.firebase.firestore.FieldValue.arrayUnion(userId),
-                        "roles." + userId, role
-                )
+                        "roles." + userId, role)
                 .addOnSuccessListener(unused -> {
                     callback.onSuccess(null);
                     Log.d(TAG, "Member added to calendar: " + calendarId);
@@ -171,8 +191,7 @@ public class CalendarRepository {
                 .document(calendarId)
                 .update(
                         "member_ids", com.google.firebase.firestore.FieldValue.arrayRemove(userId),
-                        "roles." + userId, com.google.firebase.firestore.FieldValue.delete()
-                )
+                        "roles." + userId, com.google.firebase.firestore.FieldValue.delete())
                 .addOnSuccessListener(unused -> {
                     callback.onSuccess(null);
                     Log.d(TAG, "Member removed from calendar: " + calendarId);
@@ -183,4 +202,3 @@ public class CalendarRepository {
                 });
     }
 }
-

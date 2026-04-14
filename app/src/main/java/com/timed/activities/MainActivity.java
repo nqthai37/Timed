@@ -26,6 +26,7 @@ import com.timed.adapters.EventAdapter;
 import com.timed.adapters.HorizontalCalendarAdapter;
 import com.timed.adapters.WeekEventAdapter;
 import com.timed.models.CalendarDay;
+import com.timed.models.CalendarModel;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.tabs.TabLayout;
@@ -36,6 +37,7 @@ import com.timed.activities.SearchFilterActivity;
 import com.timed.activities.SettingsActivity;
 import com.timed.managers.EventsManager;
 import com.timed.models.Event;
+import com.timed.utils.CalendarIntegrationService;
 import com.timed.utils.FirebaseAuthManager;
 import com.timed.utils.FirebaseHelper;
 import com.timed.utils.FirebaseInitializer;
@@ -46,13 +48,15 @@ import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity implements CalendarAdapter.OnItemListener {
 
     private static final String TAG = "MainActivity";
-
     private RecyclerView rvCalendar;
     private RecyclerView rvHorizontalCalendar;
 
@@ -83,6 +87,9 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
     private FirebaseInitializer firebaseInitializer;
     private FirebaseHelper firebaseHelper;
     private FirebaseAuthManager firebaseAuthManager;
+    private CalendarIntegrationService calendarIntegrationService;
+    private String defaultCalendarId;
+    private final List<String> visibleCalendarIds = new ArrayList<>();
 
     private EventsManager eventsManager;
 
@@ -95,6 +102,8 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         // Khởi tạo Firebase
         initializeFirebase();
         eventsManager = EventsManager.getInstance(this);
+        calendarIntegrationService = new CalendarIntegrationService();
+        defaultCalendarId = calendarIntegrationService.getCachedDefaultCalendarId(this);
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.mainContent), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -233,7 +242,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                 btnFabEvent.setOnClickListener(v -> {
                     toggleFabMenu();
                     Intent intent = new Intent(this, CreateEventActivity.class);
-                    intent.putExtra("calendarId", "default_calendar");
+                    intent.putExtra("calendarId", getActiveCalendarId());
                     startActivity(intent);
                 });
             }
@@ -402,7 +411,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         for (Event event : events) {
             EventTimeParts parts = toTimeParts(event);
             if (parts == null) {
-            continue;
+                continue;
             }
 
             String title = event.getTitle() != null ? event.getTitle() : "(Untitled)";
@@ -412,7 +421,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             String detailsColor = bgRes == R.drawable.bg_day_event_light ? "#64748b" : "#E6FFFFFF";
 
             addEventCardToTimeline(timelineContainer, hourHeightPx, title, details, parts.startHour,
-                parts.startMinute, parts.durationMinutes, bgRes, titleColor, detailsColor);
+                    parts.startMinute, parts.durationMinutes, bgRes, titleColor, detailsColor);
         }
     }
 
@@ -809,8 +818,12 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         String formattedDate = date.format(formatter).toUpperCase();
         tvUpcomingTitle.setText("UPCOMING FOR " + formattedDate);
 
-        String calendarId = "default_calendar";
-        fetchEventsForRange(date, date, calendarId, events -> {
+        List<String> calendarIds = getVisibleCalendarIds();
+        if (calendarIds.isEmpty()) {
+            ensureDefaultCalendarReady(() -> updateEventsForDate(date));
+            return;
+        }
+        fetchEventsForCalendars(date, date, calendarIds, events -> {
             currentEvents.clear();
             currentEvents.addAll(events);
             eventAdapter.notifyDataSetChanged();
@@ -822,7 +835,11 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         Intent intent = new Intent(this, CreateEventActivity.class);
         intent.putExtra("mode", "edit");
         intent.putExtra("eventId", event.getId());
-        intent.putExtra("calendarId", event.getCalendarId() != null ? event.getCalendarId() : "default_calendar");
+        String fallbackCalendarId = event.getCalendarId();
+        if (fallbackCalendarId == null || fallbackCalendarId.isEmpty()) {
+            fallbackCalendarId = getActiveCalendarId();
+        }
+        intent.putExtra("calendarId", fallbackCalendarId);
         intent.putExtra("title", event.getTitle());
         intent.putExtra("description", event.getDescription());
         intent.putExtra("location", event.getLocation());
@@ -869,7 +886,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             }).start();
         }
     }
-    
+
     /**
      * Khởi tạo Firebase
      */
@@ -878,24 +895,24 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             // Khởi tạo Firebase Initializer
             firebaseInitializer = FirebaseInitializer.getInstance();
             firebaseInitializer.initialize(this);
-            
+
             // Tạo Firebase Helper
             firebaseHelper = new FirebaseHelper();
-            
+
             // Tạo Firebase Auth Manager
             firebaseAuthManager = new FirebaseAuthManager();
-            
+
             Log.d(TAG, "Firebase initialized successfully");
-            
+
             // Kiểm tra kết nối Firebase
             checkFirebaseConnection();
-            
+
         } catch (Exception e) {
             Log.e(TAG, "Error initializing Firebase: " + e.getMessage(), e);
             Toast.makeText(this, "Lỗi khởi tạo Firebase", Toast.LENGTH_SHORT).show();
         }
     }
-    
+
     /**
      * Kiểm tra kết nối Firebase
      */
@@ -912,21 +929,21 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             }
         });
     }
-    
+
     /**
      * Lấy Firebase Auth Manager
      */
     public FirebaseAuthManager getFirebaseAuthManager() {
         return firebaseAuthManager;
     }
-    
+
     /**
      * Lấy Firebase Helper
      */
     public FirebaseHelper getFirebaseHelper() {
         return firebaseHelper;
     }
-    
+
     /**
      * Lấy Firebase Initializer
      */
@@ -934,17 +951,156 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         return firebaseInitializer;
     }
 
+    private String getActiveCalendarId() {
+        if (defaultCalendarId != null && !defaultCalendarId.isEmpty()) {
+            return defaultCalendarId;
+        }
+        if (calendarIntegrationService != null) {
+            defaultCalendarId = calendarIntegrationService.getCachedDefaultCalendarId(this);
+        }
+        return defaultCalendarId;
+    }
+
+    private void ensureDefaultCalendarReady(Runnable onReady) {
+        if (calendarIntegrationService == null) {
+            calendarIntegrationService = new CalendarIntegrationService();
+        }
+        calendarIntegrationService.ensureDefaultCalendar(this,
+                new CalendarIntegrationService.DefaultCalendarListener() {
+                    @Override
+                    public void onReady(String calendarId, java.util.List<com.timed.models.CalendarModel> calendars) {
+                        defaultCalendarId = calendarId;
+                        updateVisibleCalendarIds(calendars);
+                        if (onReady != null) {
+                            onReady.run();
+                        }
+                    }
+
+                    @Override
+                    public void onError(String errorMessage) {
+                        Log.e(TAG, "Failed to ensure default calendar: " + errorMessage);
+                    }
+                });
+    }
+
+    private List<String> getVisibleCalendarIds() {
+        if (!visibleCalendarIds.isEmpty()) {
+            return new ArrayList<>(visibleCalendarIds);
+        }
+        String calendarId = getActiveCalendarId();
+        if (calendarId != null && !calendarId.isEmpty()) {
+            List<String> ids = new ArrayList<>();
+            ids.add(calendarId);
+            return ids;
+        }
+        return new ArrayList<>();
+    }
+
+    private void updateVisibleCalendarIds(List<CalendarModel> calendars) {
+        visibleCalendarIds.clear();
+        if (calendars == null) {
+            return;
+        }
+        for (CalendarModel calendar : calendars) {
+            if (calendar != null && calendar.getId() != null && !calendar.getId().isEmpty()) {
+                visibleCalendarIds.add(calendar.getId());
+            }
+        }
+    }
+
+    private void fetchEventsForCalendars(LocalDate startDate, LocalDate endDate, List<String> calendarIds,
+            EventsLoadCallback callback) {
+        if (calendarIds == null || calendarIds.isEmpty()) {
+            callback.onLoaded(new ArrayList<>());
+            return;
+        }
+        List<Event> merged = new ArrayList<>();
+        fetchEventsForCalendarsSequential(startDate, endDate, calendarIds, 0, merged, callback);
+    }
+
+    private void fetchEventsForCalendarsSequential(LocalDate startDate, LocalDate endDate, List<String> calendarIds,
+            int index, List<Event> merged, EventsLoadCallback callback) {
+        if (index >= calendarIds.size()) {
+            callback.onLoaded(sortEvents(merged));
+            return;
+        }
+
+        String calendarId = calendarIds.get(index);
+        fetchEventsForRange(startDate, endDate, calendarId, events -> {
+            mergeEvents(merged, events);
+            fetchEventsForCalendarsSequential(startDate, endDate, calendarIds, index + 1, merged, callback);
+        });
+    }
+
+    private void mergeEvents(List<Event> target, List<Event> incoming) {
+        if (incoming == null || incoming.isEmpty()) {
+            return;
+        }
+
+        Map<String, Event> map = new HashMap<>();
+        for (Event event : target) {
+            if (event != null && event.getId() != null) {
+                map.put(event.getId(), event);
+            }
+        }
+
+        for (Event event : incoming) {
+            if (event == null) {
+                continue;
+            }
+            String id = event.getId();
+            if (id == null || !map.containsKey(id)) {
+                target.add(event);
+                if (id != null) {
+                    map.put(id, event);
+                }
+            }
+        }
+    }
+
+    private List<Event> sortEvents(List<Event> events) {
+        if (events == null || events.size() <= 1) {
+            return events == null ? new ArrayList<>() : events;
+        }
+
+        Collections.sort(events, (a, b) -> {
+            if (a == null || a.getStartTime() == null) {
+                return -1;
+            }
+            if (b == null || b.getStartTime() == null) {
+                return 1;
+            }
+            return a.getStartTime().toDate().compareTo(b.getStartTime().toDate());
+        });
+        return events;
+    }
+
     private void loadDayEvents(LocalDate date) {
-        fetchEventsForRange(date, date, "default_calendar", events -> renderDayViewTimeline(date, events));
+        List<String> calendarIds = getVisibleCalendarIds();
+        if (calendarIds.isEmpty()) {
+            ensureDefaultCalendarReady(() -> loadDayEvents(date));
+            return;
+        }
+        fetchEventsForCalendars(date, date, calendarIds, events -> renderDayViewTimeline(date, events));
     }
 
     private void loadThreeDaysEvents(LocalDate startDate) {
-        fetchEventsForRange(startDate, startDate.plusDays(2), "default_calendar",
+        List<String> calendarIds = getVisibleCalendarIds();
+        if (calendarIds.isEmpty()) {
+            ensureDefaultCalendarReady(() -> loadThreeDaysEvents(startDate));
+            return;
+        }
+        fetchEventsForCalendars(startDate, startDate.plusDays(2), calendarIds,
                 events -> render3DaysTimeline(startDate, events));
     }
 
     private void loadWeekEvents(LocalDate startOfWeek) {
-        fetchEventsForRange(startOfWeek, startOfWeek.plusDays(6), "default_calendar",
+        List<String> calendarIds = getVisibleCalendarIds();
+        if (calendarIds.isEmpty()) {
+            ensureDefaultCalendarReady(() -> loadWeekEvents(startOfWeek));
+            return;
+        }
+        fetchEventsForCalendars(startOfWeek, startOfWeek.plusDays(6), calendarIds,
                 events -> renderWeekGridTimeline(startOfWeek, events));
     }
 
@@ -955,8 +1111,10 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             return;
         }
 
-        Timestamp startTimestamp = toTimestamp(startDate.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
-        long endMillis = endDate.plusDays(1).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli() - 1;
+        Timestamp startTimestamp = toTimestamp(
+                startDate.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
+        long endMillis = endDate.plusDays(1).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+                - 1;
         Timestamp endTimestamp = toTimestamp(endMillis);
 
         eventsManager.getEventsByDateRange(calendarId, startTimestamp, endTimestamp)

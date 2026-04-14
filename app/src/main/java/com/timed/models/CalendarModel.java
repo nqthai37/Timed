@@ -1,5 +1,6 @@
 package com.timed.models;
 
+import com.google.firebase.firestore.PropertyName;
 import com.google.firebase.firestore.ServerTimestamp;
 import com.google.gson.annotations.SerializedName;
 import java.io.Serializable;
@@ -13,35 +14,25 @@ import java.util.Map;
  * Represents a Calendar (Work, Personal, Team, etc.)
  */
 public class CalendarModel implements Serializable {
-    @SerializedName("id")
     private String id;
 
-    @SerializedName("name")
     private String name;
 
-    @SerializedName("description")
     private String description;
 
-    @SerializedName("owner_id")
     private String ownerId;
 
-    @SerializedName("member_ids")
     private List<String> memberIds; // For fast array-contains queries
 
-    @SerializedName("roles")
     private Map<String, String> roles; // uid -> permission mapping (admin, editor, viewer)
 
-    @SerializedName("color")
     private String color; // Hex color code
 
-    @SerializedName("is_public")
     private boolean isPublic;
 
-    @SerializedName("created_at")
     @ServerTimestamp
     private Date createdAt;
 
-    @SerializedName("updated_at")
     @ServerTimestamp
     private Date updatedAt;
 
@@ -50,82 +41,102 @@ public class CalendarModel implements Serializable {
         this.roles = new HashMap<>();
     }
 
+    @PropertyName("id")
     public String getId() {
         return id;
     }
 
+    @PropertyName("id")
     public void setId(String id) {
         this.id = id;
     }
 
+    @PropertyName("name")
     public String getName() {
         return name;
     }
 
+    @PropertyName("name")
     public void setName(String name) {
         this.name = name;
     }
 
+    @PropertyName("description")
     public String getDescription() {
         return description;
     }
 
+    @PropertyName("description")
     public void setDescription(String description) {
         this.description = description;
     }
 
+    @PropertyName("owner_id")
     public String getOwnerId() {
         return ownerId;
     }
 
+    @PropertyName("owner_id")
     public void setOwnerId(String ownerId) {
         this.ownerId = ownerId;
     }
 
+    @PropertyName("member_ids")
     public List<String> getMemberIds() {
         return memberIds;
     }
 
+    @PropertyName("member_ids")
     public void setMemberIds(List<String> memberIds) {
         this.memberIds = memberIds;
     }
 
+    @PropertyName("roles")
     public Map<String, String> getRoles() {
         return roles;
     }
 
+    @PropertyName("roles")
     public void setRoles(Map<String, String> roles) {
         this.roles = roles;
     }
 
+    @PropertyName("color")
     public String getColor() {
         return color;
     }
 
+    @PropertyName("color")
     public void setColor(String color) {
         this.color = color;
     }
 
+    @PropertyName("is_public")
     public boolean isPublic() {
         return isPublic;
     }
 
+    @PropertyName("is_public")
     public void setPublic(boolean isPublic) {
         this.isPublic = isPublic;
     }
 
+    @PropertyName("created_at")
     public Date getCreatedAt() {
         return createdAt;
     }
 
+    @PropertyName("created_at")
     public void setCreatedAt(Date createdAt) {
         this.createdAt = createdAt;
     }
 
+    @PropertyName("updated_at")
     public Date getUpdatedAt() {
         return updatedAt;
     }
 
+    @PropertyName("updated_at")
     public void setUpdatedAt(Date updatedAt) {
         this.updatedAt = updatedAt;
     }
@@ -146,4 +157,3 @@ public class CalendarModel implements Serializable {
         return roles.getOrDefault(uid, "viewer");
     }
 }
-
