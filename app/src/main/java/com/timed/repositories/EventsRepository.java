@@ -34,7 +34,6 @@ public class EventsRepository {
     public Task<QuerySnapshot> getEventsByCalendarId(String calendarId) {
         return db.collection(EVENTS_COLLECTION)
                 .whereEqualTo("calendar_id", calendarId)
-                .orderBy("start_time", Query.Direction.ASCENDING)
                 .get();
     }
 
@@ -44,9 +43,6 @@ public class EventsRepository {
     public Task<QuerySnapshot> getEventsByDateRange(String calendarId, Timestamp startDate, Timestamp endDate) {
         return db.collection(EVENTS_COLLECTION)
                 .whereEqualTo("calendar_id", calendarId)
-                .whereGreaterThanOrEqualTo("start_time", startDate)
-                .whereLessThanOrEqualTo("end_time", endDate)
-                .orderBy("start_time", Query.Direction.ASCENDING)
                 .get();
     }
 

@@ -503,6 +503,12 @@ public class CreateEventActivity extends AppCompatActivity {
         String userId = firebaseInitializer.getCurrentUserId();
         if (userId != null) {
             newEvent.setCreatedBy(userId);
+            if (newEvent.getParticipantId() != null && !newEvent.getParticipantId().contains(userId)) {
+                newEvent.getParticipantId().add(userId);
+            }
+            if (newEvent.getParticipantStatus() != null) {
+                newEvent.getParticipantStatus().put(userId, "accepted");
+            }
         }
 
         eventsManager.createEvent(newEvent)

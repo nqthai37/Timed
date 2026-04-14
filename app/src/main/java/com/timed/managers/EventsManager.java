@@ -14,6 +14,7 @@ import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -115,6 +116,7 @@ public class EventsManager {
                         event.setId(doc.getId());
                         events.add(event);
                     }
+                    events.sort(Comparator.comparingLong(this::getStartMillisForSort));
                     Log.d(TAG, "Retrieved " + events.size() + " events for calendar: " + calendarId);
                     return events;
                 });
@@ -130,15 +132,44 @@ public class EventsManager {
                         throw task.getException();
                     }
                     
+                    long rangeStart = startDate.toDate().getTime();
+                    long rangeEnd = endDate.toDate().getTime();
                     List<Event> events = new ArrayList<>();
                     QuerySnapshot snapshot = task.getResult();
                     for (QueryDocumentSnapshot doc : snapshot) {
                         Event event = doc.toObject(Event.class);
                         event.setId(doc.getId());
-                        events.add(event);
+                        if (isEventOverlappingRange(event, rangeStart, rangeEnd)) {
+                            events.add(event);
+                        }
                     }
+                    events.sort(Comparator.comparingLong(this::getStartMillisForSort));
                     return events;
                 });
+    }
+
+    private boolean isEventOverlappingRange(Event event, long rangeStart, long rangeEnd) {
+        if (event == null || event.getStartTime() == null) {
+            return false;
+        }
+
+        long eventStart = event.getStartTime().toDate().getTime();
+        long eventEnd = event.getEndTime() != null
+                ? event.getEndTime().toDate().getTime()
+                : eventStart;
+
+        if (eventEnd < eventStart) {
+            eventEnd = eventStart;
+        }
+
+        return eventStart <= rangeEnd && eventEnd >= rangeStart;
+    }
+
+    private long getStartMillisForSort(Event event) {
+        if (event == null || event.getStartTime() == null) {
+            return Long.MAX_VALUE;
+        }
+        return event.getStartTime().toDate().getTime();
     }
 
     /**
