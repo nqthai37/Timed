@@ -1,4 +1,4 @@
-package com.timed.Setting.HabitTracker;
+package com.timed.Features.HabitTracker;
 
 import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;

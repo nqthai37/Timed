@@ -1,4 +1,4 @@
-package com.timed.Setting.FreeSlotFinder;
+package com.timed.Features.FreeSlotFinder;
 
 import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;

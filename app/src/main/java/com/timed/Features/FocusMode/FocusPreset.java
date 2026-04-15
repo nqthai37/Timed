@@ -1,4 +1,4 @@
-package com.timed.Setting.FocusMode;
+package com.timed.Features.FocusMode;
 
 import com.google.firebase.firestore.Exclude;
 

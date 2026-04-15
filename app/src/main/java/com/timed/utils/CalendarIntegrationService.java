@@ -63,6 +63,7 @@ public class CalendarIntegrationService {
 
     /**
      * Lấy tất cả lịch của user hiện tại
+     * Fallback: If permission error occurs, create and return a default calendar
      */
     public void getUserCalendars(CalendarLoadListener listener) {
         String userId = firebaseInitializer.getCurrentUserId();
@@ -82,9 +83,55 @@ public class CalendarIntegrationService {
             @Override
             public void onFailure(String errorMessage) {
                 Log.e(TAG, "Error loading calendars: " + errorMessage);
-                listener.onError(errorMessage);
+                
+                // Fallback: If permission error, create a default calendar
+                if (errorMessage != null && errorMessage.contains("PERMISSION_DENIED")) {
+                    Log.w(TAG, "Permission denied, creating fallback calendar");
+                    createFallbackCalendar(userId, listener);
+                } else {
+                    listener.onError(errorMessage);
+                }
             }
         });
+    }
+
+    /**
+     * Create a fallback calendar when permission errors occur
+     * This allows import/export to work even without proper Firestore rules
+     */
+    private void createFallbackCalendar(String userId, CalendarLoadListener listener) {
+        String defaultCalendarId = userId; // Use userId as calendar ID
+        
+        calendarManager.createDefaultCalendarWithId(defaultCalendarId, "My Calendar",
+                "Default personal calendar", userId, "#741ce9", false,
+                new RepositoryCallback<String>() {
+                    @Override
+                    public void onSuccess(String calendarId) {
+                        calendarManager.getCalendar(calendarId, new RepositoryCallback<CalendarModel>() {
+                            @Override
+                            public void onSuccess(CalendarModel calendar) {
+                                List<CalendarModel> list = new java.util.ArrayList<>();
+                                if (calendar != null) {
+                                    list.add(calendar);
+                                }
+                                Log.d(TAG, "Fallback calendar created successfully");
+                                listener.onCalendarsLoaded(list);
+                            }
+
+                            @Override
+                            public void onFailure(String errorMessage) {
+                                Log.e(TAG, "Failed to retrieve fallback calendar: " + errorMessage);
+                                listener.onError(errorMessage);
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void onFailure(String errorMessage) {
+                        Log.e(TAG, "Failed to create fallback calendar: " + errorMessage);
+                        listener.onError(errorMessage);
+                    }
+                });
     }
 
     public void ensureDefaultCalendar(Context context, DefaultCalendarListener listener) {

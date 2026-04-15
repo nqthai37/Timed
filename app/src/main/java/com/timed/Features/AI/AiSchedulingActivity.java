@@ -1,4 +1,4 @@
-package com.timed.Setting.AI;
+package com.timed.Features.AI;
 
 import android.os.Bundle;
 import android.widget.EditText;
