@@ -1,4 +1,4 @@
-package com.timed.Setting.ConflictResolver;
+package com.timed.Features.ConflictResolver;
 
 import android.content.Context;
 import android.content.Intent;

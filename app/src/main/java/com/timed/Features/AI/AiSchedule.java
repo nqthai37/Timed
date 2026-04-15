@@ -1,4 +1,4 @@
-package com.timed.Setting.AI;
+package com.timed.Features.AI;
 
 public class AiSchedule {
     private String title;

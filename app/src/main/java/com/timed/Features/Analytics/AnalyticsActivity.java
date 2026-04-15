@@ -1,4 +1,4 @@
-package com.timed.Setting.Analytics;
+package com.timed.Features.Analytics;
 
 import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
@@ -6,7 +6,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.timed.R;
-import com.timed.Setting.Analytics.AnalyticsReportAdapter;
+import com.timed.Features.Analytics.AnalyticsReportAdapter;
 
 import java.util.ArrayList;
 import java.util.List;

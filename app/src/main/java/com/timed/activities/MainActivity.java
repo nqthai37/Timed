@@ -42,6 +42,7 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.Timestamp;
 import com.timed.activities.CreateEventActivity;
+import com.timed.activities.FeaturesActivity;
 import com.timed.activities.SearchFilterActivity;
 import com.timed.activities.SettingsActivity;
 import com.timed.Auth.LoginActivity;
@@ -328,44 +329,41 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
 
     private void setupBottomNavigation() {
         BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
-        if (bottomNav == null) {
-            return;
-        }
+        if (bottomNav == null) return;
 
-        bottomNav.setSelectedItemId(R.id.nav_schedule);
         bottomNav.setOnItemSelectedListener(item -> {
             int itemId = item.getItemId();
+
             if (itemId == R.id.nav_schedule) {
                 return true;
             }
 
             if (itemId == R.id.nav_settings) {
+                // Lưu ý: Bạn đang dùng 2 class Settings khác nhau trong code (SettingsActivity và SettingActivity)
+                // Hãy kiểm tra chính xác class bạn muốn mở
                 Intent intent = new Intent(this, SettingsActivity.class);
                 startActivity(intent);
                 return true;
             }
 
-            Toast.makeText(this, "Tính năng đang được phát triển", Toast.LENGTH_SHORT).show();
-            return true;
+            if (itemId == R.id.nav_features) {
+                Intent intent = new Intent(this, FeaturesActivity.class);
+                startActivity(intent);
+                return true;
+            }
+
+            return false;
         });
     }
-
     @Override
     protected void onResume() {
         super.onResume();
         updateEventsForDate(selectedDate);
 
-        // Setup BottomNavigationView
+        // Chỉ cập nhật trạng thái lựa chọn của BottomNav, không set lại Listener
         BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
         if (bottomNav != null) {
-            bottomNav.setOnItemSelectedListener(item -> {
-                if (item.getItemId() == R.id.nav_settings) {
-                    Intent intent = new Intent(MainActivity.this, SettingActivity.class);
-                    startActivity(intent);
-                    return true;
-                }
-                return false;
-            });
+            bottomNav.setSelectedItemId(R.id.nav_schedule);
         }
     }
 
