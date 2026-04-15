@@ -826,8 +826,9 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         intent.putExtra("title", event.getTitle());
         intent.putExtra("description", event.getDescription());
         intent.putExtra("location", event.getLocation());
-        intent.putExtra("startTime", event.getStartTime() != null ? event.getStartTime().toDate().getTime() : 0L);
-        intent.putExtra("endTime", event.getEndTime() != null ? event.getEndTime().toDate().getTime() : 0L);
+        boolean recurring = event.getRecurrenceRule() != null && !event.getRecurrenceRule().trim().isEmpty();
+        intent.putExtra("startTime", recurring ? 0L : (event.getStartTime() != null ? event.getStartTime().toDate().getTime() : 0L));
+        intent.putExtra("endTime", recurring ? 0L : (event.getEndTime() != null ? event.getEndTime().toDate().getTime() : 0L));
         intent.putExtra("allDay", event.getAllDay() != null && event.getAllDay());
         startActivity(intent);
     }

@@ -13,8 +13,10 @@ import androidx.core.app.NotificationCompat;
 
 import com.timed.models.Event;
 import com.timed.services.EventNotificationReceiver;
+import com.timed.utils.RecurrenceUtils;
 
 import java.util.Date;
+import java.util.List;
 
 public class EventsNotificationManager {
     private final Context context;
@@ -23,6 +25,8 @@ public class EventsNotificationManager {
     private static final String CHANNEL_NAME = "Event Reminders";
     private static final int NOTIFICATION_ID_BASE = 2000;
     private static final String TAG = "EventsNotificationManager";
+    private static final long LOOKAHEAD_WINDOW_MS = 60L * 24L * 60L * 60L * 1000L;
+    private static final int MAX_REMINDER_OCCURRENCES = 256;
 
     public EventsNotificationManager(Context context) {
         this.context = context;
@@ -58,7 +62,11 @@ public class EventsNotificationManager {
             return;
         }
 
-        long eventStartTimeMillis = event.getStartTime().toDate().getTime();
+        long occurrenceStartTimeMillis = resolveNextOccurrenceStart(event);
+        if (occurrenceStartTimeMillis <= 0L) {
+            Log.d(TAG, "No upcoming occurrence found for event: " + event.getId());
+            return;
+        }
 
         if (event.getReminders() != null && !event.getReminders().isEmpty()) {
             for (int i = 0; i < event.getReminders().size(); i++) {
@@ -68,7 +76,7 @@ public class EventsNotificationManager {
                     continue;
                 }
 
-                long notificationTimeMillis = eventStartTimeMillis - 
+        long notificationTimeMillis = occurrenceStartTimeMillis - 
                         (reminder.getMinutesBefore() * 60 * 1000);
 
                 // Don't schedule if notification time is in the past
@@ -77,22 +85,57 @@ public class EventsNotificationManager {
                     continue;
                 }
 
-                scheduleReminderAtTime(event, reminder, i, notificationTimeMillis);
+                scheduleReminderAtTime(event, reminder, i, notificationTimeMillis, occurrenceStartTimeMillis);
             }
         }
     }
 
+    private long resolveNextOccurrenceStart(Event event) {
+        long eventStartTimeMillis = event.getStartTime().toDate().getTime();
+        String recurrenceRuleText = event.getRecurrenceRule();
+
+        if (recurrenceRuleText == null || recurrenceRuleText.trim().isEmpty()) {
+            return eventStartTimeMillis;
+        }
+
+        RecurrenceUtils.RecurrenceRule rule = RecurrenceUtils.parseRRule(recurrenceRuleText);
+        long now = System.currentTimeMillis();
+        long searchStart = Math.max(eventStartTimeMillis, now - ONE_HOUR_MS);
+        long searchEnd = now + LOOKAHEAD_WINDOW_MS;
+
+        List<Long> upcoming = RecurrenceUtils.generateOccurrencesInRange(
+                eventStartTimeMillis,
+                rule,
+                searchStart,
+                searchEnd,
+                event.getRecurrenceExceptions(),
+                MAX_REMINDER_OCCURRENCES
+        );
+
+        for (Long occurrence : upcoming) {
+            if (occurrence != null && occurrence >= now) {
+                return occurrence;
+            }
+        }
+
+        return -1L;
+    }
+
+    private static final long ONE_HOUR_MS = 60L * 60L * 1000L;
+
     /**
      * Schedule a single reminder for a specific time
      */
-    private void scheduleReminderAtTime(Event event, Event.EventReminder reminder, 
-                                        int reminderIndex, long notificationTimeMillis) {
+    private void scheduleReminderAtTime(Event event, Event.EventReminder reminder,
+                                        int reminderIndex, long notificationTimeMillis,
+                                        long occurrenceStartTimeMillis) {
         Intent intent = new Intent(context, EventNotificationReceiver.class);
         intent.setAction("com.timed.EVENT_REMINDER");
         intent.putExtra("event_id", event.getId());
         intent.putExtra("event_title", event.getTitle());
         intent.putExtra("event_description", event.getDescription());
         intent.putExtra("event_location", event.getLocation());
+        intent.putExtra("occurrence_start_time", occurrenceStartTimeMillis);
         intent.putExtra("reminder_type", reminder.getType());
         intent.putExtra("reminder_minutes_before", reminder.getMinutesBefore());
         intent.putExtra("reminder_index", reminderIndex);
@@ -115,6 +158,7 @@ public class EventsNotificationManager {
                         pendingIntent
                 );
                 Log.d(TAG, "Scheduled reminder for event: " + event.getId() + 
+                    " (occurrence at " + new Date(occurrenceStartTimeMillis) + ")" +
                         " at " + new Date(notificationTimeMillis));
             } catch (SecurityException e) {
                 Log.e(TAG, "SecurityException when scheduling reminder: " + e.getMessage());
