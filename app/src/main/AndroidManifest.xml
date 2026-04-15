@@ -45,6 +45,7 @@
         <activity android:name=".Auth.EmailVerificationActivity" />
 
         <activity android:name=".Setting.Profile.ProfileActivity" />
+        <activity android:name=".Setting.Profile.ChangePasswordActivity" />
 
         <activity android:name=".activities.MainActivity" />
         <activity android:name=".activities.DayViewActivity" />

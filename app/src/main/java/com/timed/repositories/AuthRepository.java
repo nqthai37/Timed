@@ -2,6 +2,8 @@ package com.timed.repositories;
 
 import android.util.Log;
 
+import com.google.firebase.auth.EmailAuthProvider;
+import com.google.firebase.auth.FirebaseUser;
 import com.timed.managers.UserManager;
 import com.timed.models.User;
 import com.google.android.gms.tasks.Task;
@@ -183,6 +185,22 @@ public class AuthRepository {
                         });
                     }
                 });
+    }
+
+    public Task<Void> updatePassword(String currentPassword, String newPassword) {
+        FirebaseUser user = mAuth.getCurrentUser();
+
+        if (user != null && user.getEmail() != null) {
+            AuthCredential credential = EmailAuthProvider.getCredential(user.getEmail(), currentPassword);
+
+            return user.reauthenticate(credential).continueWithTask(task -> {
+                if (!task.isSuccessful()) {
+                    throw task.getException();
+                }
+                return user.updatePassword(newPassword);
+            });
+        }
+        return Tasks.forException(new Exception("No user logged in."));
     }
 
     public Task<Void> sendVerificationEmail() {

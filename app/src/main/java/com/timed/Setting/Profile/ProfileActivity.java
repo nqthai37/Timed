@@ -73,9 +73,7 @@ public class ProfileActivity extends AppCompatActivity {
             @Override
             public void onClick(ProfileOption option) {
                 if (option.getTitle().equals("Change Password")) {
-                    // TODO: Replace Toast with Intent to ChangePasswordActivity
-                    Toast.makeText(ProfileActivity.this, "Opening Change Password", Toast.LENGTH_SHORT).show();
-                    // startActivity(new Intent(ProfileActivity.this, ChangePasswordActivity.class));
+                     startActivity(new Intent(ProfileActivity.this, ChangePasswordActivity.class));
                 }
             }
 
