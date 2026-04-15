@@ -1,4 +1,4 @@
-package com.timed.activities;
+package com.timed.Setting.Profile;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -10,6 +10,9 @@ import android.widget.ImageView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.widget.NestedScrollView;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.timed.R;
 import com.timed.Auth.LoginActivity;
@@ -20,16 +23,19 @@ import com.timed.repositories.UserRepository;
 import com.bumptech.glide.Glide;
 import com.google.android.material.button.MaterialButton;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class ProfileActivity extends AppCompatActivity {
 
     private ProgressBar progressBar;
-    private LinearLayout profileDataContainer;
-    private ImageView ivAvatar;
-    private TextView tvName, tvEmail, tvTheme, tvNotifications;
-    private MaterialButton btnTempLogout;
+    private NestedScrollView profileDataContainer;
+    private ImageView ivAvatar, ivBack;
+    private TextView tvName, tvEmail;
+    private RecyclerView rvProfileOptions;
 
+    private ProfileAdapter adapter;
     private UserRepository userRepository;
-    private AuthRepository authRepository;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,35 +45,49 @@ public class ProfileActivity extends AppCompatActivity {
         progressBar = findViewById(R.id.progressBar);
         profileDataContainer = findViewById(R.id.profileDataContainer);
         ivAvatar = findViewById(R.id.ivAvatar);
+        ivBack = findViewById(R.id.iv_back);
         tvName = findViewById(R.id.tvName);
         tvEmail = findViewById(R.id.tvEmail);
-        tvTheme = findViewById(R.id.tvTheme);
-        tvNotifications = findViewById(R.id.tvNotifications);
-        btnTempLogout = findViewById(R.id.btnTempLogout);
+        rvProfileOptions = findViewById(R.id.rv_profile_options);
 
         userRepository = new UserRepository();
-        authRepository = new AuthRepository();
 
-        fetchUserProfile(UserManager.getInstance().getCurrentUser().getUid());
+        if (UserManager.getInstance().getCurrentUser() != null) {
+            fetchUserProfile(UserManager.getInstance().getCurrentUser().getUid());
+        } else {
+            Toast.makeText(this, "User not logged in!", Toast.LENGTH_SHORT).show();
+            finish();
+        }
+
+        setupRecyclerView();
         setupClickListeners();
     }
 
-    private void setupClickListeners() {
-        btnTempLogout.setOnClickListener(v -> {
-            authRepository.logout();
+    private void setupRecyclerView() {
+        rvProfileOptions.setLayoutManager(new LinearLayoutManager(this));
 
-            getSharedPreferences("TimedAppPrefs", MODE_PRIVATE)
-                    .edit()
-                    .putBoolean("REMEMBER_ME", false)
-                    .apply();
+        List<ProfileOption> options = new ArrayList<>();
+        options.add(new ProfileOption("Change Password", R.drawable.ic_key, ProfileOption.TYPE_ARROW, false));
 
-            Toast.makeText(this, "Logged out successfully", Toast.LENGTH_SHORT).show();
+        adapter = new ProfileAdapter(options, new ProfileAdapter.OnItemClickListener() {
+            @Override
+            public void onClick(ProfileOption option) {
+                if (option.getTitle().equals("Change Password")) {
+                     startActivity(new Intent(ProfileActivity.this, ChangePasswordActivity.class));
+                }
+            }
 
-            Intent intent = new Intent(ProfileActivity.this, LoginActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            startActivity(intent);
-            finish();
+            @Override
+            public void onSwitchChange(ProfileOption option, boolean isChecked) {
+
+            }
         });
+
+        rvProfileOptions.setAdapter(adapter);
+    }
+
+    private void setupClickListeners() {
+        ivBack.setOnClickListener(v -> finish());
     }
 
     private void fetchUserProfile(String uid) {
@@ -88,13 +108,6 @@ public class ProfileActivity extends AppCompatActivity {
                                 .load(myUser.getAvatar())
                                 .circleCrop()
                                 .into(ivAvatar);
-                    }
-
-                    if (myUser.getSettings() != null) {
-                        tvTheme.setText("Theme: " + myUser.getSettings().getTheme());
-
-                        boolean pushEnabled = myUser.getSettings().getNotifications().isPush();
-                        tvNotifications.setText("Push Notifications: " + (pushEnabled ? "ON" : "OFF"));
                     }
 
                     progressBar.setVisibility(View.GONE);

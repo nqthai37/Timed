@@ -30,13 +30,14 @@
 
         <activity android:name=".Setting.SyncStorage.SyncStorageActivity" android:exported="false" />
         <activity android:name=".Setting.Timezone.TimezoneSettingActivity" android:exported="false" />
+
         <activity android:name=".Features.AI.AiSchedulingActivity" android:exported="false" />
         <activity android:name=".Features.Analytics.AnalyticsActivity" android:exported="false" />
         <activity android:name=".Features.ConflictResolver.ConflictResolverActivity" android:exported="false" />
         <activity android:name=".Features.FocusMode.FocusModeActivity" android:exported="false" />
         <activity android:name=".Features.FreeSlotFinder.FreeSlotFinderActivity" android:exported="false" />
         <activity android:name=".Features.HabitTracker.HabitTrackerActivity" android:exported="false" />
-        <activity android:name=".Setting.Security.SecurityActivity" android:exported="false" />
+
         <activity android:name=".Setting.Themes.ThemeActivity" android:exported="false" />
 
         <activity
@@ -55,7 +56,8 @@
 
         <activity android:name=".Auth.EmailVerificationActivity" />
 
-        <activity android:name=".activities.ProfileActivity" />
+        <activity android:name=".Setting.Profile.ProfileActivity" />
+        <activity android:name=".Setting.Profile.ChangePasswordActivity" />
 
         <activity android:name=".activities.MainActivity" />
         <activity android:name=".activities.DayViewActivity" />

@@ -108,7 +108,7 @@
             android:id="@+id/btn_auto_reschedule"
             android:layout_width="match_parent"
             android:layout_height="52dp"
-            android:text="Auto Reschedule"
+            android:text="Find Available Time (Auto)"
             android:textAllCaps="false"
             android:textColor="#FFFFFF"
             android:textSize="15sp"
@@ -116,46 +116,24 @@
             app:backgroundTint="@color/primary"
             app:cornerRadius="8dp" />
 
-        <LinearLayout
+        <Button
+            android:id="@+id/btn_edit_manually"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
+            android:layout_height="52dp"
             android:layout_marginTop="12dp"
-            android:weightSum="2">
-
-            <Button
-                android:id="@+id/btn_keep_second"
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="52dp"
-                android:layout_marginEnd="6dp"
-                android:text="Keep second"
-                android:textAllCaps="false"
-                android:textColor="#0F172A"
-                android:textSize="15sp"
-                android:background="@drawable/bg_day_event_light"
-                app:cornerRadius="8dp" />
-
-            <Button
-                android:id="@+id/btn_keep_first"
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="52dp"
-                android:layout_marginStart="6dp"
-                android:text="Keep first"
-                android:textAllCaps="false"
-                android:textColor="#0F172A"
-                android:textSize="15sp"
-                android:background="@drawable/bg_day_event_light"
-                app:cornerRadius="8dp" />
-        </LinearLayout>
+            android:text="Edit Time Manually"
+            android:textAllCaps="false"
+            android:textColor="#0F172A"
+            android:textSize="15sp"
+            android:background="@drawable/bg_day_event_light"
+            app:cornerRadius="8dp" />
 
         <Button
             android:id="@+id/btn_ignore_conflict"
             android:layout_width="match_parent"
             android:layout_height="48dp"
-            android:layout_marginTop="4dp"
-            android:text="Ignore conflict"
+            android:layout_marginTop="8dp"
+            android:text="Save anyway (Double Book)"
             android:textAllCaps="false"
             android:textColor="#64748B"
             android:textSize="14sp"
