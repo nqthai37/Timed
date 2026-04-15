@@ -20,7 +20,7 @@ import com.timed.Setting.ConflictResolver.ConflictResolverActivity;
 import com.timed.Setting.FocusMode.FocusModeActivity;
 import com.timed.Setting.FreeSlotFinder.FreeSlotFinderActivity;
 import com.timed.Setting.HabitTracker.HabitTrackerActivity;
-import com.timed.Setting.Security.SecurityActivity;
+import com.timed.Setting.Profile.ProfileActivity;
 import com.timed.Setting.SyncStorage.SyncStorageActivity;
 import com.timed.Setting.Timezone.TimezoneSettingActivity;
 import com.timed.Setting.Themes.ThemeActivity;
@@ -59,7 +59,7 @@ public class SettingActivity extends AppCompatActivity {
         settingList.add(new SettingItem(R.drawable.ic_focus, "Focus Mode", FocusModeActivity.class));
         settingList.add(new SettingItem(R.drawable.ic_focus, "AI Scheduling", AiSchedulingActivity.class));
         settingList.add(new SettingItem(R.drawable.ic_analytics, "Analytics", AnalyticsActivity.class));
-        settingList.add(new SettingItem("System & Security",R.drawable.ic_security, "Security", SecurityActivity.class));
+        settingList.add(new SettingItem("System & Security",R.drawable.ic_security, "Profile", ProfileActivity.class));
         settingList.add(new SettingItem(R.drawable.ic_cloud, "Sync & Storage", SyncStorageActivity.class));
         settingList.add(new SettingItem(R.drawable.ic_theme, "Theme & Appearance", ThemeActivity.class)); // Placeholder for future implementation
         adapter = new SettingsAdapter(this, settingList);

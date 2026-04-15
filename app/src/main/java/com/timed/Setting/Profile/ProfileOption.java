@@ -1,6 +1,6 @@
-package com.timed.Setting.Security;
+package com.timed.Setting.Profile;
 
-public class SecurityOption {
+public class ProfileOption {
     public static final int TYPE_SWITCH = 0;
     public static final int TYPE_ARROW = 1;
 
@@ -9,7 +9,7 @@ public class SecurityOption {
     private int type;
     private boolean isChecked; // Trạng thái của Switch
 
-    public SecurityOption(String title, int iconResId, int type, boolean isChecked) {
+    public ProfileOption(String title, int iconResId, int type, boolean isChecked) {
         this.title = title;
         this.iconResId = iconResId;
         this.type = type;

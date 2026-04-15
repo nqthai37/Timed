@@ -1,4 +1,4 @@
-package com.timed.Setting.Security;
+package com.timed.Setting.Profile;
 
 import android.view.LayoutInflater;
 import android.view.View;
@@ -11,17 +11,17 @@ import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.timed.R;
 import java.util.List;
 
-public class SecurityAdapter extends RecyclerView.Adapter<SecurityAdapter.ViewHolder> {
+public class ProfileAdapter extends RecyclerView.Adapter<ProfileAdapter.ViewHolder> {
 
-    private List<SecurityOption> optionList;
+    private List<ProfileOption> optionList;
     private OnItemClickListener listener;
 
     public interface OnItemClickListener {
-        void onClick(SecurityOption option);
-        void onSwitchChange(SecurityOption option, boolean isChecked);
+        void onClick(ProfileOption option);
+        void onSwitchChange(ProfileOption option, boolean isChecked);
     }
 
-    public SecurityAdapter(List<SecurityOption> optionList, OnItemClickListener listener) {
+    public ProfileAdapter(List<ProfileOption> optionList, OnItemClickListener listener) {
         this.optionList = optionList;
         this.listener = listener;
     }
@@ -35,14 +35,14 @@ public class SecurityAdapter extends RecyclerView.Adapter<SecurityAdapter.ViewHo
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        SecurityOption option = optionList.get(position);
+        ProfileOption option = optionList.get(position);
         holder.tvTitle.setText(option.getTitle());
         holder.ivIcon.setImageResource(option.getIconResId());
 
         // Xử lý ẩn/hiện đường viền dưới cùng
         holder.vDivider.setVisibility(position == optionList.size() - 1 ? View.GONE : View.VISIBLE);
 
-        if (option.getType() == SecurityOption.TYPE_SWITCH) {
+        if (option.getType() == ProfileOption.TYPE_SWITCH) {
             holder.switchSec.setVisibility(View.VISIBLE);
             holder.ivArrow.setVisibility(View.GONE);
             holder.switchSec.setOnCheckedChangeListener(null); // Reset listener

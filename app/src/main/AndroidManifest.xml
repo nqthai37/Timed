@@ -26,7 +26,6 @@
         <activity android:name=".Setting.FocusMode.FocusModeActivity" android:exported="false" />
         <activity android:name=".Setting.FreeSlotFinder.FreeSlotFinderActivity" android:exported="false" />
         <activity android:name=".Setting.HabitTracker.HabitTrackerActivity" android:exported="false" />
-        <activity android:name=".Setting.Security.SecurityActivity" android:exported="false" />
         <activity android:name=".Setting.Themes.ThemeActivity" android:exported="false" />
 
         <activity
@@ -45,7 +44,7 @@
 
         <activity android:name=".Auth.EmailVerificationActivity" />
 
-        <activity android:name=".activities.ProfileActivity" />
+        <activity android:name=".Setting.Profile.ProfileActivity" />
 
         <activity android:name=".activities.MainActivity" />
         <activity android:name=".activities.DayViewActivity" />
