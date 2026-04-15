@@ -47,7 +47,7 @@ public class FocusModeActivity extends AppCompatActivity {
                 } else if (preset.getTitle().equals("Quick Break")) {
                     tvMainTimer.setText("05:00");
                 }
-                Toast.makeText(this, "Đã chọn: " + preset.getTitle(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Selected: " + preset.getTitle(), Toast.LENGTH_SHORT).show();
             });
             rvPresets.setAdapter(adapter);
         }

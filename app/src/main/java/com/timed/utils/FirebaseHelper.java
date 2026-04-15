@@ -38,7 +38,7 @@ public class FirebaseHelper {
                 })
                 .addOnFailureListener(e -> {
                     Log.e(TAG, "Firebase connection failed: " + e.getMessage(), e);
-                    callback.onFailure("Không thể kết nối đến Firebase: " + e.getMessage());
+                    callback.onFailure("Unable to connect to Firebase: " + e.getMessage());
                 });
     }
 
@@ -55,7 +55,7 @@ public class FirebaseHelper {
                 })
                 .addOnFailureListener(e -> {
                     Log.e(TAG, "Permission denied for collection: " + collection);
-                    callback.onFailure("Không có quyền truy cập: " + collection);
+                    callback.onFailure("No permission to access: " + collection);
                 });
     }
 
@@ -72,12 +72,12 @@ public class FirebaseHelper {
                         callback.onSuccess(documentSnapshot);
                     } else {
                         Log.w(TAG, "Document not found: " + documentId);
-                        callback.onFailure("Tài liệu không tồn tại");
+                        callback.onFailure("Document does not exist");
                     }
                 })
                 .addOnFailureListener(e -> {
                     Log.e(TAG, "Error getting document: " + e.getMessage(), e);
-                    callback.onFailure("Lỗi khi lấy dữ liệu: " + e.getMessage());
+                    callback.onFailure("Error retrieving data: " + e.getMessage());
                 });
     }
 
@@ -93,7 +93,7 @@ public class FirebaseHelper {
                 })
                 .addOnFailureListener(e -> {
                     Log.e(TAG, "Error getting collection: " + e.getMessage(), e);
-                    callback.onFailure("Lỗi khi lấy dữ liệu: " + e.getMessage());
+                    callback.onFailure("Error retrieving data: " + e.getMessage());
                 });
     }
 
@@ -110,7 +110,7 @@ public class FirebaseHelper {
                 })
                 .addOnFailureListener(e -> {
                     Log.e(TAG, "Error saving document: " + e.getMessage(), e);
-                    callback.onFailure("Lỗi khi lưu dữ liệu: " + e.getMessage());
+                    callback.onFailure("Error saving data: " + e.getMessage());
                 });
     }
 
@@ -127,7 +127,7 @@ public class FirebaseHelper {
                 })
                 .addOnFailureListener(e -> {
                     Log.e(TAG, "Error adding document: " + e.getMessage(), e);
-                    callback.onFailure("Lỗi khi thêm dữ liệu: " + e.getMessage());
+                    callback.onFailure("Error adding data: " + e.getMessage());
                 });
     }
 
@@ -144,7 +144,7 @@ public class FirebaseHelper {
                 })
                 .addOnFailureListener(e -> {
                     Log.e(TAG, "Error deleting document: " + e.getMessage(), e);
-                    callback.onFailure("Lỗi khi xóa dữ liệu: " + e.getMessage());
+                    callback.onFailure("Error deleting data: " + e.getMessage());
                 });
     }
 

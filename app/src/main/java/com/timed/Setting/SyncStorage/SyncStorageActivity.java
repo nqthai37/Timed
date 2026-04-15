@@ -40,7 +40,7 @@ public class SyncStorageActivity extends AppCompatActivity {
             syncList.add(new SyncOption("Last Synced", SyncOption.TYPE_VALUE, false, "Today, 10:42 AM"));
 
             adapter = new SyncAdapter(syncList, (option, isChecked) -> {
-                String status = isChecked ? "Bật" : "Tắt";
+                String status = isChecked ? "On" : "Off";
                 Toast.makeText(this, option.getTitle() + " - " + status, Toast.LENGTH_SHORT).show();
             });
             rvSyncStorage.setAdapter(adapter);

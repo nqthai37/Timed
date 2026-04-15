@@ -302,7 +302,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                 return true;
             }
 
-            Toast.makeText(this, "Tính năng đang được phát triển", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "This feature is under development", Toast.LENGTH_SHORT).show();
             return true;
         });
     }
@@ -893,7 +893,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             
         } catch (Exception e) {
             Log.e(TAG, "Error initializing Firebase: " + e.getMessage(), e);
-            Toast.makeText(this, "Lỗi khởi tạo Firebase", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Failed to initialize Firebase", Toast.LENGTH_SHORT).show();
         }
     }
     
@@ -905,13 +905,13 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             @Override
             public void onSuccess(Boolean result) {
                 Log.d(TAG, "Firebase connection verified");
-                Toast.makeText(MainActivity.this, "Kết nối Firebase thành công", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Firebase connected successfully", Toast.LENGTH_SHORT).show();
             }
 
             @Override
             public void onFailure(String errorMessage) {
                 Log.e(TAG, "Firebase connection failed: " + errorMessage);
-                Toast.makeText(MainActivity.this, "Lỗi kết nối Firebase: " + errorMessage, Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Firebase connection error: " + errorMessage, Toast.LENGTH_SHORT).show();
             }
         });
     }

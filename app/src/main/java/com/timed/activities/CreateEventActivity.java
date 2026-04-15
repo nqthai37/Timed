@@ -3,13 +3,19 @@ package com.timed.activities;
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
 import android.app.AlertDialog;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.text.InputType;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.RadioButton;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -36,29 +42,48 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.TimeZone;
 
 /**
  * Activity để tạo hoặc chỉnh sửa sự kiện
  */
 public class CreateEventActivity extends AppCompatActivity {
     private static final String TAG = "CreateEvent";
-    private static final long DEFAULT_EVENT_DURATION_MS = 60 * 60 * 1000L;
     private static final long AUTO_FIX_END_DURATION_MS = 24 * 60 * 60 * 1000L;
     private static final String[] CALENDAR_LABELS = new String[]{"Work", "Personal", "Shared", "Study"};
     private static final String[] CALENDAR_IDS = new String[]{"default_calendar", "personal_calendar", "shared_calendar", "study_calendar"};
     private static final int REPEAT_NONE = 0;
     private static final int REPEAT_DAILY = 1;
-    private static final int REPEAT_WEEKDAY = 2;
-    private static final int REPEAT_WEEKLY_ON_DAY = 3;
-    private static final int REPEAT_BI_WEEKLY_ON_DAY = 4;
-    private static final int REPEAT_MONTHLY_DAY_OF_MONTH = 5;
-    private static final int REPEAT_MONTHLY_ORDINAL_WEEKDAY = 6;
-    private static final int REPEAT_YEARLY = 7;
-    private static final int REPEAT_CUSTOM = 8;
+    private static final int REPEAT_WEEKLY_ON_DAY = 2;
+    private static final int REPEAT_MONTHLY_LAST_WEEKDAY = 3;
+    private static final int REPEAT_YEARLY_ON_DATE = 4;
+    private static final int REPEAT_WEEKDAY = 5;
+    private static final int REPEAT_CUSTOM = 6;
+    private static final int END_NEVER = 0;
+    private static final int END_ON_DATE = 1;
+    private static final int END_AFTER_COUNT = 2;
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("EEE, MMM d, yyyy", Locale.ENGLISH);
     private static final SimpleDateFormat TIME_FORMAT = new SimpleDateFormat("HH:mm", Locale.ENGLISH);
     private static final String DATE_INPUT_REGEX = "^\\d{4}-\\d{2}-\\d{2}$";
-    private static final String CUSTOM_RULE_HINT = "FREQ=MONTHLY;BYDAY=MO;BYSETPOS=1";
+    private static final String RRULE_DATE_FORMAT = "yyyyMMdd'T'HHmmss'Z'";
+    private static final Locale EN_LOCALE = Locale.US;
+    private static final String[] CUSTOM_UNIT_LABELS = new String[]{"day", "week", "month", "year"};
+    private static final String[] CUSTOM_UNIT_CODES = new String[]{
+        RecurrenceUtils.FREQ_DAILY,
+        RecurrenceUtils.FREQ_WEEKLY,
+        RecurrenceUtils.FREQ_MONTHLY,
+        RecurrenceUtils.FREQ_YEARLY
+    };
+    private static final String[] CUSTOM_DAY_CODES = new String[]{"SU", "MO", "TU", "WE", "TH", "FR", "SA"};
+    private static final int[] CUSTOM_DAY_VIEW_IDS = new int[]{
+        R.id.chipSun,
+        R.id.chipMon,
+        R.id.chipTue,
+        R.id.chipWed,
+        R.id.chipThu,
+        R.id.chipFri,
+        R.id.chipSat
+    };
 
     private EditText etTitle, etDescription, etLocation;
     private EditText etExceptionDates;
@@ -78,6 +103,15 @@ public class CreateEventActivity extends AppCompatActivity {
     private String calendarId = "default_calendar";
     private String recurrenceRule = "";
     private Event editingEvent;
+
+    private static class CustomRecurrenceState {
+        int interval = 1;
+        int unitIndex = 1;
+        boolean[] selectedDays = new boolean[7];
+        int endMode = END_NEVER;
+        long endDateMillis;
+        int endCount = 1;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -358,8 +392,8 @@ public class CreateEventActivity extends AppCompatActivity {
             selectedIndex = REPEAT_NONE;
         }
 
-        new AlertDialog.Builder(this)
-                .setTitle("Repeat")
+        AlertDialog repeatDialog = new AlertDialog.Builder(this)
+            .setTitle("Repeat")
                 .setSingleChoiceItems(repeatOptions, selectedIndex, (dialog, which) -> {
                     if (which == REPEAT_CUSTOM) {
                         dialog.dismiss();
@@ -372,47 +406,375 @@ public class CreateEventActivity extends AppCompatActivity {
                     dialog.dismiss();
                 })
                 .setNegativeButton("Cancel", null)
-                .show();
+                .create();
+
+        repeatDialog.show();
+        if (repeatDialog.getWindow() != null) {
+            repeatDialog.getWindow().setBackgroundDrawableResource(R.drawable.bg_repeat_picker_dialog);
+            repeatDialog.getWindow().setDimAmount(0.22f);
+        }
     }
 
     private void showCustomRuleDialog() {
-        EditText input = new EditText(this);
-        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
-        input.setHint(CUSTOM_RULE_HINT);
-        input.setText(recurrenceRule == null ? "" : recurrenceRule);
-        input.setMinLines(2);
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_custom_recurrence, null);
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setView(dialogView)
+                .create();
 
-        new AlertDialog.Builder(this)
-                .setTitle("Custom recurrence rule")
-                .setMessage("Enter RRULE format (for example: FREQ=MONTHLY;BYDAY=MO;BYSETPOS=1)")
-                .setView(input)
-                .setPositiveButton("Apply", (dialog, which) -> {
-                    recurrenceRule = normalizeRecurrenceRule(input.getText().toString());
-                    updateRepeatLabel();
-                })
-                .setNeutralButton("Clear", (dialog, which) -> {
-                    recurrenceRule = "";
-                    updateRepeatLabel();
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            dialog.getWindow().setDimAmount(0.15f);
+        }
+
+        CustomRecurrenceState state = parseRuleToCustomState(recurrenceRule);
+
+        EditText etInterval = dialogView.findViewById(R.id.etCustomInterval);
+        Spinner spFrequencyUnit = dialogView.findViewById(R.id.spCustomFrequencyUnit);
+        LinearLayout sectionByDay = dialogView.findViewById(R.id.sectionCustomByDay);
+        RadioButton rbEndNever = dialogView.findViewById(R.id.rbEndNever);
+        RadioButton rbEndOnDate = dialogView.findViewById(R.id.rbEndOnDate);
+        RadioButton rbEndAfterCount = dialogView.findViewById(R.id.rbEndAfterCount);
+        LinearLayout rowEndNever = dialogView.findViewById(R.id.rowEndNever);
+        LinearLayout rowEndOnDate = dialogView.findViewById(R.id.rowEndOnDate);
+        LinearLayout rowEndAfterCount = dialogView.findViewById(R.id.rowEndAfterCount);
+        TextView tvEndDateValue = dialogView.findViewById(R.id.tvEndDateValue);
+        EditText etEndAfterValue = dialogView.findViewById(R.id.etEndAfterValue);
+        EditText etCustomExceptionDates = dialogView.findViewById(R.id.etCustomExceptionDates);
+        TextView btnCancelCustom = dialogView.findViewById(R.id.btnCustomCancel);
+        Button btnDoneCustom = dialogView.findViewById(R.id.btnCustomDone);
+
+        etInterval.setText(String.valueOf(Math.max(1, state.interval)));
+        etEndAfterValue.setText(String.valueOf(Math.max(1, state.endCount)));
+        tvEndDateValue.setText(formatDialogDate(state.endDateMillis));
+        if (etExceptionDates != null && etCustomExceptionDates != null) {
+            etCustomExceptionDates.setText(etExceptionDates.getText().toString().trim());
+        }
+
+        ArrayAdapter<String> unitAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, CUSTOM_UNIT_LABELS) {
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                View view = super.getView(position, convertView, parent);
+                if (view instanceof TextView) {
+                    ((TextView) view).setTextColor(0xFF0F172A);
+                }
+                return view;
+            }
+
+            @Override
+            public View getDropDownView(int position, View convertView, ViewGroup parent) {
+                View view = super.getDropDownView(position, convertView, parent);
+                if (view instanceof TextView) {
+                    ((TextView) view).setTextColor(0xFF111827);
+                }
+                return view;
+            }
+        };
+        unitAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spFrequencyUnit.setAdapter(unitAdapter);
+        spFrequencyUnit.setSelection(Math.max(0, Math.min(state.unitIndex, CUSTOM_UNIT_LABELS.length - 1)), false);
+
+        TextView[] dayChips = new TextView[CUSTOM_DAY_VIEW_IDS.length];
+        for (int i = 0; i < CUSTOM_DAY_VIEW_IDS.length; i++) {
+            dayChips[i] = dialogView.findViewById(CUSTOM_DAY_VIEW_IDS[i]);
+            final int index = i;
+            dayChips[i].setSelected(state.selectedDays[index]);
+            dayChips[i].setOnClickListener(v -> {
+                state.selectedDays[index] = !state.selectedDays[index];
+                dayChips[index].setSelected(state.selectedDays[index]);
+            });
+        }
+
+        spFrequencyUnit.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                state.unitIndex = position;
+                sectionByDay.setVisibility(position == getUnitIndexFromFrequency(RecurrenceUtils.FREQ_WEEKLY)
+                        ? View.VISIBLE
+                        : View.GONE);
+            }
+
+            @Override
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {
+                // No-op.
+            }
+        });
+
+        View.OnClickListener setNeverMode = v -> {
+            state.endMode = END_NEVER;
+            syncEndModeViews(state, rbEndNever, rbEndOnDate, rbEndAfterCount, tvEndDateValue, etEndAfterValue);
+        };
+        View.OnClickListener setDateMode = v -> {
+            state.endMode = END_ON_DATE;
+            syncEndModeViews(state, rbEndNever, rbEndOnDate, rbEndAfterCount, tvEndDateValue, etEndAfterValue);
+        };
+        View.OnClickListener setCountMode = v -> {
+            state.endMode = END_AFTER_COUNT;
+            syncEndModeViews(state, rbEndNever, rbEndOnDate, rbEndAfterCount, tvEndDateValue, etEndAfterValue);
+        };
+
+        rowEndNever.setOnClickListener(setNeverMode);
+        rowEndOnDate.setOnClickListener(setDateMode);
+        rowEndAfterCount.setOnClickListener(setCountMode);
+        rbEndNever.setOnClickListener(setNeverMode);
+        rbEndOnDate.setOnClickListener(setDateMode);
+        rbEndAfterCount.setOnClickListener(setCountMode);
+
+        tvEndDateValue.setOnClickListener(v -> {
+            state.endMode = END_ON_DATE;
+            syncEndModeViews(state, rbEndNever, rbEndOnDate, rbEndAfterCount, tvEndDateValue, etEndAfterValue);
+
+            Calendar calendar = Calendar.getInstance();
+            calendar.setTimeInMillis(state.endDateMillis > 0 ? state.endDateMillis : startTime);
+            DatePickerDialog datePickerDialog = new DatePickerDialog(
+                    this,
+                    (view, year, monthOfYear, dayOfMonth) -> {
+                        Calendar picked = Calendar.getInstance();
+                        picked.setTimeInMillis(startTime);
+                        picked.set(Calendar.YEAR, year);
+                        picked.set(Calendar.MONTH, monthOfYear);
+                        picked.set(Calendar.DAY_OF_MONTH, dayOfMonth);
+                        state.endDateMillis = picked.getTimeInMillis();
+                        tvEndDateValue.setText(formatDialogDate(state.endDateMillis));
+                    },
+                    calendar.get(Calendar.YEAR),
+                    calendar.get(Calendar.MONTH),
+                    calendar.get(Calendar.DAY_OF_MONTH)
+            );
+            datePickerDialog.show();
+        });
+
+        btnCancelCustom.setOnClickListener(v -> dialog.dismiss());
+        btnDoneCustom.setOnClickListener(v -> {
+            int parsedInterval = parsePositiveInt(etInterval.getText().toString().trim(), 1);
+            if (parsedInterval <= 0) {
+                etInterval.setError("Value must be greater than 0");
+                etInterval.requestFocus();
+                return;
+            }
+
+            state.interval = parsedInterval;
+            state.unitIndex = spFrequencyUnit.getSelectedItemPosition();
+
+            int parsedCount = parsePositiveInt(etEndAfterValue.getText().toString().trim(), 1);
+            if (state.endMode == END_AFTER_COUNT && parsedCount <= 0) {
+                etEndAfterValue.setError("Occurrences must be greater than 0");
+                etEndAfterValue.requestFocus();
+                return;
+            }
+            state.endCount = Math.max(1, parsedCount);
+
+            List<String> customExceptionDates = parseExceptionDatesInput(
+                    etCustomExceptionDates.getText().toString().trim(),
+                    etCustomExceptionDates
+            );
+            if (customExceptionDates == null) {
+                return;
+            }
+
+            if (etExceptionDates != null) {
+                etExceptionDates.setText(customExceptionDates.isEmpty()
+                        ? ""
+                        : String.join(", ", customExceptionDates));
+            }
+
+            recurrenceRule = buildCustomRule(state);
+            updateRepeatLabel();
+            dialog.dismiss();
+        });
+
+        syncEndModeViews(state, rbEndNever, rbEndOnDate, rbEndAfterCount, tvEndDateValue, etEndAfterValue);
+        sectionByDay.setVisibility(state.unitIndex == getUnitIndexFromFrequency(RecurrenceUtils.FREQ_WEEKLY)
+                ? View.VISIBLE
+                : View.GONE);
+
+        dialog.show();
+    }
+
+    private void syncEndModeViews(CustomRecurrenceState state,
+                                  RadioButton rbEndNever,
+                                  RadioButton rbEndOnDate,
+                                  RadioButton rbEndAfterCount,
+                                  TextView tvEndDateValue,
+                                  EditText etEndAfterValue) {
+        rbEndNever.setChecked(state.endMode == END_NEVER);
+        rbEndOnDate.setChecked(state.endMode == END_ON_DATE);
+        rbEndAfterCount.setChecked(state.endMode == END_AFTER_COUNT);
+
+        boolean dateEnabled = state.endMode == END_ON_DATE;
+        boolean countEnabled = state.endMode == END_AFTER_COUNT;
+
+        tvEndDateValue.setEnabled(dateEnabled);
+        tvEndDateValue.setAlpha(dateEnabled ? 1f : 0.5f);
+        etEndAfterValue.setEnabled(countEnabled);
+        etEndAfterValue.setAlpha(countEnabled ? 1f : 0.5f);
+    }
+
+    private String buildCustomRule(CustomRecurrenceState state) {
+        String frequency = getFrequencyCodeAt(state.unitIndex);
+        int interval = Math.max(1, state.interval);
+
+        StringBuilder builder = new StringBuilder();
+        builder.append("FREQ=").append(frequency);
+        builder.append(";INTERVAL=").append(interval);
+
+        if (RecurrenceUtils.FREQ_WEEKLY.equals(frequency)) {
+            List<String> selectedDayCodes = getSelectedByDayCodes(state.selectedDays);
+            if (selectedDayCodes.isEmpty()) {
+                selectedDayCodes.add(getWeekdayCodeFromStart());
+            }
+            builder.append(";BYDAY=").append(joinWithComma(selectedDayCodes));
+        }
+
+        if (state.endMode == END_ON_DATE) {
+            builder.append(";UNTIL=").append(formatUntilUtc(state.endDateMillis));
+        } else if (state.endMode == END_AFTER_COUNT) {
+            builder.append(";COUNT=").append(Math.max(1, state.endCount));
+        }
+
+        return builder.toString();
+    }
+
+    private String joinWithComma(List<String> values) {
+        StringBuilder joined = new StringBuilder();
+        for (int i = 0; i < values.size(); i++) {
+            if (i > 0) {
+                joined.append(",");
+            }
+            joined.append(values.get(i));
+        }
+        return joined.toString();
+    }
+
+    private CustomRecurrenceState parseRuleToCustomState(String rule) {
+        CustomRecurrenceState state = new CustomRecurrenceState();
+        state.endDateMillis = startTime;
+        state.endCount = 1;
+        int startDayIndex = dayCodeToIndex(getWeekdayCodeFromStart());
+        if (startDayIndex >= 0) {
+            state.selectedDays[startDayIndex] = true;
+        }
+
+        String normalized = normalizeRecurrenceRule(rule);
+        if (normalized.isEmpty()) {
+            return state;
+        }
+
+        RecurrenceUtils.RecurrenceRule parsed = RecurrenceUtils.parseRRule(normalized);
+        if (parsed == null || parsed.frequency == null) {
+            return state;
+        }
+
+        state.interval = Math.max(1, parsed.interval);
+        state.unitIndex = getUnitIndexFromFrequency(parsed.frequency);
+
+        if (parsed.byDay != null && !parsed.byDay.isEmpty()) {
+            Arrays.fill(state.selectedDays, false);
+            applyByDayCodesToSelection(parsed.byDay, state.selectedDays);
+            if (!hasAnySelectedDay(state.selectedDays) && startDayIndex >= 0) {
+                state.selectedDays[startDayIndex] = true;
+            }
+        }
+
+        if (parsed.count > 0) {
+            state.endMode = END_AFTER_COUNT;
+            state.endCount = parsed.count;
+        } else if (parsed.until != null) {
+            state.endMode = END_ON_DATE;
+            state.endDateMillis = parsed.until.getTime();
+        }
+
+        return state;
+    }
+
+    private int getUnitIndexFromFrequency(String frequency) {
+        if (frequency == null) {
+            return 1;
+        }
+
+        String normalized = frequency.toUpperCase(Locale.US);
+        for (int i = 0; i < CUSTOM_UNIT_CODES.length; i++) {
+            if (CUSTOM_UNIT_CODES[i].equalsIgnoreCase(normalized)) {
+                return i;
+            }
+        }
+        return 1;
+    }
+
+    private String getFrequencyCodeAt(int unitIndex) {
+        if (unitIndex < 0 || unitIndex >= CUSTOM_UNIT_CODES.length) {
+            return RecurrenceUtils.FREQ_WEEKLY;
+        }
+        return CUSTOM_UNIT_CODES[unitIndex];
+    }
+
+    private boolean hasAnySelectedDay(boolean[] selectedDays) {
+        if (selectedDays == null) {
+            return false;
+        }
+        for (boolean selected : selectedDays) {
+            if (selected) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void applyByDayCodesToSelection(List<String> byDayValues, boolean[] selectedDays) {
+        if (selectedDays == null || selectedDays.length != 7 || byDayValues == null) {
+            return;
+        }
+
+        for (String rawValue : byDayValues) {
+            if (rawValue == null) {
+                continue;
+            }
+            String token = rawValue.trim().toUpperCase(Locale.US);
+            if (token.length() > 2) {
+                token = token.substring(token.length() - 2);
+            }
+            int index = dayCodeToIndex(token);
+            if (index >= 0) {
+                selectedDays[index] = true;
+            }
+        }
+    }
+
+    private List<String> getSelectedByDayCodes(boolean[] selectedDays) {
+        List<String> selected = new ArrayList<>();
+        if (selectedDays == null || selectedDays.length != 7) {
+            return selected;
+        }
+        for (int i = 0; i < selectedDays.length; i++) {
+            if (selectedDays[i]) {
+                selected.add(CUSTOM_DAY_CODES[i]);
+            }
+        }
+        return selected;
+    }
+
+    private int dayCodeToIndex(String dayCode) {
+        if (dayCode == null) {
+            return -1;
+        }
+        for (int i = 0; i < CUSTOM_DAY_CODES.length; i++) {
+            if (CUSTOM_DAY_CODES[i].equalsIgnoreCase(dayCode)) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     private String[] buildRepeatOptions() {
-        String weekdayLabel = getWeekdayLabelFromStart();
-        int dayOfMonth = getDayOfMonthFromStart();
-        int weekOrdinal = getWeekOrdinalFromStart();
-        String yearDateLabel = new SimpleDateFormat("MMM d", Locale.ENGLISH).format(new Date(startTime));
+        String weekdayLabel = getWeekdayLabelViFromStart();
+        String yearlyLabel = getYearlyLabelViFromStart();
 
         return new String[]{
                 "Does not repeat",
-                "Every day",
-                "Every weekday Mon-Fri",
-                "Every week on " + weekdayLabel,
-                "Every 2 weeks on " + weekdayLabel,
-                "Every month on the " + dayOfMonth + getDaySuffix(dayOfMonth),
-                "Every month on the " + getOrdinalLabel(weekOrdinal) + " " + weekdayLabel,
-                "Every year on " + yearDateLabel,
+                "Daily",
+                "Weekly on " + weekdayLabel,
+                "Monthly on the last " + weekdayLabel,
+                "Annually on " + yearlyLabel,
+                "Every weekday (Monday to Friday)",
                 "Custom..."
         };
     }
@@ -454,8 +816,6 @@ public class CreateEventActivity extends AppCompatActivity {
 
         String frequency = parsed.frequency.toUpperCase(Locale.US);
         String weekdayCode = getWeekdayCodeFromStart();
-        int dayOfMonth = getDayOfMonthFromStart();
-        int weekOrdinal = getWeekOrdinalFromStart();
 
         if (RecurrenceUtils.FREQ_DAILY.equals(frequency) && parsed.interval == 1) {
             return REPEAT_DAILY;
@@ -466,28 +826,19 @@ public class CreateEventActivity extends AppCompatActivity {
                 return REPEAT_WEEKDAY;
             }
 
-            if (isSingleByDayMatch(parsed.byDay, weekdayCode)) {
-                if (parsed.interval == 1) {
-                    return REPEAT_WEEKLY_ON_DAY;
-                }
-                if (parsed.interval == 2) {
-                    return REPEAT_BI_WEEKLY_ON_DAY;
-                }
+            if (parsed.interval == 1 && isSingleByDayMatch(parsed.byDay, weekdayCode)) {
+                return REPEAT_WEEKLY_ON_DAY;
             }
         }
 
         if (RecurrenceUtils.FREQ_MONTHLY.equals(frequency) && parsed.interval == 1) {
-            if (containsOnlyByMonthDay(parsed.byMonthDay, dayOfMonth)) {
-                return REPEAT_MONTHLY_DAY_OF_MONTH;
-            }
-
-            if (matchesMonthlyOrdinalWeekdayRule(parsed, weekdayCode, weekOrdinal)) {
-                return REPEAT_MONTHLY_ORDINAL_WEEKDAY;
+            if (matchesMonthlyLastWeekdayRule(parsed, weekdayCode)) {
+                return REPEAT_MONTHLY_LAST_WEEKDAY;
             }
         }
 
         if (RecurrenceUtils.FREQ_YEARLY.equals(frequency) && parsed.interval == 1) {
-            return REPEAT_YEARLY;
+            return REPEAT_YEARLY_ON_DATE;
         }
 
         return REPEAT_CUSTOM;
@@ -519,29 +870,28 @@ public class CreateEventActivity extends AppCompatActivity {
         if (byDay == null || byDay.size() != 1) {
             return false;
         }
-        return weekdayCode.equalsIgnoreCase(byDay.get(0));
-    }
-
-    private boolean containsOnlyByMonthDay(List<Integer> byMonthDay, int dayOfMonth) {
-        if (byMonthDay == null || byMonthDay.size() != 1 || byMonthDay.get(0) == null) {
+        String token = byDay.get(0);
+        if (token == null) {
             return false;
         }
-        return byMonthDay.get(0) == dayOfMonth;
+        String normalized = token.trim().toUpperCase(Locale.US);
+        if (normalized.length() > 2) {
+            normalized = normalized.substring(normalized.length() - 2);
+        }
+        return weekdayCode.equalsIgnoreCase(normalized);
     }
 
-    private boolean matchesMonthlyOrdinalWeekdayRule(RecurrenceUtils.RecurrenceRule rule,
-                                                     String weekdayCode,
-                                                     int weekOrdinal) {
+    private boolean matchesMonthlyLastWeekdayRule(RecurrenceUtils.RecurrenceRule rule, String weekdayCode) {
         if (rule.byDayEntries != null && rule.byDayEntries.size() == 1) {
             RecurrenceUtils.ByDayEntry entry = rule.byDayEntries.get(0);
             if (entry != null && weekdayCode.equalsIgnoreCase(entry.dayCode)) {
                 if (entry.ordinal != null) {
-                    return entry.ordinal == weekOrdinal;
+                    return entry.ordinal == -1;
                 }
                 return rule.bySetPos != null
                         && rule.bySetPos.size() == 1
                         && rule.bySetPos.get(0) != null
-                        && rule.bySetPos.get(0) == weekOrdinal;
+                        && rule.bySetPos.get(0) == -1;
             }
         }
 
@@ -552,19 +902,14 @@ public class CreateEventActivity extends AppCompatActivity {
         switch (index) {
             case REPEAT_DAILY:
                 return "FREQ=DAILY;INTERVAL=1";
-            case REPEAT_WEEKDAY:
-                return "FREQ=WEEKLY;INTERVAL=1;BYDAY=MO,TU,WE,TH,FR";
             case REPEAT_WEEKLY_ON_DAY:
                 return "FREQ=WEEKLY;INTERVAL=1;BYDAY=" + getWeekdayCodeFromStart();
-            case REPEAT_BI_WEEKLY_ON_DAY:
-                return "FREQ=WEEKLY;INTERVAL=2;BYDAY=" + getWeekdayCodeFromStart();
-            case REPEAT_MONTHLY_DAY_OF_MONTH:
-                int dayOfMonth = getDayOfMonthFromStart();
-                return "FREQ=MONTHLY;INTERVAL=1;BYMONTHDAY=" + dayOfMonth;
-            case REPEAT_MONTHLY_ORDINAL_WEEKDAY:
-                return "FREQ=MONTHLY;INTERVAL=1;BYDAY=" + getWeekdayCodeFromStart() + ";BYSETPOS=" + getWeekOrdinalFromStart();
-            case REPEAT_YEARLY:
+            case REPEAT_MONTHLY_LAST_WEEKDAY:
+                return "FREQ=MONTHLY;INTERVAL=1;BYDAY=" + getWeekdayCodeFromStart() + ";BYSETPOS=-1";
+            case REPEAT_YEARLY_ON_DATE:
                 return "FREQ=YEARLY;INTERVAL=1";
+            case REPEAT_WEEKDAY:
+                return "FREQ=WEEKLY;INTERVAL=1;BYDAY=MO,TU,WE,TH,FR";
             case REPEAT_NONE:
             default:
                 return "";
@@ -577,54 +922,35 @@ public class CreateEventActivity extends AppCompatActivity {
         return calendar.get(Calendar.DAY_OF_MONTH);
     }
 
-    private int getWeekOrdinalFromStart() {
-        int dayOfMonth = getDayOfMonthFromStart();
-        return ((dayOfMonth - 1) / 7) + 1;
-    }
-
-    private String getWeekdayLabelFromStart() {
+    private String getWeekdayLabelViFromStart() {
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeInMillis(startTime);
 
         switch (calendar.get(Calendar.DAY_OF_WEEK)) {
             case Calendar.MONDAY:
-                return "Mon";
+                return "Monday";
             case Calendar.TUESDAY:
-                return "Tue";
+                return "Tuesday";
             case Calendar.WEDNESDAY:
-                return "Wed";
+                return "Wednesday";
             case Calendar.THURSDAY:
-                return "Thu";
+                return "Thursday";
             case Calendar.FRIDAY:
-                return "Fri";
+                return "Friday";
             case Calendar.SATURDAY:
-                return "Sat";
+                return "Saturday";
             case Calendar.SUNDAY:
             default:
-                return "Sun";
+                return "Sunday";
         }
     }
 
-    private String getDaySuffix(int dayOfMonth) {
-        int mod100 = dayOfMonth % 100;
-        if (mod100 >= 11 && mod100 <= 13) {
-            return "th";
-        }
-
-        switch (dayOfMonth % 10) {
-            case 1:
-                return "st";
-            case 2:
-                return "nd";
-            case 3:
-                return "rd";
-            default:
-                return "th";
-        }
-    }
-
-    private String getOrdinalLabel(int value) {
-        return value + getDaySuffix(value);
+    private String getYearlyLabelViFromStart() {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(startTime);
+        int day = calendar.get(Calendar.DAY_OF_MONTH);
+        int month = calendar.get(Calendar.MONTH) + 1;
+        return month + "/" + day;
     }
 
     private String getWeekdayCodeFromStart() {
@@ -650,12 +976,33 @@ public class CreateEventActivity extends AppCompatActivity {
         }
     }
 
+    private int parsePositiveInt(String value, int defaultValue) {
+        if (value == null || value.isEmpty()) {
+            return defaultValue;
+        }
+        try {
+            int parsed = Integer.parseInt(value);
+            return parsed > 0 ? parsed : defaultValue;
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+
+    private String formatDialogDate(long millis) {
+        SimpleDateFormat format = new SimpleDateFormat("MM/dd/yyyy", EN_LOCALE);
+        return format.format(new Date(millis));
+    }
+
+    private String formatUntilUtc(long millis) {
+        SimpleDateFormat format = new SimpleDateFormat(RRULE_DATE_FORMAT, Locale.US);
+        format.setTimeZone(TimeZone.getTimeZone("UTC"));
+        return format.format(new Date(millis));
+    }
+
     private void refreshRuleForMovedStartDate() {
         int repeatIndex = findRepeatIndex(recurrenceRule);
         if (repeatIndex == REPEAT_WEEKLY_ON_DAY
-                || repeatIndex == REPEAT_BI_WEEKLY_ON_DAY
-                || repeatIndex == REPEAT_MONTHLY_DAY_OF_MONTH
-                || repeatIndex == REPEAT_MONTHLY_ORDINAL_WEEKDAY) {
+                || repeatIndex == REPEAT_MONTHLY_LAST_WEEKDAY) {
             recurrenceRule = buildRuleForRepeatIndex(repeatIndex);
         }
         updateRepeatLabel();
@@ -843,7 +1190,7 @@ public class CreateEventActivity extends AppCompatActivity {
 
         if (title.isEmpty()) {
             if (etTitle != null) {
-                etTitle.setError("Vui lòng nhập tiêu đề sự kiện");
+                etTitle.setError("Please enter an event title");
                 etTitle.requestFocus();
             }
             return;
@@ -889,13 +1236,13 @@ public class CreateEventActivity extends AppCompatActivity {
                 })
                 .addOnFailureListener(e -> {
                     Log.e(TAG, "Error saving event: " + e.getMessage(), e);
-                    Toast.makeText(CreateEventActivity.this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(CreateEventActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
     }
 
     private void updateExistingEvent(String title, String description, String location, boolean isAllDay) {
         if (eventId == null || eventId.isEmpty()) {
-            Toast.makeText(this, "Không tìm thấy sự kiện để cập nhật", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Event not found for update", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -923,16 +1270,19 @@ public class CreateEventActivity extends AppCompatActivity {
         eventsManager.updateEvent(eventId, target)
                 .addOnSuccessListener(aVoid -> finish())
                 .addOnFailureListener(e -> Toast.makeText(CreateEventActivity.this,
-                        "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
     }
 
     private List<String> parseExceptionDatesInput() {
-        List<String> dates = new ArrayList<>();
         if (etExceptionDates == null) {
-            return dates;
+            return new ArrayList<>();
         }
 
-        String rawInput = etExceptionDates.getText().toString().trim();
+        return parseExceptionDatesInput(etExceptionDates.getText().toString().trim(), etExceptionDates);
+    }
+
+    private List<String> parseExceptionDatesInput(String rawInput, EditText errorTarget) {
+        List<String> dates = new ArrayList<>();
         if (rawInput.isEmpty()) {
             return dates;
         }
@@ -945,8 +1295,10 @@ public class CreateEventActivity extends AppCompatActivity {
             }
 
             if (!value.matches(DATE_INPUT_REGEX)) {
-                etExceptionDates.setError("Date must follow yyyy-MM-dd");
-                etExceptionDates.requestFocus();
+                if (errorTarget != null) {
+                    errorTarget.setError("Date must follow yyyy-MM-dd (comma-separated)");
+                    errorTarget.requestFocus();
+                }
                 return null;
             }
             dates.add(value);
@@ -963,7 +1315,7 @@ public class CreateEventActivity extends AppCompatActivity {
         eventsManager.deleteEvent(eventId)
                 .addOnSuccessListener(aVoid -> finish())
                 .addOnFailureListener(e -> Toast.makeText(CreateEventActivity.this,
-                        "Lỗi xóa sự kiện: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                "Error deleting event: " + e.getMessage(), Toast.LENGTH_SHORT).show());
     }
 
     private int dpToPx(int dp) {

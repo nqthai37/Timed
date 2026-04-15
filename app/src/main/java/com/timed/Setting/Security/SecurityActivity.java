@@ -39,13 +39,13 @@ public class SecurityActivity extends AppCompatActivity {
                 @Override
                 public void onClick(SecurityOption option) {
                     // Click vào các mục có mũi tên (như Change PIN)
-                    Toast.makeText(SecurityActivity.this, "Mở màn hình: " + option.getTitle(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(SecurityActivity.this, "Open screen: " + option.getTitle(), Toast.LENGTH_SHORT).show();
                 }
 
                 @Override
                 public void onSwitchChange(SecurityOption option, boolean isChecked) {
                     // Khi gạt nút bật/tắt
-                    String status = isChecked ? "Bật" : "Tắt";
+                    String status = isChecked ? "On" : "Off";
                     Toast.makeText(SecurityActivity.this, option.getTitle() + " - " + status, Toast.LENGTH_SHORT).show();
                 }
             });
