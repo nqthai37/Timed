@@ -21,6 +21,7 @@ import com.timed.Setting.Security.SecurityActivity;
 import com.timed.Setting.SyncStorage.SyncStorageActivity;
 import com.timed.Setting.Themes.ThemeActivity;
 import com.timed.Setting.Timezone.TimezoneSettingActivity;
+import com.timed.activities.ImportExportActivity;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -74,6 +75,7 @@ public class SettingsActivity extends AppCompatActivity {
         settingList.add(new SettingItem(R.drawable.ic_time_zone, "Timezone Setting", TimezoneSettingActivity.class));
         settingList.add(new SettingItem(R.drawable.ic_security, "Security", SecurityActivity.class));
         settingList.add(new SettingItem(R.drawable.ic_cloud, "Sync & Storage", SyncStorageActivity.class));
+        settingList.add(new SettingItem(R.drawable.ic_send, "Import ICS/CSV and Export Calendar", ImportExportActivity.class));
         settingList.add(new SettingItem(R.drawable.ic_theme, "Theme & Appearance", ThemeActivity.class));
 
         return settingList;

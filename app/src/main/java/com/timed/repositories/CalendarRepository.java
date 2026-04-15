@@ -103,8 +103,9 @@ public class CalendarRepository {
                     callback.onSuccess(calendars);
                 })
                 .addOnFailureListener(e -> {
-                    callback.onFailure(e.getMessage());
-                    Log.e(TAG, "Failed to fetch calendars: " + e.getMessage());
+                    String errorMsg = e.getMessage() != null ? e.getMessage() : "Unknown error";
+                    callback.onFailure(errorMsg);
+                    Log.e(TAG, "Failed to fetch calendars: " + errorMsg + " | Exception: " + e.toString(), e);
                 });
     }
 
@@ -124,8 +125,9 @@ public class CalendarRepository {
                     callback.onSuccess(calendars);
                 })
                 .addOnFailureListener(e -> {
-                    callback.onFailure(e.getMessage());
-                    Log.e(TAG, "Failed to fetch owned calendars: " + e.getMessage());
+                    String errorMsg = e.getMessage() != null ? e.getMessage() : "Unknown error";
+                    callback.onFailure(errorMsg);
+                    Log.e(TAG, "Failed to fetch owned calendars: " + errorMsg + " | Exception: " + e.toString(), e);
                 });
     }
 
