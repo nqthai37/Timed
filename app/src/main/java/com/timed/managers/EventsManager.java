@@ -120,7 +120,6 @@ public class EventsManager {
                         event.setId(doc.getId());
                         events.add(event);
                     }
-                    events.sort(Comparator.comparingLong(this::getStartMillisForSort));
                     Log.d(TAG, "Retrieved " + events.size() + " events for calendar: " + calendarId);
                     return events;
                 });
@@ -136,8 +135,6 @@ public class EventsManager {
                         throw task.getException();
                     }
                     
-                    long rangeStart = startDate.toDate().getTime();
-                    long rangeEnd = endDate.toDate().getTime();
                     List<Event> events = new ArrayList<>();
                     QuerySnapshot snapshot = task.getResult();
                     for (QueryDocumentSnapshot doc : snapshot) {
@@ -145,7 +142,6 @@ public class EventsManager {
                         event.setId(doc.getId());
                         events.addAll(expandEventForRange(event, rangeStart, rangeEnd));
                     }
-                    events.sort(Comparator.comparingLong(this::getStartMillisForSort));
                     return events;
                 });
     }
