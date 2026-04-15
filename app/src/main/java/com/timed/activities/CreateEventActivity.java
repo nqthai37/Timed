@@ -49,7 +49,7 @@ import java.util.TimeZone;
  */
 public class CreateEventActivity extends AppCompatActivity {
     private static final String TAG = "CreateEvent";
-    private static final long AUTO_FIX_END_DURATION_MS = 24 * 60 * 60 * 1000L;
+    private static final long DEFAULT_END_DURATION_MS = 60 * 60 * 1000L;
     private static final String[] CALENDAR_LABELS = new String[]{"Work", "Personal", "Shared", "Study"};
     private static final String[] CALENDAR_IDS = new String[]{"default_calendar", "personal_calendar", "shared_calendar", "study_calendar"};
     private static final int REPEAT_NONE = 0;
@@ -1028,15 +1028,19 @@ public class CreateEventActivity extends AppCompatActivity {
     }
 
     /**
-     * Đảm bảo khoảng thời gian hợp lệ (end luôn sau start)
+     * Đảm bảo khoảng thời gian hợp lệ (end không trước start)
      */
     private void ensureValidTimeRange() {
         if (startTime <= 0) {
             startTime = System.currentTimeMillis();
         }
 
-        if (endTime <= startTime) {
-            endTime = startTime + AUTO_FIX_END_DURATION_MS;
+        if (endTime <= 0) {
+            endTime = startTime + DEFAULT_END_DURATION_MS;
+        }
+
+        if (endTime < startTime) {
+            endTime = startTime + DEFAULT_END_DURATION_MS;
         }
     }
 
@@ -1102,7 +1106,12 @@ public class CreateEventActivity extends AppCompatActivity {
             (view, year, monthOfYear, dayOfMonth) -> {
                 calendar.set(year, monthOfYear, dayOfMonth);
                 endTime = calendar.getTimeInMillis();
-                ensureValidTimeRange();
+
+                // End date cannot be before start date-time; minimum is equal.
+                if (endTime < startTime) {
+                    endTime = startTime;
+                }
+
                 refreshDateTimeButtons();
             },
             calendar.get(Calendar.YEAR),
@@ -1123,8 +1132,16 @@ public class CreateEventActivity extends AppCompatActivity {
             (view, hourOfDay, minute) -> {
                 calendar.set(Calendar.HOUR_OF_DAY, hourOfDay);
                 calendar.set(Calendar.MINUTE, minute);
-                endTime = calendar.getTimeInMillis();
-                ensureValidTimeRange();
+
+                long candidateEndTime = calendar.getTimeInMillis();
+
+                // If edited end time is earlier than start, roll end to next day.
+                if (candidateEndTime < startTime) {
+                    calendar.add(Calendar.DAY_OF_YEAR, 1);
+                    candidateEndTime = calendar.getTimeInMillis();
+                }
+
+                endTime = candidateEndTime;
                 refreshDateTimeButtons();
             },
             calendar.get(Calendar.HOUR_OF_DAY),
@@ -1198,8 +1215,9 @@ public class CreateEventActivity extends AppCompatActivity {
 
         ensureValidTimeRange();
 
-        if (startTime >= endTime) {
-            return;
+        // Minimum allowed duration is zero; start and end can be equal.
+        if (startTime > endTime) {
+            endTime = startTime;
         }
 
         if (isEditMode()) {
