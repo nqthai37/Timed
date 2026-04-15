@@ -1,4 +1,4 @@
-package com.timed;
+package com.timed.adapters;
 
 import android.graphics.Color;
 import android.view.LayoutInflater;
@@ -6,8 +6,13 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.timed.R;
+import com.timed.models.CalendarDay;
+
 import java.time.LocalDate;
 import java.util.List;
 
@@ -33,7 +38,7 @@ public class CalendarAdapter extends RecyclerView.Adapter<CalendarAdapter.Calend
     public void onBindViewHolder(@NonNull CalendarViewHolder holder, int position) {
         CalendarDay day = days.get(position);
         holder.tvDayNumber.setText(String.valueOf(day.date.getDayOfMonth()));
-        
+
         holder.layoutEventIndicators.removeAllViews();
 
         if (day.isCurrentMonth) {
@@ -48,9 +53,8 @@ public class CalendarAdapter extends RecyclerView.Adapter<CalendarAdapter.Calend
                 holder.tvDayNumber.setBackgroundResource(0);
             }
 
-            int eventCount = (day.date.getDayOfMonth() % 6 == 0) ? 2 : 0;
-
-            for (int i = 0; i < eventCount; i++) {
+            int dotCount = Math.min(day.eventCount, 3);
+            for (int i = 0; i < dotCount; i++) {
                 View dot = new View(holder.itemView.getContext());
                 LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(12, 12); // Kích thước chấm
                 params.setMargins(4, 0, 4, 0);

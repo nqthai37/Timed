@@ -6,13 +6,14 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.util.Patterns;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.content.SharedPreferences;
 
-import com.timed.MainActivity;
+import com.timed.activities.MainActivity;
 import com.timed.R;
 import com.timed.managers.GoogleAuthManager;
 import com.timed.repositories.AuthRepository;
@@ -23,6 +24,7 @@ import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.FirebaseAuth;
 
 public class LoginActivity extends AppCompatActivity {
+    private static final String TAG = "LoginActivity";
     private TextInputEditText etEmail, etPassword;
     private TextInputLayout tilEmail, tilPassword;
     private MaterialButton btnLogin, btnGoogleSignIn;
@@ -138,7 +140,7 @@ public class LoginActivity extends AppCompatActivity {
             public void onError(String errorMessage) {
                 btnGoogleSignIn.setEnabled(true);
                 if (!errorMessage.equals("cancelled")) {
-                    Toast.makeText(LoginActivity.this, "Google UI Failed: " + errorMessage, Toast.LENGTH_LONG).show();
+                    Toast.makeText(LoginActivity.this, "Google sign-in failed", Toast.LENGTH_LONG).show();
                 }
             }
         });
@@ -153,14 +155,14 @@ public class LoginActivity extends AppCompatActivity {
         authRepository.signInWithGoogle(idToken)
                 .addOnSuccessListener(user -> {
                     prefs.edit().putBoolean("REMEMBER_ME", cbRememberMe.isChecked()).apply();
-                    Toast.makeText(this, "Login Successful!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Login successful", Toast.LENGTH_SHORT).show();
                     Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                     startActivity(intent);
                 })
                 .addOnFailureListener(e -> {
                     btnGoogleSignIn.setEnabled(true);
-                    Toast.makeText(this, "Auth Failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, "Authentication failed", Toast.LENGTH_LONG).show();
                 });
     }
 
@@ -225,7 +227,7 @@ public class LoginActivity extends AppCompatActivity {
                         tilPassword.setError("Incorrect email or password");
 
                     } else {
-                        Toast.makeText(LoginActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                        Toast.makeText(LoginActivity.this, "Login failed", Toast.LENGTH_LONG).show();
                     }
                 });
     }

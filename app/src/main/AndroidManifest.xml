@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
@@ -46,25 +45,14 @@
 
         <activity android:name=".Auth.EmailVerificationActivity" />
 
-        <activity android:name=".ProfileActivity" />
+        <activity android:name=".activities.ProfileActivity" />
 
-        <activity android:name=".MainActivity" />
-        <activity android:name=".DayViewActivity" />
-        <activity android:name=".activities.NotificationActivity" />
+        <activity android:name=".activities.MainActivity" />
+        <activity android:name=".activities.DayViewActivity" />
+        <activity android:name=".activities.SearchFilterActivity" />
         <activity android:name=".activities.CreateEventActivity" />
         <activity android:name=".activities.ImportExportActivity" />
         <activity android:name=".activities.SettingsActivity" />
-
-        <!-- Receiver for Reminders & Notifications -->
-        <receiver
-            android:name="com.timed.services.ReminderNotificationReceiver"
-            android:enabled="true"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.timed.REMINDER_NOTIFICATION" />
-                <action android:name="com.timed.REMINDER_COMPLETE" />
-            </intent-filter>
-        </receiver>
 
         <!-- Receiver for Event Reminders & Notifications -->
         <receiver

@@ -1,4 +1,4 @@
-package com.timed;
+package com.timed.activities;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -11,6 +11,7 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.timed.R;
 import com.timed.Auth.LoginActivity;
 import com.timed.managers.UserManager;
 import com.timed.models.User;

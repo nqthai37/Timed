@@ -22,10 +22,11 @@ import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.timed.R;
-import com.timed.data.models.CalendarModel;
-import com.timed.data.models.EventModel;
+import com.timed.models.CalendarModel;
+import com.google.firebase.Timestamp;
+import com.timed.managers.EventsManager;
+import com.timed.models.Event;
 import com.timed.utils.CalendarIntegrationService;
-import com.timed.utils.EventIntegrationService;
 import com.timed.utils.FirebaseInitializer;
 
 import java.io.BufferedReader;
@@ -49,7 +50,7 @@ public class ImportExportActivity extends AppCompatActivity {
     private final SimpleDateFormat icsDateTimeFormat = new SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'", Locale.US);
     private final SimpleDateFormat icsDateFormat = new SimpleDateFormat("yyyyMMdd", Locale.US);
 
-    private EventIntegrationService eventIntegrationService;
+    private EventsManager eventsManager;
     private CalendarIntegrationService calendarIntegrationService;
     private FirebaseInitializer firebaseInitializer;
     private ActivityResultLauncher<String[]> openDocumentLauncher;
@@ -58,7 +59,7 @@ public class ImportExportActivity extends AppCompatActivity {
     private CheckBox cbExportWork;
     private CheckBox cbExportShared;
 
-    private String calendarId = "default_calendar";
+    private String calendarId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,7 +70,7 @@ public class ImportExportActivity extends AppCompatActivity {
 
         firebaseInitializer = FirebaseInitializer.getInstance();
         firebaseInitializer.initialize(this);
-        eventIntegrationService = new EventIntegrationService();
+        eventsManager = EventsManager.getInstance(this);
         calendarIntegrationService = new CalendarIntegrationService();
 
         icsDateTimeFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
@@ -77,13 +78,19 @@ public class ImportExportActivity extends AppCompatActivity {
         String incomingCalendarId = getIntent().getStringExtra("calendarId");
         if (incomingCalendarId != null && !incomingCalendarId.isEmpty()) {
             calendarId = incomingCalendarId;
+        } else {
+            String cachedId = calendarIntegrationService.getCachedDefaultCalendarId(this);
+            if (cachedId != null && !cachedId.isEmpty()) {
+                calendarId = cachedId;
+            }
         }
 
         cbExportPersonal = findViewById(R.id.cbExportPersonal);
         cbExportWork = findViewById(R.id.cbExportWork);
         cbExportShared = findViewById(R.id.cbExportShared);
 
-        openDocumentLauncher = registerForActivityResult(new ActivityResultContracts.OpenDocument(), this::onFileSelected);
+        openDocumentLauncher = registerForActivityResult(new ActivityResultContracts.OpenDocument(),
+                this::onFileSelected);
 
         ImageButton btnBackImport = findViewById(R.id.btnBackImport);
         Button btnChooseFile = findViewById(R.id.btnChooseFile);
@@ -92,7 +99,8 @@ public class ImportExportActivity extends AppCompatActivity {
         Button btnExportAll = findViewById(R.id.btnExportAll);
 
         btnBackImport.setOnClickListener(v -> finish());
-        btnChooseFile.setOnClickListener(v -> openDocumentLauncher.launch(new String[]{"text/calendar", "text/csv", "text/plain", "application/octet-stream"}));
+        btnChooseFile.setOnClickListener(v -> openDocumentLauncher
+                .launch(new String[] { "text/calendar", "text/csv", "text/plain", "application/octet-stream" }));
         btnSyncFromUrl.setOnClickListener(v -> promptSyncUrl());
         btnExportSelected.setOnClickListener(v -> exportCalendars(false));
         btnExportAll.setOnClickListener(v -> exportCalendars(true));
@@ -141,7 +149,8 @@ public class ImportExportActivity extends AppCompatActivity {
                 List<ImportEventItem> items = parseImportContent(content);
                 runOnUiThread(() -> importItems(items));
             } catch (Exception e) {
-                runOnUiThread(() -> Toast.makeText(this, "Import failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                runOnUiThread(
+                        () -> Toast.makeText(this, "Import failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
             }
         }).start();
     }
@@ -169,7 +178,8 @@ public class ImportExportActivity extends AppCompatActivity {
                             List<ImportEventItem> items = parseImportContent(content);
                             runOnUiThread(() -> importItems(items));
                         } catch (Exception e) {
-                            runOnUiThread(() -> Toast.makeText(this, "Sync failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                            runOnUiThread(() -> Toast
+                                    .makeText(this, "Sync failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
                         }
                     }).start();
                 })
@@ -187,47 +197,25 @@ public class ImportExportActivity extends AppCompatActivity {
 
     private void importSequential(List<ImportEventItem> items, int index, int successCount, int failureCount) {
         if (index >= items.size()) {
-            Toast.makeText(this, "Import done: " + successCount + " success, " + failureCount + " failed", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Import done: " + successCount + " success, " + failureCount + " failed",
+                    Toast.LENGTH_LONG).show();
             return;
         }
 
         ImportEventItem item = items.get(index);
-        EventIntegrationService.EventSaveListener listener = new EventIntegrationService.EventSaveListener() {
-            @Override
-            public void onSuccess(String eventId) {
-                importSequential(items, index + 1, successCount + 1, failureCount);
-            }
+        Event event = new Event();
+        event.setCalendarId(calendarId);
+        event.setTitle(item.title);
+        event.setDescription(item.description);
+        event.setLocation(item.location);
+        event.setAllDay(item.allDay);
+        event.setRecurrenceRule(item.recurrenceRule);
+        event.setStartTime(new Timestamp(new Date(item.startTime)));
+        event.setEndTime(new Timestamp(new Date(item.endTime)));
 
-            @Override
-            public void onError(String errorMessage) {
-                importSequential(items, index + 1, successCount, failureCount + 1);
-            }
-        };
-
-        if (item.recurrenceRule != null && !item.recurrenceRule.isEmpty()) {
-            eventIntegrationService.createRecurringEvent(
-                    calendarId,
-                    item.title,
-                    item.startTime,
-                    item.endTime,
-                    item.recurrenceRule,
-                    item.description,
-                    item.location,
-                    item.allDay,
-                    listener
-            );
-        } else {
-            eventIntegrationService.createSingleEvent(
-                    calendarId,
-                    item.title,
-                    item.startTime,
-                    item.endTime,
-                    item.description,
-                    item.location,
-                    item.allDay,
-                    listener
-            );
-        }
+        eventsManager.createEvent(event)
+                .addOnSuccessListener(docRef -> importSequential(items, index + 1, successCount + 1, failureCount))
+                .addOnFailureListener(e -> importSequential(items, index + 1, successCount, failureCount + 1));
     }
 
     private void exportCalendars(boolean exportAll) {
@@ -245,7 +233,8 @@ public class ImportExportActivity extends AppCompatActivity {
 
             @Override
             public void onError(String errorMessage) {
-                Toast.makeText(ImportExportActivity.this, "Cannot load calendars: " + errorMessage, Toast.LENGTH_SHORT).show();
+                Toast.makeText(ImportExportActivity.this, "Cannot load calendars: " + errorMessage, Toast.LENGTH_SHORT)
+                        .show();
             }
         });
     }
@@ -288,7 +277,7 @@ public class ImportExportActivity extends AppCompatActivity {
         return result;
     }
 
-    private void fetchEventsForExport(List<CalendarModel> calendars, int index, Map<String, List<EventModel>> bucket) {
+    private void fetchEventsForExport(List<CalendarModel> calendars, int index, Map<String, List<Event>> bucket) {
         if (index >= calendars.size()) {
             showExportFormatChooser(bucket);
             return;
@@ -301,28 +290,22 @@ public class ImportExportActivity extends AppCompatActivity {
             return;
         }
 
-        eventIntegrationService.getEventsForCalendar(id, new EventIntegrationService.EventLoadListener() {
-            @Override
-            public void onEventsLoaded(List<EventModel> events) {
-                String key = calendar.getName() == null || calendar.getName().isEmpty() ? id : calendar.getName();
-                bucket.put(key, events == null ? new ArrayList<>() : events);
-                fetchEventsForExport(calendars, index + 1, bucket);
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                fetchEventsForExport(calendars, index + 1, bucket);
-            }
-        });
+        eventsManager.getEventsByCalendarId(id)
+                .addOnSuccessListener(events -> {
+                    String key = calendar.getName() == null || calendar.getName().isEmpty() ? id : calendar.getName();
+                    bucket.put(key, events == null ? new ArrayList<>() : events);
+                    fetchEventsForExport(calendars, index + 1, bucket);
+                })
+                .addOnFailureListener(e -> fetchEventsForExport(calendars, index + 1, bucket));
     }
 
-    private void showExportFormatChooser(Map<String, List<EventModel>> data) {
+    private void showExportFormatChooser(Map<String, List<Event>> data) {
         if (data.isEmpty()) {
             Toast.makeText(this, "No events to export", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        String[] formats = new String[] {"ICS", "CSV"};
+        String[] formats = new String[] { "ICS", "CSV" };
         new AlertDialog.Builder(this)
                 .setTitle("Choose export format")
                 .setItems(formats, (dialog, which) -> {
@@ -344,7 +327,7 @@ public class ImportExportActivity extends AppCompatActivity {
     }
 
     private void ensureCalendarReady(Runnable onReady) {
-        if (calendarId != null && !calendarId.isEmpty() && !"default_calendar".equals(calendarId)) {
+        if (calendarId != null && !calendarId.isEmpty()) {
             onReady.run();
             return;
         }
@@ -371,14 +354,16 @@ public class ImportExportActivity extends AppCompatActivity {
 
                             @Override
                             public void onError(String errorMessage) {
-                                Toast.makeText(ImportExportActivity.this, "Cannot prepare calendar: " + errorMessage, Toast.LENGTH_SHORT).show();
+                                Toast.makeText(ImportExportActivity.this, "Cannot prepare calendar: " + errorMessage,
+                                        Toast.LENGTH_SHORT).show();
                             }
                         });
             }
 
             @Override
             public void onError(String errorMessage) {
-                Toast.makeText(ImportExportActivity.this, "Cannot load calendars: " + errorMessage, Toast.LENGTH_SHORT).show();
+                Toast.makeText(ImportExportActivity.this, "Cannot load calendars: " + errorMessage, Toast.LENGTH_SHORT)
+                        .show();
             }
         });
     }
@@ -509,7 +494,8 @@ public class ImportExportActivity extends AppCompatActivity {
                 continue;
             }
 
-            if (i == 0 && line.toLowerCase(Locale.ROOT).contains("title") && line.toLowerCase(Locale.ROOT).contains("start")) {
+            if (i == 0 && line.toLowerCase(Locale.ROOT).contains("title")
+                    && line.toLowerCase(Locale.ROOT).contains("start")) {
                 continue;
             }
 
@@ -635,32 +621,38 @@ public class ImportExportActivity extends AppCompatActivity {
         return 0;
     }
 
-    private String buildIcs(Map<String, List<EventModel>> data) {
+    private String buildIcs(Map<String, List<Event>> data) {
         StringBuilder builder = new StringBuilder();
         builder.append("BEGIN:VCALENDAR\n");
         builder.append("VERSION:2.0\n");
         builder.append("PRODID:-//Timed//Calendar Export//EN\n");
 
-        for (Map.Entry<String, List<EventModel>> entry : data.entrySet()) {
+        for (Map.Entry<String, List<Event>> entry : data.entrySet()) {
             String calendarName = entry.getKey();
-            List<EventModel> events = entry.getValue();
+            List<Event> events = entry.getValue();
             if (events == null) {
                 continue;
             }
 
-            for (EventModel event : events) {
+            for (Event event : events) {
                 builder.append("BEGIN:VEVENT\n");
-                String uid = event.getId() == null || event.getId().isEmpty() ? String.valueOf(System.nanoTime()) : event.getId();
+                String uid = event.getId() == null || event.getId().isEmpty() ? String.valueOf(System.nanoTime())
+                        : event.getId();
                 builder.append("UID:").append(uid).append("@timed\n");
                 builder.append("DTSTAMP:").append(icsDateTimeFormat.format(new Date())).append("\n");
 
-                if (event.isAllDay()) {
-                    builder.append("DTSTART;VALUE=DATE:").append(icsDateFormat.format(new Date(event.getStartTime()))).append("\n");
-                    long endDate = event.getEndTime() > event.getStartTime() ? event.getEndTime() : event.getStartTime() + (24 * 60 * 60 * 1000L);
+                boolean allDay = event.getAllDay() != null && event.getAllDay();
+                long startMillis = event.getStartTime() != null ? event.getStartTime().toDate().getTime() : 0L;
+                long endMillis = event.getEndTime() != null ? event.getEndTime().toDate().getTime() : startMillis;
+
+                if (allDay) {
+                    builder.append("DTSTART;VALUE=DATE:").append(icsDateFormat.format(new Date(startMillis)))
+                            .append("\n");
+                    long endDate = endMillis > startMillis ? endMillis : startMillis + (24 * 60 * 60 * 1000L);
                     builder.append("DTEND;VALUE=DATE:").append(icsDateFormat.format(new Date(endDate))).append("\n");
                 } else {
-                    builder.append("DTSTART:").append(icsDateTimeFormat.format(new Date(event.getStartTime()))).append("\n");
-                    builder.append("DTEND:").append(icsDateTimeFormat.format(new Date(event.getEndTime()))).append("\n");
+                    builder.append("DTSTART:").append(icsDateTimeFormat.format(new Date(startMillis))).append("\n");
+                    builder.append("DTEND:").append(icsDateTimeFormat.format(new Date(endMillis))).append("\n");
                 }
 
                 builder.append("SUMMARY:").append(escapeIcs(event.getTitle())).append("\n");
@@ -682,24 +674,26 @@ public class ImportExportActivity extends AppCompatActivity {
         return builder.toString();
     }
 
-    private String buildCsv(Map<String, List<EventModel>> data) {
+    private String buildCsv(Map<String, List<Event>> data) {
         StringBuilder builder = new StringBuilder();
         builder.append("title,start,end,description,location,allDay,rrule,calendar\n");
 
-        for (Map.Entry<String, List<EventModel>> entry : data.entrySet()) {
+        for (Map.Entry<String, List<Event>> entry : data.entrySet()) {
             String calendarName = entry.getKey();
-            List<EventModel> events = entry.getValue();
+            List<Event> events = entry.getValue();
             if (events == null) {
                 continue;
             }
 
-            for (EventModel event : events) {
+            for (Event event : events) {
+                long startMillis = event.getStartTime() != null ? event.getStartTime().toDate().getTime() : 0L;
+                long endMillis = event.getEndTime() != null ? event.getEndTime().toDate().getTime() : 0L;
                 builder.append(csvValue(event.getTitle())).append(',')
-                        .append(csvValue(String.valueOf(event.getStartTime()))).append(',')
-                        .append(csvValue(String.valueOf(event.getEndTime()))).append(',')
+                        .append(csvValue(String.valueOf(startMillis))).append(',')
+                        .append(csvValue(String.valueOf(endMillis))).append(',')
                         .append(csvValue(event.getDescription())).append(',')
                         .append(csvValue(event.getLocation())).append(',')
-                        .append(csvValue(String.valueOf(event.isAllDay()))).append(',')
+                        .append(csvValue(String.valueOf(event.getAllDay() != null && event.getAllDay()))).append(',')
                         .append(csvValue(event.getRecurrenceRule())).append(',')
                         .append(csvValue(calendarName))
                         .append("\n");

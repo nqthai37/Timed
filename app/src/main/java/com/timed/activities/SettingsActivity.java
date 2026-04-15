@@ -13,6 +13,7 @@ import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.timed.R;
+import com.timed.utils.CalendarIntegrationService;
 
 public class SettingsActivity extends AppCompatActivity {
 
@@ -36,7 +37,11 @@ public class SettingsActivity extends AppCompatActivity {
         if (rowImportExport != null) {
             rowImportExport.setOnClickListener(v -> {
                 Intent intent = new Intent(this, ImportExportActivity.class);
-                intent.putExtra("calendarId", "default_calendar");
+                CalendarIntegrationService calendarService = new CalendarIntegrationService();
+                String calendarId = calendarService.getCachedDefaultCalendarId(this);
+                if (calendarId != null && !calendarId.isEmpty()) {
+                    intent.putExtra("calendarId", calendarId);
+                }
                 startActivity(intent);
             });
         }

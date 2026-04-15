@@ -1,25 +1,2 @@
 <?xml version="1.0" encoding="utf-8"?>
-<menu xmlns:android="http://schemas.android.com/apk/res/android">
-
-    <item android:title="MY CALENDARS">
-        <menu>
-            <group android:checkableBehavior="all">
-                <item
-                    android:id="@+id/cal_work"
-                    android:checked="true"
-                    android:title="Work" />
-
-                <item
-                    android:id="@+id/cal_personal"
-                    android:checked="true"
-                    android:title="Personal" />
-
-                <item
-                    android:id="@+id/cal_holidays"
-                    android:checked="true"
-                    android:title="Holidays" />
-            </group>
-        </menu>
-    </item>
-
-</menu>
+<menu xmlns:android="http://schemas.android.com/apk/res/android" />

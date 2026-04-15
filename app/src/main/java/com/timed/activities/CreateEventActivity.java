@@ -20,12 +20,18 @@ import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.timed.R;
-import com.timed.data.models.EventModel;
-import com.timed.utils.EventIntegrationService;
-import com.timed.utils.EventModelAdapter;
+import com.google.firebase.Timestamp;
+import com.timed.managers.EventsManager;
+import com.timed.models.CalendarModel;
+import com.timed.models.Event;
+import com.timed.utils.CalendarIntegrationService;
+import com.timed.utils.FirebaseInitializer;
 
 import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Calendar;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -35,8 +41,6 @@ public class CreateEventActivity extends AppCompatActivity {
     private static final String TAG = "CreateEvent";
     private static final long DEFAULT_EVENT_DURATION_MS = 60 * 60 * 1000L;
     private static final long AUTO_FIX_END_DURATION_MS = 24 * 60 * 60 * 1000L;
-    private static final String[] CALENDAR_LABELS = new String[]{"Work", "Personal", "Shared", "Study"};
-    private static final String[] CALENDAR_IDS = new String[]{"default_calendar", "personal_calendar", "shared_calendar", "study_calendar"};
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("EEE, MMM d, yyyy", Locale.ENGLISH);
     private static final SimpleDateFormat TIME_FORMAT = new SimpleDateFormat("HH:mm", Locale.ENGLISH);
 
@@ -49,11 +53,14 @@ public class CreateEventActivity extends AppCompatActivity {
 
     private long startTime = 0;
     private long endTime = 0;
-    private EventIntegrationService eventService;
+    private EventsManager eventsManager;
+    private FirebaseInitializer firebaseInitializer;
+    private CalendarIntegrationService calendarIntegrationService;
     private String mode = "create";
     private String eventId;
-    private String calendarId = "default_calendar";
-    private EventModel editingEvent;
+    private String calendarId;
+    private final List<CalendarModel> calendarOptions = new ArrayList<>();
+    private Event editingEvent;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -82,6 +89,7 @@ public class CreateEventActivity extends AppCompatActivity {
         updateEndTimeButton();
 
         configureModeUI();
+        loadCalendars();
     }
 
     /**
@@ -109,7 +117,10 @@ public class CreateEventActivity extends AppCompatActivity {
      * Khởi tạo services
      */
     private void initializeServices() {
-        eventService = new EventIntegrationService();
+        firebaseInitializer = FirebaseInitializer.getInstance();
+        firebaseInitializer.initialize(this);
+        eventsManager = EventsManager.getInstance(this);
+        calendarIntegrationService = new CalendarIntegrationService();
     }
 
     private void readIntentData() {
@@ -131,38 +142,43 @@ public class CreateEventActivity extends AppCompatActivity {
         endTime = getIntent().getLongExtra("endTime", 0L);
         boolean incomingAllDay = getIntent().getBooleanExtra("allDay", false);
 
-        if (incomingTitle != null) etTitle.setText(incomingTitle);
-        if (incomingDescription != null) etDescription.setText(incomingDescription);
-        if (incomingLocation != null) etLocation.setText(incomingLocation);
+        if (incomingTitle != null)
+            etTitle.setText(incomingTitle);
+        if (incomingDescription != null)
+            etDescription.setText(incomingDescription);
+        if (incomingLocation != null)
+            etLocation.setText(incomingLocation);
         cbAllDay.setChecked(incomingAllDay);
 
         if (isEditMode() && eventId != null && !eventId.isEmpty()) {
-            eventService.getEventById(eventId, new EventIntegrationService.EventDetailListener() {
-                @Override
-                public void onEventLoaded(EventModel event) {
-                    editingEvent = event;
-                    if (etTitle.getText().toString().trim().isEmpty()) etTitle.setText(event.getTitle());
-                    if (etDescription.getText().toString().trim().isEmpty()) etDescription.setText(event.getDescription());
-                    if (etLocation.getText().toString().trim().isEmpty()) etLocation.setText(event.getLocation());
-                    if (event.getCalendarId() != null && !event.getCalendarId().isEmpty()) {
-                        calendarId = event.getCalendarId();
-                    }
-                    if (startTime <= 0) startTime = event.getStartTime();
-                    if (endTime <= 0) endTime = event.getEndTime();
-                    cbAllDay.setChecked(event.isAllDay());
-                    ensureValidTimeRange();
-                    updateStartDateButton();
-                    updateStartTimeButton();
-                    updateEndDateButton();
-                    updateEndTimeButton();
-                    updateCalendarLabel();
-                }
-
-                @Override
-                public void onError(String errorMessage) {
-                    Log.w(TAG, "Cannot load event detail for edit: " + errorMessage);
-                }
-            });
+            eventsManager.getEventById(eventId)
+                    .addOnSuccessListener(event -> {
+                        editingEvent = event;
+                        if (event == null) {
+                            return;
+                        }
+                        if (etTitle.getText().toString().trim().isEmpty())
+                            etTitle.setText(event.getTitle());
+                        if (etDescription.getText().toString().trim().isEmpty())
+                            etDescription.setText(event.getDescription());
+                        if (etLocation.getText().toString().trim().isEmpty())
+                            etLocation.setText(event.getLocation());
+                        if (event.getCalendarId() != null && !event.getCalendarId().isEmpty()) {
+                            calendarId = event.getCalendarId();
+                        }
+                        if (startTime <= 0 && event.getStartTime() != null)
+                            startTime = event.getStartTime().toDate().getTime();
+                        if (endTime <= 0 && event.getEndTime() != null)
+                            endTime = event.getEndTime().toDate().getTime();
+                        cbAllDay.setChecked(event.getAllDay() != null && event.getAllDay());
+                        ensureValidTimeRange();
+                        updateStartDateButton();
+                        updateStartTimeButton();
+                        updateEndDateButton();
+                        updateEndTimeButton();
+                        updateCalendarLabel();
+                    })
+                    .addOnFailureListener(e -> Log.w(TAG, "Cannot load event detail for edit: " + e.getMessage()));
         }
     }
 
@@ -272,39 +288,93 @@ public class CreateEventActivity extends AppCompatActivity {
     }
 
     private void showCalendarLabelPicker() {
-        int selectedIndex = findCalendarIndex(calendarId);
-        new AlertDialog.Builder(this)
-            .setTitle("Choose Label")
-            .setSingleChoiceItems(CALENDAR_LABELS, selectedIndex, (dialog, which) -> {
-                calendarId = CALENDAR_IDS[which];
-                updateCalendarLabel();
-                dialog.dismiss();
-            })
-            .setNegativeButton("Cancel", null)
-            .show();
-    }
-
-    private int findCalendarIndex(String value) {
-        if (value == null) {
-            return 0;
+        if (calendarOptions.isEmpty()) {
+            Toast.makeText(this, "No calendars available", Toast.LENGTH_SHORT).show();
+            return;
         }
 
-        for (int i = 0; i < CALENDAR_IDS.length; i++) {
-            if (CALENDAR_IDS[i].equalsIgnoreCase(value)) {
-                return i;
+        String[] labels = new String[calendarOptions.size()];
+        int selectedIndex = 0;
+        for (int i = 0; i < calendarOptions.size(); i++) {
+            CalendarModel calendar = calendarOptions.get(i);
+            String name = calendar != null && calendar.getName() != null ? calendar.getName() : "Calendar";
+            labels[i] = name;
+            if (calendar != null && calendarId != null && calendarId.equals(calendar.getId())) {
+                selectedIndex = i;
             }
         }
 
-        return 0;
+        new AlertDialog.Builder(this)
+                .setTitle("Choose Calendar")
+                .setSingleChoiceItems(labels, selectedIndex, (dialog, which) -> {
+                    CalendarModel selected = calendarOptions.get(which);
+                    if (selected != null) {
+                        calendarId = selected.getId();
+                        calendarIntegrationService.setCachedDefaultCalendarId(this, calendarId);
+                    }
+                    updateCalendarLabel();
+                    dialog.dismiss();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     private void updateCalendarLabel() {
         if (tvCalendarValue == null) {
             return;
         }
+        String label = "Calendar";
+        for (CalendarModel calendar : calendarOptions) {
+            if (calendar != null && calendarId != null && calendarId.equals(calendar.getId())) {
+                if (calendar.getName() != null && !calendar.getName().isEmpty()) {
+                    label = calendar.getName();
+                }
+                break;
+            }
+        }
+        tvCalendarValue.setText(label);
+    }
 
-        int index = findCalendarIndex(calendarId);
-        tvCalendarValue.setText(CALENDAR_LABELS[index]);
+    private void loadCalendars() {
+        calendarIntegrationService.ensureDefaultCalendar(this,
+                new CalendarIntegrationService.DefaultCalendarListener() {
+                    @Override
+                    public void onReady(String defaultId, List<CalendarModel> calendars) {
+                        calendarOptions.clear();
+                        if (calendars != null) {
+                            calendarOptions.addAll(calendars);
+                        }
+
+                        if (calendarId == null || calendarId.isEmpty()) {
+                            calendarId = defaultId;
+                        } else if (!containsCalendar(calendarId)) {
+                            calendarId = defaultId;
+                        }
+
+                        if (calendarId != null && !calendarId.isEmpty()) {
+                            calendarIntegrationService.setCachedDefaultCalendarId(CreateEventActivity.this, calendarId);
+                        }
+
+                        updateCalendarLabel();
+                    }
+
+                    @Override
+                    public void onError(String errorMessage) {
+                        Log.e(TAG, "Failed to load calendars: " + errorMessage);
+                    }
+                });
+    }
+
+    private boolean containsCalendar(String id) {
+        if (id == null) {
+            return false;
+        }
+        for (CalendarModel calendar : calendarOptions) {
+            if (calendar != null && id.equals(calendar.getId())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void updateAllDayState() {
@@ -347,15 +417,15 @@ public class CreateEventActivity extends AppCompatActivity {
         calendar.setTimeInMillis(startTime);
 
         DatePickerDialog datePickerDialog = new DatePickerDialog(this,
-            (view, year, monthOfYear, dayOfMonth) -> {
-                calendar.set(year, monthOfYear, dayOfMonth);
-                startTime = calendar.getTimeInMillis();
-                ensureValidTimeRange();
-                refreshDateTimeButtons();
-            },
-            calendar.get(Calendar.YEAR),
-            calendar.get(Calendar.MONTH),
-            calendar.get(Calendar.DAY_OF_MONTH));
+                (view, year, monthOfYear, dayOfMonth) -> {
+                    calendar.set(year, monthOfYear, dayOfMonth);
+                    startTime = calendar.getTimeInMillis();
+                    ensureValidTimeRange();
+                    refreshDateTimeButtons();
+                },
+                calendar.get(Calendar.YEAR),
+                calendar.get(Calendar.MONTH),
+                calendar.get(Calendar.DAY_OF_MONTH));
 
         datePickerDialog.show();
     }
@@ -368,16 +438,16 @@ public class CreateEventActivity extends AppCompatActivity {
         calendar.setTimeInMillis(startTime);
 
         TimePickerDialog timePickerDialog = new TimePickerDialog(this,
-            (view, hourOfDay, minute) -> {
-                calendar.set(Calendar.HOUR_OF_DAY, hourOfDay);
-                calendar.set(Calendar.MINUTE, minute);
-                startTime = calendar.getTimeInMillis();
-                ensureValidTimeRange();
-                refreshDateTimeButtons();
-            },
-            calendar.get(Calendar.HOUR_OF_DAY),
-            calendar.get(Calendar.MINUTE),
-            true);
+                (view, hourOfDay, minute) -> {
+                    calendar.set(Calendar.HOUR_OF_DAY, hourOfDay);
+                    calendar.set(Calendar.MINUTE, minute);
+                    startTime = calendar.getTimeInMillis();
+                    ensureValidTimeRange();
+                    refreshDateTimeButtons();
+                },
+                calendar.get(Calendar.HOUR_OF_DAY),
+                calendar.get(Calendar.MINUTE),
+                true);
 
         timePickerDialog.show();
     }
@@ -390,15 +460,15 @@ public class CreateEventActivity extends AppCompatActivity {
         calendar.setTimeInMillis(endTime);
 
         DatePickerDialog datePickerDialog = new DatePickerDialog(this,
-            (view, year, monthOfYear, dayOfMonth) -> {
-                calendar.set(year, monthOfYear, dayOfMonth);
-                endTime = calendar.getTimeInMillis();
-                ensureValidTimeRange();
-                refreshDateTimeButtons();
-            },
-            calendar.get(Calendar.YEAR),
-            calendar.get(Calendar.MONTH),
-            calendar.get(Calendar.DAY_OF_MONTH));
+                (view, year, monthOfYear, dayOfMonth) -> {
+                    calendar.set(year, monthOfYear, dayOfMonth);
+                    endTime = calendar.getTimeInMillis();
+                    ensureValidTimeRange();
+                    refreshDateTimeButtons();
+                },
+                calendar.get(Calendar.YEAR),
+                calendar.get(Calendar.MONTH),
+                calendar.get(Calendar.DAY_OF_MONTH));
 
         datePickerDialog.show();
     }
@@ -411,16 +481,16 @@ public class CreateEventActivity extends AppCompatActivity {
         calendar.setTimeInMillis(endTime);
 
         TimePickerDialog timePickerDialog = new TimePickerDialog(this,
-            (view, hourOfDay, minute) -> {
-                calendar.set(Calendar.HOUR_OF_DAY, hourOfDay);
-                calendar.set(Calendar.MINUTE, minute);
-                endTime = calendar.getTimeInMillis();
-                ensureValidTimeRange();
-                refreshDateTimeButtons();
-            },
-            calendar.get(Calendar.HOUR_OF_DAY),
-            calendar.get(Calendar.MINUTE),
-            true);
+                (view, hourOfDay, minute) -> {
+                    calendar.set(Calendar.HOUR_OF_DAY, hourOfDay);
+                    calendar.set(Calendar.MINUTE, minute);
+                    endTime = calendar.getTimeInMillis();
+                    ensureValidTimeRange();
+                    refreshDateTimeButtons();
+                },
+                calendar.get(Calendar.HOUR_OF_DAY),
+                calendar.get(Calendar.MINUTE),
+                true);
 
         timePickerDialog.show();
     }
@@ -489,21 +559,61 @@ public class CreateEventActivity extends AppCompatActivity {
             return;
         }
 
-        eventService.createSingleEvent(calendarId, title, startTime, endTime,
-            description, location, isAllDay,
-            new EventIntegrationService.EventSaveListener() {
-                @Override
-                public void onSuccess(String eventId) {
-                    Log.d(TAG, "Event saved: " + eventId);
-                    finish();
-                }
+        ensureCalendarReadyAndSave(title, description, location, isAllDay);
+    }
 
-                @Override
-                public void onError(String errorMessage) {
-                    Log.e(TAG, "Error saving event: " + errorMessage);
-                    Toast.makeText(CreateEventActivity.this, "Lỗi: " + errorMessage, Toast.LENGTH_SHORT).show();
-                }
-            });
+    private void ensureCalendarReadyAndSave(String title, String description, String location, boolean isAllDay) {
+        if (calendarId == null || calendarId.isEmpty()) {
+            calendarId = calendarIntegrationService.getCachedDefaultCalendarId(this);
+        }
+        if (calendarId != null && !calendarId.isEmpty()) {
+            saveEventWithCalendar(title, description, location, isAllDay, calendarId);
+            return;
+        }
+
+        calendarIntegrationService.ensureDefaultCalendar(this,
+                new CalendarIntegrationService.DefaultCalendarListener() {
+                    @Override
+                    public void onReady(String calendarId, List<CalendarModel> calendars) {
+                        CreateEventActivity.this.calendarId = calendarId;
+                        saveEventWithCalendar(title, description, location, isAllDay, calendarId);
+                    }
+
+                    @Override
+                    public void onError(String errorMessage) {
+                        Toast.makeText(CreateEventActivity.this,
+                                "Calendar is not ready: " + errorMessage, Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    private void saveEventWithCalendar(String title, String description, String location, boolean isAllDay,
+            String calendarId) {
+        Event newEvent = new Event();
+        newEvent.setCalendarId(calendarId);
+        newEvent.setTitle(title);
+        newEvent.setDescription(description);
+        newEvent.setLocation(location);
+        newEvent.setAllDay(isAllDay);
+        newEvent.setStartTime(new Timestamp(new Date(startTime)));
+        newEvent.setEndTime(new Timestamp(new Date(endTime)));
+
+        String userId = firebaseInitializer.getCurrentUserId();
+        if (userId != null) {
+            newEvent.setCreatedBy(userId);
+        }
+
+        calendarIntegrationService.setCachedDefaultCalendarId(this, calendarId);
+
+        eventsManager.createEvent(newEvent)
+                .addOnSuccessListener(docRef -> {
+                    Log.d(TAG, "Event saved: " + docRef.getId());
+                    finish();
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error saving event: " + e.getMessage(), e);
+                    Toast.makeText(CreateEventActivity.this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
     }
 
     private void updateExistingEvent(String title, String description, String location, boolean isAllDay) {
@@ -512,27 +622,42 @@ public class CreateEventActivity extends AppCompatActivity {
             return;
         }
 
-        EventModel target = editingEvent != null ? editingEvent : new EventModel();
+        if (calendarId == null || calendarId.isEmpty()) {
+            calendarId = calendarIntegrationService.getCachedDefaultCalendarId(this);
+        }
+        if (calendarId == null || calendarId.isEmpty()) {
+            calendarIntegrationService.ensureDefaultCalendar(this,
+                    new CalendarIntegrationService.DefaultCalendarListener() {
+                        @Override
+                        public void onReady(String calendarId, List<CalendarModel> calendars) {
+                            CreateEventActivity.this.calendarId = calendarId;
+                            calendarIntegrationService.setCachedDefaultCalendarId(CreateEventActivity.this, calendarId);
+                            updateExistingEvent(title, description, location, isAllDay);
+                        }
+
+                        @Override
+                        public void onError(String errorMessage) {
+                            Toast.makeText(CreateEventActivity.this,
+                                    "Calendar is not ready: " + errorMessage, Toast.LENGTH_SHORT).show();
+                        }
+                    });
+            return;
+        }
+
+        Event target = editingEvent != null ? editingEvent : new Event();
         target.setId(eventId);
         target.setCalendarId(calendarId);
         target.setTitle(title);
         target.setDescription(description);
         target.setLocation(location);
-        target.setStartTime(startTime);
-        target.setEndTime(endTime);
         target.setAllDay(isAllDay);
+        target.setStartTime(new Timestamp(new Date(startTime)));
+        target.setEndTime(new Timestamp(new Date(endTime)));
 
-        eventService.updateEvent(eventId, target, new EventIntegrationService.EventSaveListener() {
-            @Override
-            public void onSuccess(String updatedEventId) {
-                finish();
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                Toast.makeText(CreateEventActivity.this, "Lỗi: " + errorMessage, Toast.LENGTH_SHORT).show();
-            }
-        });
+        eventsManager.updateEvent(eventId, target)
+                .addOnSuccessListener(aVoid -> finish())
+                .addOnFailureListener(e -> Toast.makeText(CreateEventActivity.this,
+                        "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show());
     }
 
     private void deleteEvent() {
@@ -540,17 +665,10 @@ public class CreateEventActivity extends AppCompatActivity {
             return;
         }
 
-        eventService.deleteEvent(eventId, new EventIntegrationService.EventSaveListener() {
-            @Override
-            public void onSuccess(String deletedEventId) {
-                finish();
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                Toast.makeText(CreateEventActivity.this, "Lỗi xóa sự kiện: " + errorMessage, Toast.LENGTH_SHORT).show();
-            }
-        });
+        eventsManager.deleteEvent(eventId)
+                .addOnSuccessListener(aVoid -> finish())
+                .addOnFailureListener(e -> Toast.makeText(CreateEventActivity.this,
+                        "Lỗi xóa sự kiện: " + e.getMessage(), Toast.LENGTH_SHORT).show());
     }
 
     private int dpToPx(int dp) {
@@ -558,4 +676,3 @@ public class CreateEventActivity extends AppCompatActivity {
         return Math.round(dp * density);
     }
 }
-

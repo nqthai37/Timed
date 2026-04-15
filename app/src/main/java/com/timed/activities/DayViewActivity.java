@@ -1,10 +1,13 @@
-package com.timed;
+package com.timed.activities;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.widget.TextView;
+
+import com.timed.R;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -30,6 +33,11 @@ public class DayViewActivity extends AppCompatActivity {
         viewSwitcher = findViewById(R.id.viewSwitcher);
         TextView tvTopTitle = findViewById(R.id.tvTopTitle);
         RecyclerView rvHorizontalCalendar = findViewById(R.id.rvHorizontalCalendar);
+
+        ImageButton btnSearch = findViewById(R.id.btnSearch);
+        if (btnSearch != null) {
+            btnSearch.setOnClickListener(v -> startActivity(new Intent(this, SearchFilterActivity.class)));
+        }
 
         if (rvHorizontalCalendar != null) {
             rvHorizontalCalendar.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
