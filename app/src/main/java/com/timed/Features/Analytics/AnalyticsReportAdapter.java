@@ -1,4 +1,4 @@
-package com.timed.Setting.Analytics;
+package com.timed.Features.Analytics;
 
 import android.view.LayoutInflater;
 import android.view.ViewGroup;

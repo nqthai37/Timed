@@ -1,4 +1,4 @@
-package com.timed.Setting.FocusMode;
+package com.timed.Features.FocusMode;
 
 public class FocusPreset {
     private String title;

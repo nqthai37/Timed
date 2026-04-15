@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/background_light"
-    tools:context=".SettingsActivity">
+    tools:context=".FeaturesActivity">
 
     <LinearLayout
         android:id="@+id/topBar"
@@ -33,7 +33,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:gravity="center"
-            android:text="Settings"
+            android:text="Features"
             android:textColor="@color/slate_900"
             android:textSize="16sp"
             android:textStyle="bold"/>
@@ -44,7 +44,7 @@
     </LinearLayout>
 
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rv_settings"
+        android:id="@+id/rv_features"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:padding="12dp"

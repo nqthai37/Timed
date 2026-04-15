@@ -1,4 +1,4 @@
-package com.timed.Setting.FocusMode;
+package com.timed.Features.FocusMode;
 
 import android.os.Bundle;
 import android.widget.TextView;

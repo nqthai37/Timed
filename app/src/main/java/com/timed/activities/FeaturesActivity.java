@@ -1,5 +1,6 @@
 package com.timed.activities;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,27 +14,27 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.timed.Features.AI.AiSchedulingActivity;
+import com.timed.Features.Analytics.AnalyticsActivity;
+import com.timed.Features.ConflictResolver.ConflictResolverActivity;
+import com.timed.Features.FocusMode.FocusModeActivity;
+import com.timed.Features.FreeSlotFinder.FreeSlotFinderActivity;
+import com.timed.Features.HabitTracker.HabitTrackerActivity;
+import com.timed.Features.FeatureAdapter;
+import com.timed.models.Feature;
 import com.timed.R;
-import com.timed.Setting.Main.SettingItem;
-import com.timed.Setting.Main.SettingsAdapter;
-import com.timed.Setting.Security.SecurityActivity;
-import com.timed.Setting.SyncStorage.SyncStorageActivity;
-import com.timed.Setting.Themes.ThemeActivity;
-import com.timed.Setting.Timezone.TimezoneSettingActivity;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class SettingsActivity extends AppCompatActivity {
+public class FeaturesActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // 1. Kích hoạt chế độ tràn viền (Edge-to-edge) giống Features
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
-        setContentView(R.layout.activity_setting);
+        setContentView(R.layout.activity_features);
 
-        // 2. Chia nhỏ luồng khởi tạo
         setupInsets();
         setupListeners();
         setupRecyclerView();
@@ -47,29 +48,30 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void setupRecyclerView() {
-        RecyclerView rvSettings = findViewById(R.id.rv_settings);
-        if (rvSettings != null) {
-            rvSettings.setLayoutManager(new LinearLayoutManager(this));
-            // Đưa việc khởi tạo list trực tiếp vào Adapter để tránh dùng biến toàn cục
-            rvSettings.setAdapter(new SettingsAdapter(this, getSettings()));
+        RecyclerView rvFeatures = findViewById(R.id.rv_features);
+        if (rvFeatures != null) {
+            rvFeatures.setLayoutManager(new LinearLayoutManager(this));
+            rvFeatures.setAdapter(new FeatureAdapter(this, getFeatures()));
         }
     }
 
-    // 3. Tách riêng hàm tạo dữ liệu giả
-    private List<SettingItem> getSettings() {
-        List<SettingItem> settingList = new ArrayList<>();
+    private List<Feature> getFeatures() {
+        List<Feature> features = new ArrayList<>();
 
-        settingList.add(new SettingItem(R.drawable.ic_time_zone, "Timezone Setting", TimezoneSettingActivity.class));
-        settingList.add(new SettingItem(R.drawable.ic_security, "Security", SecurityActivity.class));
-        settingList.add(new SettingItem(R.drawable.ic_cloud, "Sync & Storage", SyncStorageActivity.class));
-        settingList.add(new SettingItem(R.drawable.ic_theme, "Theme & Appearance", ThemeActivity.class));
+        // NHÓM 1: Tối ưu hóa (Hiện tiêu đề ở item đầu tiên)
+        features.add(new Feature("AI Scheduling", "...", R.drawable.ic_ai_schedule, AiSchedulingActivity.class, "Optimizing Schedule"));
+        features.add(new Feature("Conflict Resolver", "...", R.drawable.ic_conflict_resolver, ConflictResolverActivity.class, null));
+        features.add(new Feature("Free Slot Finder", "...", R.drawable.ic_free_slot_finder, FreeSlotFinderActivity.class, null));
 
-        return settingList;
+        // NHÓM 2: Năng suất (Hiện tiêu đề ở item đầu tiên của nhóm này)
+        features.add(new Feature("Analytics", "...", R.drawable.ic_analytics, AnalyticsActivity.class, "Productivity"));
+        features.add(new Feature("Focus Mode", "...", R.drawable.ic_focus, FocusModeActivity.class, null));
+        features.add(new Feature("Habit Tracker", "...", R.drawable.ic_habit_tracker, HabitTrackerActivity.class, null));
+
+        return features;
     }
 
-    // 4. Xử lý padding cho Top Bar tránh bị lấp bởi Status Bar
     private void setupInsets() {
-        // Lưu ý: Đảm bảo trong activity_setting.xml của bạn cũng có view mang id "topBar"
         View root = findViewById(R.id.topBar);
         if (root == null) {
             return;
@@ -93,7 +95,6 @@ public class SettingsActivity extends AppCompatActivity {
         });
     }
 
-    // 5. Hàm tiện ích đổi từ dp sang px
     private int dpToPx(int dp) {
         float density = getResources().getDisplayMetrics().density;
         return Math.round(dp * density);

@@ -21,6 +21,8 @@ import com.google.android.material.checkbox.MaterialCheckBox;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.FirebaseAuth;
+import com.timed.models.User;
+
 
 public class LoginActivity extends AppCompatActivity {
     private TextInputEditText etEmail, etPassword;

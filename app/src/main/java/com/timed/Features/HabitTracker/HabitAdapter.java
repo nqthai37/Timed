@@ -1,4 +1,4 @@
-package com.timed.Setting.HabitTracker; // Nhớ đổi đúng package của bạn
+package com.timed.Features.HabitTracker; // Nhớ đổi đúng package của bạn
 
 import android.view.LayoutInflater;
 import android.view.View;
