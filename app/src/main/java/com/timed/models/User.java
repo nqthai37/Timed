@@ -13,7 +13,6 @@ public class User {
     private String auth_provider;
     private Boolean email_verified;
     private String timezone;
-    private Security security;
     private Settings settings;
 
     @PropertyName("created_at")
@@ -81,14 +80,6 @@ public class User {
         this.timezone = timezone;
     }
 
-    public Security getSecurity() {
-        return security;
-    }
-
-    public void setSecurity(Security security) {
-        this.security = security;
-    }
-
     public Settings getSettings() {
         return settings;
     }
@@ -115,37 +106,6 @@ public class User {
     @PropertyName("updated_at")
     public void setUpdatedAt(Timestamp updatedAt) {
         this.updatedAt = updatedAt;
-    }
-
-    public static class Security {
-        @PropertyName("last_login")
-        private Timestamp lastLogin;
-
-        @PropertyName("two_factor_enabled")
-        private boolean twoFactorEnabled;
-
-        public Security() {
-        }
-
-        @PropertyName("last_login")
-        public Timestamp getLastLogin() {
-            return lastLogin;
-        }
-
-        @PropertyName("last_login")
-        public void setLastLogin(Timestamp lastLogin) {
-            this.lastLogin = lastLogin;
-        }
-
-        @PropertyName("two_factor_enabled")
-        public boolean isTwoFactorEnabled() {
-            return twoFactorEnabled;
-        }
-
-        @PropertyName("two_factor_enabled")
-        public void setTwoFactorEnabled(boolean twoFactorEnabled) {
-            this.twoFactorEnabled = twoFactorEnabled;
-        }
     }
 
     public static class Settings {
