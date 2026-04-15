@@ -5,8 +5,9 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
     android:background="@color/background_light"
-    tools:context=".SettingsActivity">
+    tools:context=".activities.SettingsActivity">
 
     <LinearLayout
         android:id="@+id/topBar"

@@ -17,7 +17,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.timed.R;
 import com.timed.Setting.Main.SettingItem;
 import com.timed.Setting.Main.SettingsAdapter;
-import com.timed.Setting.Security.SecurityActivity;
+import com.timed.Setting.Profile.ProfileActivity;
 import com.timed.Setting.SyncStorage.SyncStorageActivity;
 import com.timed.Setting.Themes.ThemeActivity;
 import com.timed.Setting.Timezone.TimezoneSettingActivity;
@@ -73,7 +73,7 @@ public class SettingsActivity extends AppCompatActivity {
     private List<SettingItem> getSettings() {
         List<SettingItem> settingList = new ArrayList<>();
         settingList.add(new SettingItem(R.drawable.ic_time_zone, "Timezone Setting", TimezoneSettingActivity.class));
-        settingList.add(new SettingItem(R.drawable.ic_security, "Security", SecurityActivity.class));
+        settingList.add(new SettingItem(R.drawable.ic_security, "Profile", ProfileActivity.class));
         settingList.add(new SettingItem(R.drawable.ic_cloud, "Sync & Storage", SyncStorageActivity.class));
         settingList.add(new SettingItem(R.drawable.ic_send, "Import ICS/CSV and Export Calendar", ImportExportActivity.class));
         settingList.add(new SettingItem(R.drawable.ic_theme, "Theme & Appearance", ThemeActivity.class));

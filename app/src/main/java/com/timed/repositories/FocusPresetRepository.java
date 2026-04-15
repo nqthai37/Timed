@@ -2,7 +2,7 @@ package com.timed.repositories;
 
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
-import com.timed.Setting.FocusMode.FocusPreset;
+import com.timed.Features.FocusMode.FocusPreset;
 import com.timed.managers.UserManager;
 
 import java.util.ArrayList;

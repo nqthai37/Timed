@@ -5,12 +5,12 @@ import java.util.List;
 
 // Chuyển toàn bộ mớ import bòng bong của bạn sang đây
 import com.timed.R;
-import com.timed.Setting.AI.AiSchedulingActivity;
-import com.timed.Setting.Analytics.AnalyticsActivity;
-import com.timed.Setting.ConflictResolver.ConflictResolverActivity;
-import com.timed.Setting.FocusMode.FocusModeActivity;
-import com.timed.Setting.FreeSlotFinder.FreeSlotFinderActivity;
-import com.timed.Setting.HabitTracker.HabitTrackerActivity;
+import com.timed.Features.AI.AiSchedulingActivity;
+import com.timed.Features.Analytics.AnalyticsActivity;
+import com.timed.Features.ConflictResolver.ConflictResolverActivity;
+import com.timed.Features.FocusMode.FocusModeActivity;
+import com.timed.Features.FreeSlotFinder.FreeSlotFinderActivity;
+import com.timed.Features.HabitTracker.HabitTrackerActivity;
 import com.timed.Setting.Main.SettingItem;
 import com.timed.Setting.Profile.ProfileActivity;
 import com.timed.Setting.SyncStorage.SyncStorageActivity;
