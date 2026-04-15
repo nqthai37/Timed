@@ -26,7 +26,7 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import com.timed.Setting.Main.SettingActivity;
+
 
 import com.timed.R;
 import com.timed.adapters.CalendarAdapter;
