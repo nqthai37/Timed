@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+
     <!-- Permissions for Reminders & Notifications -->
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <application
         android:allowBackup="true"
@@ -61,16 +64,20 @@
         <activity android:name=".activities.ImportExportActivity" />
         <activity android:name=".activities.SettingsActivity" />
         <activity android:name=".activities.FeaturesActivity" />
+        <activity android:name=".activities.CreateTaskActivity" android:exported="false" />
+        <activity android:name=".activities.TasksListActivity" android:exported="false" />
 
         <!-- Receiver for Event Reminders & Notifications -->
         <receiver
-            android:name="com.timed.services.EventNotificationReceiver"
+            android:name=".services.EventNotificationReceiver"
             android:enabled="true"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.timed.EVENT_REMINDER" />
                 <action android:name="com.timed.EVENT_ACCEPT" />
                 <action android:name="com.timed.EVENT_DECLINE" />
+                <action android:name="ACTION_SHOW_TASK_NOTIFICATION" />
+                <action android:name="ACTION_TASK_DONE" />
             </intent-filter>
         </receiver>
     </application>

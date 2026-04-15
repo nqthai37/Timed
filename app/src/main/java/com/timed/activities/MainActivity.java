@@ -284,13 +284,14 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
 
             findViewById(R.id.btnFabTask).setOnClickListener(v -> {
                 toggleFabMenu();
-                android.widget.Toast.makeText(this, "Create Task Clicked", android.widget.Toast.LENGTH_SHORT).show();
+                Intent intent = new Intent(this, CreateTaskActivity.class);
+                intent.putExtra("calendarId", getActiveCalendarId());
+                startActivity(intent);
             });
 
             findViewById(R.id.btnFabReminder).setOnClickListener(v -> {
                 toggleFabMenu();
-                android.widget.Toast.makeText(this, "Create Reminder Clicked", android.widget.Toast.LENGTH_SHORT)
-                        .show();
+                showCreateReminderDialog();
             });
         }
 
@@ -339,8 +340,6 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             }
 
             if (itemId == R.id.nav_settings) {
-                // Lưu ý: Bạn đang dùng 2 class Settings khác nhau trong code (SettingsActivity và SettingActivity)
-                // Hãy kiểm tra chính xác class bạn muốn mở
                 Intent intent = new Intent(this, SettingsActivity.class);
                 startActivity(intent);
                 return true;
@@ -360,11 +359,8 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         super.onResume();
         updateEventsForDate(selectedDate);
 
-        // Chỉ cập nhật trạng thái lựa chọn của BottomNav, không set lại Listener
-        BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
-        if (bottomNav != null) {
-            bottomNav.setSelectedItemId(R.id.nav_schedule);
-        }
+        // Don't need to update bottom nav selection on resume
+        // It will maintain its state from before
     }
 
     private int dpToPx(int dp) {
@@ -952,6 +948,61 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
         finish();
+    }
+
+    private void showCreateReminderDialog() {
+        EditText etReminderTitle = new EditText(this);
+        etReminderTitle.setHint("Reminder title");
+
+        new AlertDialog.Builder(this)
+                .setTitle("Create Reminder")
+                .setView(etReminderTitle)
+                .setPositiveButton("Create", (dialog, which) -> {
+                    String title = etReminderTitle.getText().toString().trim();
+                    if (!title.isEmpty()) {
+                        createQuickReminder(title);
+                    } else {
+                        Toast.makeText(this, "Please enter a title", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void createQuickReminder(String title) {
+        com.google.firebase.auth.FirebaseAuth auth = com.google.firebase.auth.FirebaseAuth.getInstance();
+        if (auth.getCurrentUser() == null) {
+            Toast.makeText(this, "Not logged in", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String userId = auth.getCurrentUser().getUid();
+        Calendar calendar = Calendar.getInstance();
+        calendar.add(Calendar.HOUR, 1); // Reminder for 1 hour from now
+
+        // Create as a Task with reminder
+        ArrayList<com.timed.models.Task.TaskReminder> taskReminders = new ArrayList<>();
+        taskReminders.add(new com.timed.models.Task.TaskReminder("popup", 0));
+
+        com.timed.models.Task task = new com.timed.models.Task(
+                title,
+                "",
+                new com.google.firebase.Timestamp(calendar.getTime()),
+                false,
+                "High",
+                userId,
+                "default_list",
+                taskReminders
+        );
+
+        com.timed.managers.TasksManager tasksManager = com.timed.managers.TasksManager.getInstance(this);
+        tasksManager.createTask(task)
+                .addOnSuccessListener(docRef -> {
+                    Toast.makeText(this, "Reminder created!", Toast.LENGTH_SHORT).show();
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
     }
 
     private List<CalendarDay> daysInMonthArray(LocalDate date) {
