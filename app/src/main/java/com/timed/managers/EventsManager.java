@@ -134,6 +134,13 @@ public class EventsManager {
                     if (!task.isSuccessful()) {
                         throw task.getException();
                     }
+
+                    long rangeStart = startDate != null
+                            ? startDate.toDate().getTime()
+                            : Long.MIN_VALUE;
+                    long rangeEnd = endDate != null
+                            ? endDate.toDate().getTime()
+                            : Long.MAX_VALUE;
                     
                     List<Event> events = new ArrayList<>();
                     QuerySnapshot snapshot = task.getResult();
