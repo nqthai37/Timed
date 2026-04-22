@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Preset Reminders"
+            android:textColor="#64748b"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
+
+        <RadioGroup
+            android:id="@+id/rgPresetTimes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <RadioButton android:id="@+id/rb5Min" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="5 minutes before" android:padding="12dp"/>
+            <RadioButton android:id="@+id/rb10Min" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="10 minutes before" android:padding="12dp"/>
+            <RadioButton android:id="@+id/rb15Min" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="15 minutes before" android:padding="12dp"/>
+            <RadioButton android:id="@+id/rb30Min" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="30 minutes before" android:padding="12dp"/>
+            <RadioButton android:id="@+id/rb1Hour" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="1 hour before" android:padding="12dp"/>
+            <RadioButton android:id="@+id/rb2Hours" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="2 hours before" android:padding="12dp"/>
+            <RadioButton android:id="@+id/rb1Day" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="1 day before" android:padding="12dp"/>
+            <RadioButton android:id="@+id/rbCustom" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Custom Time" android:padding="12dp"/>
+        </RadioGroup>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Custom Time (Hours : Minutes)"
+            android:textColor="#64748b"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="#f1f5f9"
+            android:padding="8dp">
+
+            <EditText
+                android:id="@+id/etCustomHour"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="00"
+                android:inputType="number"
+                android:maxLength="2"
+                android:gravity="center"
+                android:padding="8dp"
+                android:background="@android:color/transparent"
+                android:textColor="#0f172a"
+                android:textColorHint="#94a3b8"
+                android:textSize="16sp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=":"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="#0f172a"
+                android:paddingHorizontal="8dp"/>
+
+            <EditText
+                android:id="@+id/etCustomMinute"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="00"
+                android:inputType="number"
+                android:maxLength="2"
+                android:gravity="center"
+                android:padding="8dp"
+                android:background="@android:color/transparent"
+                android:textColor="#0f172a"
+                android:textColorHint="#94a3b8"
+                android:textSize="16sp"/>
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Notification Type"
+            android:textColor="#64748b"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"/>
+
+        <RadioGroup
+            android:id="@+id/rgNotificationType"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <RadioButton
+                android:id="@+id/rbTypeNotification"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="As notification"
+                android:padding="12dp"
+                android:checked="true"/>
+
+            <RadioButton
+                android:id="@+id/rbTypeEmail"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="As email"
+                android:padding="12dp"/>
+        </RadioGroup>
+
+    </LinearLayout>
+</ScrollView>

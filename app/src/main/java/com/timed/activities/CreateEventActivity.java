@@ -26,6 +26,7 @@ import com.timed.models.CalendarModel;
 import com.timed.models.Event;
 import com.timed.utils.CalendarIntegrationService;
 import com.timed.utils.FirebaseInitializer;
+import com.timed.dialogs.ReminderPickerDialog;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -33,6 +34,11 @@ import java.util.Calendar;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import android.Manifest;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import android.content.pm.PackageManager;
+import android.os.Build;
 
 /**
  * Activity để tạo hoặc chỉnh sửa sự kiện
@@ -61,6 +67,9 @@ public class CreateEventActivity extends AppCompatActivity {
     private String calendarId;
     private final List<CalendarModel> calendarOptions = new ArrayList<>();
     private Event editingEvent;
+    
+    // 🔔 REMINDERS: Track user-selected reminders
+    private List<Long> selectedReminderMinutes = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,6 +82,14 @@ public class CreateEventActivity extends AppCompatActivity {
         initializeServices();
         readIntentData();
         setupListeners();
+        
+        // � Initialize default reminders (10 & 30 minutes)
+        selectedReminderMinutes.add(10L);
+        selectedReminderMinutes.add(30L);
+        updateReminderDisplay();
+        
+        // �🔍 DEBUG: Check notification permissions & settings
+        debugNotificationSetup();
 
         if (startTime <= 0 || endTime <= 0) {
             Calendar calendar = Calendar.getInstance();
@@ -281,6 +298,10 @@ public class CreateEventActivity extends AppCompatActivity {
         }
         if (layoutCalendarSelector != null) {
             layoutCalendarSelector.setOnClickListener(v -> showCalendarLabelPicker());
+        }
+        // 🔔 ADD REMINDER PICKER LISTENER
+        if (tvAlertValue != null) {
+            tvAlertValue.setOnClickListener(v -> showReminderPicker());
         }
         if (cbAllDay != null) {
             cbAllDay.setOnCheckedChangeListener((buttonView, isChecked) -> updateAllDayState());
@@ -532,6 +553,56 @@ public class CreateEventActivity extends AppCompatActivity {
     }
 
     /**
+     * 🔔 Show reminder picker dialog
+     */
+    private void showReminderPicker() {
+        ReminderPickerDialog.show(this, selectedReminderMinutes, selectedMinutes -> {
+            selectedReminderMinutes = selectedMinutes;
+            updateReminderDisplay();
+        });
+    }
+
+    /**
+     * 🔔 Update reminder display text
+     */
+    private void updateReminderDisplay() {
+        if (tvAlertValue == null) {
+            return;
+        }
+        
+        if (selectedReminderMinutes.isEmpty()) {
+            tvAlertValue.setText("No reminders");
+            return;
+        }
+        
+        // Sort reminders
+        List<Long> sorted = new ArrayList<>(selectedReminderMinutes);
+        sorted.sort(Long::compareTo);
+        
+        // Format display text
+        StringBuilder text = new StringBuilder();
+        for (int i = 0; i < sorted.size(); i++) {
+            long mins = sorted.get(i);
+            if (i > 0) text.append(", ");
+            
+            if (mins < 60) {
+                text.append(mins).append(" min");
+            } else if (mins == 60) {
+                text.append("1 hour");
+            } else if (mins == 120) {
+                text.append("2 hours");
+            } else if (mins == 1440) {
+                text.append("1 day");
+            } else {
+                text.append(mins / 60).append(" hours");
+            }
+        }
+        
+        tvAlertValue.setText(text.toString());
+        Log.d(TAG, "📌 Reminders: " + text);
+    }
+
+    /**
      * Lưu sự kiện
      */
     private void saveEvent() {
@@ -601,18 +672,39 @@ public class CreateEventActivity extends AppCompatActivity {
         String userId = firebaseInitializer.getCurrentUserId();
         if (userId != null) {
             newEvent.setCreatedBy(userId);
+            newEvent.getParticipantId().add(userId);
+            newEvent.getParticipantStatus().put(userId, "accepted");
+        }
+
+        // 🔔 ADD USER-SELECTED REMINDERS
+        List<Event.EventReminder> reminders = new ArrayList<>();
+        for (Long minutes : selectedReminderMinutes) {
+            reminders.add(new Event.EventReminder(minutes, "push"));
+        }
+        newEvent.setReminders(reminders);
+
+        Log.d(TAG, "📌 Event to save:");
+        Log.d(TAG, "   Title: " + title);
+        Log.d(TAG, "   Start: " + new Date(startTime));
+        Log.d(TAG, "   End: " + new Date(endTime));
+        Log.d(TAG, "   Reminders: " + reminders.size());
+        for (Event.EventReminder r : reminders) {
+            Log.d(TAG, "      - " + r.getMinutesBefore() + " min before");
         }
 
         calendarIntegrationService.setCachedDefaultCalendarId(this, calendarId);
 
         eventsManager.createEvent(newEvent)
                 .addOnSuccessListener(docRef -> {
-                    Log.d(TAG, "Event saved: " + docRef.getId());
+                    Log.d(TAG, "✅ Event saved: " + docRef.getId());
+                    Toast.makeText(CreateEventActivity.this, 
+                            "✅ Event created! Reminders set: " + selectedReminderMinutes.size(), 
+                            Toast.LENGTH_LONG).show();
                     finish();
                 })
                 .addOnFailureListener(e -> {
-                    Log.e(TAG, "Error saving event: " + e.getMessage(), e);
-                    Toast.makeText(CreateEventActivity.this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    Log.e(TAG, "❌ Error saving event: " + e.getMessage(), e);
+                    Toast.makeText(CreateEventActivity.this, "❌ Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
     }
 
@@ -669,6 +761,58 @@ public class CreateEventActivity extends AppCompatActivity {
                 .addOnSuccessListener(aVoid -> finish())
                 .addOnFailureListener(e -> Toast.makeText(CreateEventActivity.this,
                         "Lỗi xóa sự kiện: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+    }
+
+    // 🔍 DEBUG: Kiểm tra permissions & settings
+    private void debugNotificationSetup() {
+        Log.d(TAG, "========== DEBUG NOTIFICATION SETUP ==========");
+        
+        // 1. Check POST_NOTIFICATIONS permission (Android 13+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            int permission = ContextCompat.checkSelfPermission(this, 
+                    Manifest.permission.POST_NOTIFICATIONS);
+            if (permission == PackageManager.PERMISSION_GRANTED) {
+                Log.d(TAG, "✅ POST_NOTIFICATIONS: GRANTED");
+            } else {
+                Log.e(TAG, "❌ POST_NOTIFICATIONS: DENIED - Request it!");
+                ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                    101);
+            }
+        } else {
+            Log.d(TAG, "✅ POST_NOTIFICATIONS: Not needed (API < 33)");
+        }
+        
+        // 2. Check SCHEDULE_EXACT_ALARM permission (Android 12+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            int permission = ContextCompat.checkSelfPermission(this,
+                    Manifest.permission.SCHEDULE_EXACT_ALARM);
+            if (permission == PackageManager.PERMISSION_GRANTED) {
+                Log.d(TAG, "✅ SCHEDULE_EXACT_ALARM: GRANTED");
+            } else {
+                Log.e(TAG, "❌ SCHEDULE_EXACT_ALARM: DENIED - Request it!");
+                ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.SCHEDULE_EXACT_ALARM},
+                    102);
+            }
+        } else {
+            Log.d(TAG, "✅ SCHEDULE_EXACT_ALARM: Not needed (API < 31)");
+        }
+        
+        // 3. Check time settings
+        long nowMs = System.currentTimeMillis();
+        Log.d(TAG, "Current time: " + new Date(nowMs));
+        Log.d(TAG, "Event start time: " + new Date(startTime));
+        
+        if (startTime <= nowMs) {
+            Log.e(TAG, "❌ EVENT TIME IN PAST! Set future time!");
+        } else {
+            long diffMs = startTime - nowMs;
+            long diffMins = diffMs / (60 * 1000);
+            Log.d(TAG, "✅ Event in future (" + diffMins + " minutes away)");
+        }
+        
+        Log.d(TAG, "========================================");
     }
 
     private int dpToPx(int dp) {
