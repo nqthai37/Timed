@@ -3,6 +3,7 @@ package com.timed.activities;
 import android.app.DatePickerDialog;
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -29,6 +30,7 @@ import java.util.List;
 import java.util.Locale;
 
 public class SearchFilterActivity extends AppCompatActivity {
+    private static final String TAG = "SearchFilterActivity";
     private static final String[] CALENDAR_LABELS = new String[] {
             "All", "Work", "Personal", "Shared", "Study"
     };
@@ -210,7 +212,10 @@ public class SearchFilterActivity extends AppCompatActivity {
                     }
                     onDone.run();
                 })
-                .addOnFailureListener(e -> onDone.run());
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Failed to load events for calendar " + calendarId + ": " + e.getMessage(), e);
+                    onDone.run();
+                });
     }
 
     private void applyFiltersToResults() {

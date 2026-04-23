@@ -7,6 +7,7 @@ import com.timed.models.Event;
 import com.timed.repositories.EventsRepository;
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.tasks.Tasks;
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -112,11 +113,16 @@ public class EventsManager {
                     if (!task.isSuccessful()) {
                         throw task.getException();
                     }
+
+                    String currentUserId = getCurrentUserId();
                     
                     List<Event> events = new ArrayList<>();
                     QuerySnapshot snapshot = task.getResult();
                     for (QueryDocumentSnapshot doc : snapshot) {
                         Event event = doc.toObject(Event.class);
+                        if (event == null || !isEventVisibleToUser(event, currentUserId)) {
+                            continue;
+                        }
                         event.setId(doc.getId());
                         events.add(event);
                     }
@@ -141,16 +147,66 @@ public class EventsManager {
                     long rangeEnd = endDate != null
                             ? endDate.toDate().getTime()
                             : Long.MAX_VALUE;
+
+                    String currentUserId = getCurrentUserId();
                     
                     List<Event> events = new ArrayList<>();
                     QuerySnapshot snapshot = task.getResult();
                     for (QueryDocumentSnapshot doc : snapshot) {
                         Event event = doc.toObject(Event.class);
+                        if (event == null) {
+                            continue;
+                        }
+
+                        if (!isEventVisibleToUser(event, currentUserId)) {
+                            continue;
+                        }
+
                         event.setId(doc.getId());
+
+                        if (!isCalendarMatch(event, calendarId)) {
+                            continue;
+                        }
+
                         events.addAll(expandEventForRange(event, rangeStart, rangeEnd));
                     }
+
+                    events.sort(Comparator.comparingLong(this::getStartMillisForSort));
                     return events;
                 });
+    }
+
+    private boolean isCalendarMatch(Event event, String expectedCalendarId) {
+        if (expectedCalendarId == null || expectedCalendarId.trim().isEmpty()) {
+            return true;
+        }
+
+        if (event == null || event.getCalendarId() == null) {
+            return false;
+        }
+
+        return expectedCalendarId.equalsIgnoreCase(event.getCalendarId());
+    }
+
+    private String getCurrentUserId() {
+        if (FirebaseAuth.getInstance().getCurrentUser() == null) {
+            return null;
+        }
+        return FirebaseAuth.getInstance().getCurrentUser().getUid();
+    }
+
+    private boolean isEventVisibleToUser(Event event, String currentUserId) {
+        if (event == null || currentUserId == null || currentUserId.trim().isEmpty()) {
+            return false;
+        }
+
+        String createdBy = event.getCreatedBy();
+        if (createdBy != null && currentUserId.equals(createdBy)) {
+            return true;
+        }
+
+        List<String> participantIds = event.getParticipantId();
+        return participantIds != null && participantIds.contains(currentUserId);
     }
 
     private List<Event> expandEventForRange(Event event, long rangeStart, long rangeEnd) {

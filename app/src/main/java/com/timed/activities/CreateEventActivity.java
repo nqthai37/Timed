@@ -1225,6 +1225,12 @@ public class CreateEventActivity extends AppCompatActivity {
             return;
         }
 
+        String userId = firebaseInitializer.getCurrentUserId();
+        if (userId == null || userId.trim().isEmpty()) {
+            Toast.makeText(this, "Please sign in to create events", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         Event newEvent = new Event();
         newEvent.setCalendarId(calendarId);
         newEvent.setTitle(title);
@@ -1235,11 +1241,7 @@ public class CreateEventActivity extends AppCompatActivity {
         newEvent.setEndTime(new Timestamp(new Date(endTime)));
         newEvent.setRecurrenceRule(recurrenceRule.isEmpty() ? null : recurrenceRule);
         newEvent.setRecurrenceExceptions(recurrenceExceptions);
-
-        String userId = firebaseInitializer.getCurrentUserId();
-        if (userId != null) {
-            newEvent.setCreatedBy(userId);
-        }
+        newEvent.setCreatedBy(userId);
 
         eventsManager.createEvent(newEvent)
                 .addOnSuccessListener(docRef -> {
@@ -1268,6 +1270,12 @@ public class CreateEventActivity extends AppCompatActivity {
         }
 
         Event target = editingEvent != null ? editingEvent : new Event();
+        String userId = firebaseInitializer.getCurrentUserId();
+        if (userId == null || userId.trim().isEmpty()) {
+            Toast.makeText(this, "Please sign in to update events", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         target.setId(eventId);
         target.setCalendarId(calendarId);
         target.setTitle(title);
@@ -1278,6 +1286,9 @@ public class CreateEventActivity extends AppCompatActivity {
         target.setEndTime(new Timestamp(new Date(endTime)));
         target.setRecurrenceRule(recurrenceRule.isEmpty() ? null : recurrenceRule);
         target.setRecurrenceExceptions(recurrenceExceptions);
+        if (target.getCreatedBy() == null || target.getCreatedBy().trim().isEmpty()) {
+            target.setCreatedBy(userId);
+        }
 
         eventsManager.updateEvent(eventId, target)
                 .addOnSuccessListener(aVoid -> finish())
