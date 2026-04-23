@@ -7,9 +7,11 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -153,7 +155,6 @@ public class RecurrenceUtils {
         LocalDate startDate = startDateTime.toLocalDate();
         LocalTime startClockTime = startDateTime.toLocalTime();
 
-        LocalDate cursorDate = startDate;
         LocalDate lastDate = toLocalDateTime(Math.max(rangeEnd, startTime)).toLocalDate();
         if (rule.until != null) {
             LocalDate untilDate = toLocalDateTime(rule.until.getTime()).toLocalDate();
@@ -162,37 +163,23 @@ public class RecurrenceUtils {
             }
         }
 
-        int matchedCount = 0;
-        while (!cursorDate.isAfter(lastDate) && matchedCount < safeMax) {
-            long candidateMillis = toMillis(LocalDateTime.of(cursorDate, startClockTime));
-
-            if (candidateMillis < startTime) {
-                cursorDate = cursorDate.plusDays(1);
-                continue;
-            }
-
-            if (rule.until != null && candidateMillis > rule.until.getTime()) {
-                break;
-            }
-
-            if (matchesRuleOnDate(startDate, cursorDate, rule)) {
-                matchedCount++;
-
-                if (rule.count > 0 && matchedCount > rule.count) {
-                    break;
-                }
-
-                if (!isExceptionDate(candidateMillis, exceptions)
-                        && candidateMillis >= rangeStart
-                        && candidateMillis <= rangeEnd) {
-                    occurrences.add(candidateMillis);
-                }
-            }
-
-            cursorDate = cursorDate.plusDays(1);
+        String frequency = rule.frequency.toUpperCase(Locale.US);
+        switch (frequency) {
+            case FREQ_DAILY:
+                return generateDaily(startDate, startClockTime, rule, startTime,
+                        rangeStart, rangeEnd, exceptions, safeMax, lastDate);
+            case FREQ_WEEKLY:
+                return generateWeekly(startDate, startClockTime, rule, startTime,
+                        rangeStart, rangeEnd, exceptions, safeMax, lastDate);
+            case FREQ_MONTHLY:
+                return generateMonthly(startDate, startClockTime, rule, startTime,
+                        rangeStart, rangeEnd, exceptions, safeMax, lastDate);
+            case FREQ_YEARLY:
+                return generateYearly(startDate, startClockTime, rule, startTime,
+                        rangeStart, rangeEnd, exceptions, safeMax, lastDate);
+            default:
+                return occurrences;
         }
-
-        return occurrences;
     }
 
     /**
@@ -216,167 +203,322 @@ public class RecurrenceUtils {
         return !result.isEmpty() && result.get(0) == timestamp;
     }
 
-    private static boolean isOccurrenceDaily(LocalDate start, LocalDate target, RecurrenceRule rule) {
-        long diff = ChronoUnit.DAYS.between(start, target);
-        return diff >= 0 && diff % rule.interval == 0;
-    }
+    // ── DAILY generator ─────────────────────────────────────────────────
 
-    private static boolean isOccurrenceWeekly(LocalDate start, LocalDate target, RecurrenceRule rule) {
-        long daysDiff = ChronoUnit.DAYS.between(start, target);
-        if (daysDiff < 0) {
-            return false;
-        }
+    private static List<Long> generateDaily(LocalDate startDate, LocalTime clockTime,
+                                             RecurrenceRule rule, long startTimeMillis,
+                                             long rangeStart, long rangeEnd,
+                                             Set<String> exceptions, int maxCount,
+                                             LocalDate lastDate) {
+        List<Long> result = new ArrayList<>();
+        int matched = 0;
+        LocalDate cursor = startDate;
 
-        long weeksDiff = daysDiff / 7;
-        if (weeksDiff % rule.interval != 0) {
-            return false;
-        }
+        while (!cursor.isAfter(lastDate) && matched < maxCount) {
+            long millis = toMillis(LocalDateTime.of(cursor, clockTime));
 
-        if (rule.byDayEntries == null || rule.byDayEntries.isEmpty()) {
-            return target.getDayOfWeek() == start.getDayOfWeek();
-        }
+            if (millis >= startTimeMillis) {
+                if (rule.until != null && millis > rule.until.getTime()) break;
 
-        for (ByDayEntry entry : rule.byDayEntries) {
-            if (entry != null && entry.matchesWeekday(target.getDayOfWeek())) {
-                return true;
-            }
-        }
-        return false;
-    }
+                matched++;
+                if (rule.count > 0 && matched > rule.count) break;
 
-    private static boolean isOccurrenceMonthly(LocalDate start, LocalDate target, RecurrenceRule rule) {
-        long monthsDiff = ChronoUnit.MONTHS.between(start.withDayOfMonth(1), target.withDayOfMonth(1));
-        if (monthsDiff < 0 || monthsDiff % rule.interval != 0) {
-            return false;
-        }
-
-        if (rule.byMonthDay != null && !rule.byMonthDay.isEmpty()) {
-            return matchesByMonthDay(target, rule.byMonthDay);
-        }
-
-        if (rule.byDayEntries != null && !rule.byDayEntries.isEmpty()) {
-            return matchesMonthlyByDay(target, rule);
-        }
-
-        return target.getDayOfMonth() == start.getDayOfMonth();
-    }
-
-    private static boolean isOccurrenceYearly(LocalDate start, LocalDate target, RecurrenceRule rule) {
-        long yearsDiff = ChronoUnit.YEARS.between(start.withDayOfYear(1), target.withDayOfYear(1));
-        if (yearsDiff < 0 || yearsDiff % rule.interval != 0) {
-            return false;
-        }
-
-        if (rule.byMonthDay != null && !rule.byMonthDay.isEmpty()) {
-            return target.getMonthValue() == start.getMonthValue()
-                    && matchesByMonthDay(target, rule.byMonthDay);
-        }
-
-        return target.getMonthValue() == start.getMonthValue()
-                && target.getDayOfMonth() == start.getDayOfMonth();
-    }
-
-    private static boolean matchesRuleOnDate(LocalDate startDate, LocalDate targetDate, RecurrenceRule rule) {
-        String frequency = rule.frequency != null ? rule.frequency.toUpperCase(Locale.US) : "";
-
-        switch (frequency) {
-            case FREQ_DAILY:
-                return isOccurrenceDaily(startDate, targetDate, rule);
-            case FREQ_WEEKLY:
-                return isOccurrenceWeekly(startDate, targetDate, rule);
-            case FREQ_MONTHLY:
-                return isOccurrenceMonthly(startDate, targetDate, rule);
-            case FREQ_YEARLY:
-                return isOccurrenceYearly(startDate, targetDate, rule);
-            default:
-                return false;
-        }
-    }
-
-    private static boolean matchesMonthlyByDay(LocalDate candidateDate, RecurrenceRule rule) {
-        List<ByDayEntry> entries = rule.byDayEntries;
-        if (entries == null || entries.isEmpty()) {
-            return false;
-        }
-
-        boolean containsPlainEntries = false;
-        for (ByDayEntry entry : entries) {
-            if (entry == null) {
-                continue;
-            }
-            if (entry.ordinal != null) {
-                if (entry.matchesWeekday(candidateDate.getDayOfWeek())
-                        && entry.matchesOrdinalInMonth(candidateDate)) {
-                    return true;
+                if (millis >= rangeStart && millis <= rangeEnd
+                        && !isExceptionDate(millis, exceptions)) {
+                    result.add(millis);
                 }
+            }
+
+            cursor = cursor.plusDays(rule.interval);
+        }
+        return result;
+    }
+
+    // ── WEEKLY generator ────────────────────────────────────────────────
+
+    private static List<Long> generateWeekly(LocalDate startDate, LocalTime clockTime,
+                                              RecurrenceRule rule, long startTimeMillis,
+                                              long rangeStart, long rangeEnd,
+                                              Set<String> exceptions, int maxCount,
+                                              LocalDate lastDate) {
+        List<Long> result = new ArrayList<>();
+        int matched = 0;
+
+        // Resolve target weekdays (sorted Monday→Sunday)
+        List<DayOfWeek> targetDays = new ArrayList<>();
+        if (rule.byDayEntries != null) {
+            for (ByDayEntry entry : rule.byDayEntries) {
+                if (entry != null) {
+                    DayOfWeek dow = codeToDayOfWeek(entry.dayCode);
+                    if (dow != null) targetDays.add(dow);
+                }
+            }
+        }
+        if (targetDays.isEmpty()) {
+            targetDays.add(startDate.getDayOfWeek());
+        }
+        Collections.sort(targetDays);
+
+        // Anchor: Monday of the week containing startDate
+        LocalDate weekMonday = startDate.minusDays(startDate.getDayOfWeek().getValue() - 1);
+
+        while (!weekMonday.isAfter(lastDate) && matched < maxCount) {
+            for (DayOfWeek day : targetDays) {
+                LocalDate candidate = weekMonday.plusDays(day.getValue() - 1);
+
+                if (candidate.isBefore(startDate)) continue;
+                if (candidate.isAfter(lastDate)) return result;
+
+                long millis = toMillis(LocalDateTime.of(candidate, clockTime));
+                if (millis < startTimeMillis) continue;
+                if (rule.until != null && millis > rule.until.getTime()) return result;
+
+                matched++;
+                if (rule.count > 0 && matched > rule.count) return result;
+
+                if (millis >= rangeStart && millis <= rangeEnd
+                        && !isExceptionDate(millis, exceptions)) {
+                    result.add(millis);
+                }
+            }
+            weekMonday = weekMonday.plusWeeks(rule.interval);
+        }
+        return result;
+    }
+
+    // ── MONTHLY generator ───────────────────────────────────────────────
+
+    private static List<Long> generateMonthly(LocalDate startDate, LocalTime clockTime,
+                                               RecurrenceRule rule, long startTimeMillis,
+                                               long rangeStart, long rangeEnd,
+                                               Set<String> exceptions, int maxCount,
+                                               LocalDate lastDate) {
+        List<Long> result = new ArrayList<>();
+        int matched = 0;
+        YearMonth cursorMonth = YearMonth.from(startDate);
+        YearMonth lastMonth = YearMonth.from(lastDate);
+
+        while (!cursorMonth.isAfter(lastMonth) && matched < maxCount) {
+            List<LocalDate> candidates = expandMonthCandidates(cursorMonth, startDate, rule);
+
+            for (LocalDate candidate : candidates) {
+                if (candidate.isBefore(startDate)) continue;
+                if (candidate.isAfter(lastDate)) return result;
+
+                long millis = toMillis(LocalDateTime.of(candidate, clockTime));
+                if (millis < startTimeMillis) continue;
+                if (rule.until != null && millis > rule.until.getTime()) return result;
+
+                matched++;
+                if (rule.count > 0 && matched > rule.count) return result;
+
+                if (millis >= rangeStart && millis <= rangeEnd
+                        && !isExceptionDate(millis, exceptions)) {
+                    result.add(millis);
+                }
+            }
+            cursorMonth = cursorMonth.plusMonths(rule.interval);
+        }
+        return result;
+    }
+
+    // ── YEARLY generator ────────────────────────────────────────────────
+
+    private static List<Long> generateYearly(LocalDate startDate, LocalTime clockTime,
+                                              RecurrenceRule rule, long startTimeMillis,
+                                              long rangeStart, long rangeEnd,
+                                              Set<String> exceptions, int maxCount,
+                                              LocalDate lastDate) {
+        List<Long> result = new ArrayList<>();
+        int matched = 0;
+        int cursorYear = startDate.getYear();
+        int lastYear = lastDate.getYear();
+
+        while (cursorYear <= lastYear && matched < maxCount) {
+            List<LocalDate> candidates = expandYearCandidates(cursorYear, startDate, rule);
+
+            for (LocalDate candidate : candidates) {
+                if (candidate.isBefore(startDate)) continue;
+                if (candidate.isAfter(lastDate)) return result;
+
+                long millis = toMillis(LocalDateTime.of(candidate, clockTime));
+                if (millis < startTimeMillis) continue;
+                if (rule.until != null && millis > rule.until.getTime()) return result;
+
+                matched++;
+                if (rule.count > 0 && matched > rule.count) return result;
+
+                if (millis >= rangeStart && millis <= rangeEnd
+                        && !isExceptionDate(millis, exceptions)) {
+                    result.add(millis);
+                }
+            }
+            cursorYear += rule.interval;
+        }
+        return result;
+    }
+
+    // ── Expansion helpers ───────────────────────────────────────────────
+
+    private static List<LocalDate> expandMonthCandidates(YearMonth yearMonth,
+                                                          LocalDate startDate,
+                                                          RecurrenceRule rule) {
+        // BYMONTHDAY: resolve each day value (supports negative = from end)
+        if (rule.byMonthDay != null && !rule.byMonthDay.isEmpty()) {
+            List<LocalDate> dates = new ArrayList<>();
+            int length = yearMonth.lengthOfMonth();
+            for (Integer value : rule.byMonthDay) {
+                if (value == null || value == 0) continue;
+                int day = value > 0 ? value : length + value + 1;
+                if (day > 0 && day <= length) {
+                    dates.add(yearMonth.atDay(day));
+                }
+            }
+            Collections.sort(dates);
+            return dates;
+        }
+
+        // BYDAY (with optional ordinal / BYSETPOS)
+        if (rule.byDayEntries != null && !rule.byDayEntries.isEmpty()) {
+            return expandByDayInMonth(yearMonth, rule);
+        }
+
+        // Default: same day of month as startDate
+        int day = Math.min(startDate.getDayOfMonth(), yearMonth.lengthOfMonth());
+        List<LocalDate> dates = new ArrayList<>();
+        dates.add(yearMonth.atDay(day));
+        return dates;
+    }
+
+    private static List<LocalDate> expandByDayInMonth(YearMonth yearMonth, RecurrenceRule rule) {
+        List<LocalDate> result = new ArrayList<>();
+        List<ByDayEntry> entries = rule.byDayEntries;
+        if (entries == null || entries.isEmpty()) return result;
+
+        // Separate ordinal entries (e.g. 1MO, -1FR) from plain entries (e.g. MO)
+        List<ByDayEntry> ordinalEntries = new ArrayList<>();
+        List<ByDayEntry> plainEntries = new ArrayList<>();
+        for (ByDayEntry entry : entries) {
+            if (entry == null) continue;
+            if (entry.ordinal != null) {
+                ordinalEntries.add(entry);
             } else {
-                containsPlainEntries = true;
+                plainEntries.add(entry);
             }
         }
 
-        if (!containsPlainEntries) {
-            return false;
+        // Resolve ordinal entries directly
+        for (ByDayEntry entry : ordinalEntries) {
+            LocalDate resolved = resolveOrdinalDayInMonth(yearMonth, entry);
+            if (resolved != null) result.add(resolved);
         }
 
-        List<Integer> candidateDaysInMonth = new ArrayList<>();
-        LocalDate monthCursor = candidateDate.withDayOfMonth(1);
-        LocalDate monthEnd = candidateDate.withDayOfMonth(candidateDate.lengthOfMonth());
+        if (plainEntries.isEmpty()) {
+            Collections.sort(result);
+            return result;
+        }
 
-        while (!monthCursor.isAfter(monthEnd)) {
-            for (ByDayEntry entry : entries) {
-                if (entry != null && entry.ordinal == null && entry.matchesWeekday(monthCursor.getDayOfWeek())) {
-                    candidateDaysInMonth.add(monthCursor.getDayOfMonth());
+        // Collect all matching weekdays in month for plain entries
+        List<LocalDate> allMatching = new ArrayList<>();
+        LocalDate cursor = yearMonth.atDay(1);
+        LocalDate monthEnd = yearMonth.atEndOfMonth();
+        while (!cursor.isAfter(monthEnd)) {
+            for (ByDayEntry entry : plainEntries) {
+                if (entry.matchesWeekday(cursor.getDayOfWeek())) {
+                    allMatching.add(cursor);
                     break;
                 }
             }
-            monthCursor = monthCursor.plusDays(1);
+            cursor = cursor.plusDays(1);
         }
 
-        if (candidateDaysInMonth.isEmpty()) {
-            return false;
+        if (allMatching.isEmpty()) {
+            Collections.sort(result);
+            return result;
         }
 
+        // Without BYSETPOS, return all matching days + ordinal results
         if (rule.bySetPos == null || rule.bySetPos.isEmpty()) {
-            return candidateDaysInMonth.contains(candidateDate.getDayOfMonth());
+            result.addAll(allMatching);
+            Collections.sort(result);
+            return result;
         }
 
+        // Apply BYSETPOS filter
         for (Integer position : rule.bySetPos) {
-            if (position == null || position == 0) {
-                continue;
-            }
-            int index = position > 0 ? position - 1 : candidateDaysInMonth.size() + position;
-            if (index >= 0 && index < candidateDaysInMonth.size()) {
-                if (candidateDaysInMonth.get(index) == candidateDate.getDayOfMonth()) {
-                    return true;
-                }
+            if (position == null || position == 0) continue;
+            int index = position > 0 ? position - 1 : allMatching.size() + position;
+            if (index >= 0 && index < allMatching.size()) {
+                result.add(allMatching.get(index));
             }
         }
-
-        return false;
+        Collections.sort(result);
+        return result;
     }
 
-    private static boolean matchesByMonthDay(LocalDate date, List<Integer> byMonthDay) {
-        int dayOfMonth = date.getDayOfMonth();
-        int lengthOfMonth = date.lengthOfMonth();
+    private static LocalDate resolveOrdinalDayInMonth(YearMonth yearMonth, ByDayEntry entry) {
+        if (entry.ordinal == null) return null;
 
-        for (Integer value : byMonthDay) {
-            if (value == null || value == 0) {
-                continue;
-            }
+        DayOfWeek targetDay = codeToDayOfWeek(entry.dayCode);
+        if (targetDay == null) return null;
 
-            if (value > 0 && dayOfMonth == value) {
-                return true;
-            }
+        if (entry.ordinal > 0) {
+            // e.g. 1MO = first Monday of the month
+            LocalDate first = yearMonth.atDay(1);
+            int daysUntil = targetDay.getValue() - first.getDayOfWeek().getValue();
+            if (daysUntil < 0) daysUntil += 7;
+            LocalDate resolved = first.plusDays(daysUntil).plusWeeks(entry.ordinal - 1);
+            return resolved.getMonth() == yearMonth.getMonth() ? resolved : null;
+        } else {
+            // e.g. -1FR = last Friday of the month
+            LocalDate last = yearMonth.atEndOfMonth();
+            int daysBack = last.getDayOfWeek().getValue() - targetDay.getValue();
+            if (daysBack < 0) daysBack += 7;
+            LocalDate resolved = last.minusDays(daysBack).plusWeeks(entry.ordinal + 1);
+            return resolved.getMonth() == yearMonth.getMonth() ? resolved : null;
+        }
+    }
 
-            if (value < 0) {
-                int resolvedDay = lengthOfMonth + value + 1;
-                if (resolvedDay > 0 && dayOfMonth == resolvedDay) {
-                    return true;
+    private static List<LocalDate> expandYearCandidates(int year, LocalDate startDate,
+                                                         RecurrenceRule rule) {
+        List<LocalDate> result = new ArrayList<>();
+        int month = startDate.getMonthValue();
+
+        if (rule.byMonthDay != null && !rule.byMonthDay.isEmpty()) {
+            YearMonth ym = YearMonth.of(year, month);
+            int length = ym.lengthOfMonth();
+            for (Integer value : rule.byMonthDay) {
+                if (value == null || value == 0) continue;
+                int day = value > 0 ? value : length + value + 1;
+                if (day > 0 && day <= length) {
+                    result.add(ym.atDay(day));
                 }
             }
+            Collections.sort(result);
+            return result;
         }
 
-        return false;
+        // Default: same month and day, skip if invalid (e.g. Feb 29 in non-leap year)
+        try {
+            result.add(LocalDate.of(year, month, startDate.getDayOfMonth()));
+        } catch (java.time.DateTimeException ignored) {
+            // Skip: e.g. Feb 29 in non-leap year
+        }
+        return result;
+    }
+
+    private static DayOfWeek codeToDayOfWeek(String code) {
+        if (code == null) return null;
+        switch (code.toUpperCase(Locale.US)) {
+            case "MO": return DayOfWeek.MONDAY;
+            case "TU": return DayOfWeek.TUESDAY;
+            case "WE": return DayOfWeek.WEDNESDAY;
+            case "TH": return DayOfWeek.THURSDAY;
+            case "FR": return DayOfWeek.FRIDAY;
+            case "SA": return DayOfWeek.SATURDAY;
+            case "SU": return DayOfWeek.SUNDAY;
+            default: return null;
+        }
     }
 
     private static ByDayEntry parseByDayEntry(String token) {
