@@ -52,6 +52,7 @@ import com.timed.models.User;
 import com.timed.managers.UserManager;
 import com.timed.repositories.AuthRepository;
 import com.timed.repositories.UserRepository;
+import com.timed.Setting.Timezone.TimezoneHelper;
 import com.timed.utils.CalendarIntegrationService;
 import com.timed.utils.FirebaseAuthManager;
 import com.timed.utils.FirebaseHelper;
@@ -357,6 +358,8 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
     @Override
     protected void onResume() {
         super.onResume();
+        // Invalidate timezone cache so we pick up any changes from TimezoneSettingActivity
+        TimezoneHelper.invalidateCache();
         updateEventsForDate(selectedDate);
 
         // Don't need to update bottom nav selection on resume
@@ -1448,9 +1451,10 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             return;
         }
 
+        java.time.ZoneId userZone = TimezoneHelper.getSelectedZoneId(this);
         Timestamp startTimestamp = toTimestamp(
-                startDate.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
-        long endMillis = endDate.plusDays(1).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+                startDate.atStartOfDay(userZone).toInstant().toEpochMilli());
+        long endMillis = endDate.plusDays(1).atStartOfDay(userZone).toInstant().toEpochMilli()
                 - 1;
         Timestamp endTimestamp = toTimestamp(endMillis);
 
@@ -1470,7 +1474,8 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         if (timestamp == null) {
             return null;
         }
-        return timestamp.toDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+        java.time.ZoneId userZone = TimezoneHelper.getSelectedZoneId(this);
+        return timestamp.toDate().toInstant().atZone(userZone).toLocalDate();
     }
 
     private EventTimeParts toTimeParts(Event event) {
@@ -1481,8 +1486,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         Date start = event.getStartTime().toDate();
         Date end = event.getEndTime() != null ? event.getEndTime().toDate() : start;
 
-        Calendar startCal = Calendar.getInstance();
-        startCal.setTime(start);
+        Calendar startCal = TimezoneHelper.getCalendarInSelectedTz(this, start);
         int startHour = startCal.get(Calendar.HOUR_OF_DAY);
         int startMinute = startCal.get(Calendar.MINUTE);
 
@@ -1523,16 +1527,14 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             return "";
         }
 
-        java.text.SimpleDateFormat formatter = new java.text.SimpleDateFormat("HH:mm", Locale.getDefault());
-        Date start = event.getStartTime().toDate();
-        String startText = formatter.format(start);
-
         if (event.getAllDay() != null && event.getAllDay()) {
             return "All day";
         }
 
+        String startText = TimezoneHelper.formatTime24h(this, event.getStartTime().toDate());
+
         if (event.getEndTime() != null) {
-            String endText = formatter.format(event.getEndTime().toDate());
+            String endText = TimezoneHelper.formatTime24h(this, event.getEndTime().toDate());
             return startText + " - " + endText;
         }
 
