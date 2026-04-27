@@ -3,6 +3,7 @@ package com.timed.activities;
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
 import android.app.AlertDialog;
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -12,6 +13,8 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.graphics.Insets;
@@ -19,11 +22,13 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.timed.Features.ConflictResolver.ConflictEvent;
 import com.timed.R;
 import com.google.firebase.Timestamp;
 import com.timed.managers.EventsManager;
 import com.timed.models.CalendarModel;
 import com.timed.models.Event;
+import com.timed.repositories.EventsRepository;
 import com.timed.utils.CalendarIntegrationService;
 import com.timed.utils.FirebaseInitializer;
 
@@ -56,6 +61,8 @@ public class CreateEventActivity extends AppCompatActivity {
     private EventsManager eventsManager;
     private FirebaseInitializer firebaseInitializer;
     private CalendarIntegrationService calendarIntegrationService;
+    private ActivityResultLauncher<Intent> conflictResolverLauncher;
+    private EventsRepository eventsRepository;
     private String mode = "create";
     private String eventId;
     private String calendarId;
@@ -87,6 +94,26 @@ public class CreateEventActivity extends AppCompatActivity {
         updateStartTimeButton();
         updateEndDateButton();
         updateEndTimeButton();
+
+        eventsRepository = new EventsRepository();
+        conflictResolverLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == RESULT_OK) {
+                        Intent data = result.getData();
+                        if (data != null) {
+                            long newStart = data.getLongExtra("RESOLVED_START", -1);
+                            long newEnd = data.getLongExtra("RESOLVED_END", -1);
+                            if (newStart != -1 && newEnd != -1) {
+                                startTime = newStart;
+                                endTime = newEnd;
+                                refreshDateTimeButtons();
+                            }
+                        }
+                        proceedToSaveEvent();
+                    }
+                }
+        );
 
         configureModeUI();
         loadCalendars();
@@ -536,9 +563,6 @@ public class CreateEventActivity extends AppCompatActivity {
      */
     private void saveEvent() {
         String title = etTitle != null ? etTitle.getText().toString().trim() : "";
-        String description = etDescription != null ? etDescription.getText().toString().trim() : "";
-        String location = etLocation != null ? etLocation.getText().toString().trim() : "";
-        boolean isAllDay = cbAllDay != null && cbAllDay.isChecked();
 
         if (title.isEmpty()) {
             if (etTitle != null) {
@@ -553,6 +577,49 @@ public class CreateEventActivity extends AppCompatActivity {
         if (startTime >= endTime) {
             return;
         }
+
+        if (btnSave != null) {
+            btnSave.setEnabled(false);
+            btnSave.setText("Checking...");
+        }
+
+        // SILENT BACKGROUND CHECK
+        eventsRepository.checkConflictsOnDay(startTime, endTime, title, new EventsRepository.OnConflictCheckListener() {
+            @Override
+            public void onConflictsFound(List<ConflictEvent> conflicts) {
+                if (btnSave != null) {
+                    btnSave.setEnabled(true);
+                    btnSave.setText("Save");
+                }
+
+                if (conflicts.isEmpty()) {
+                    proceedToSaveEvent();
+                } else {
+                    Intent intent = new Intent(CreateEventActivity.this, com.timed.Features.ConflictResolver.ConflictResolverActivity.class);
+                    intent.putExtra("NEW_EVENT_START", startTime);
+                    intent.putExtra("NEW_EVENT_END", endTime);
+                    intent.putExtra("NEW_EVENT_TITLE", title);
+                    conflictResolverLauncher.launch(intent);
+                }
+            }
+
+            @Override
+            public void onError(Exception e) {
+                if (btnSave != null) {
+                    btnSave.setEnabled(true);
+                    btnSave.setText("Save");
+                }
+                Log.e(TAG, "Error checking conflicts: " + e.getMessage());
+                proceedToSaveEvent();
+            }
+        });
+    }
+
+    private void proceedToSaveEvent() {
+        String title = etTitle != null ? etTitle.getText().toString().trim() : "";
+        String description = etDescription != null ? etDescription.getText().toString().trim() : "";
+        String location = etLocation != null ? etLocation.getText().toString().trim() : "";
+        boolean isAllDay = cbAllDay != null && cbAllDay.isChecked();
 
         if (isEditMode()) {
             updateExistingEvent(title, description, location, isAllDay);

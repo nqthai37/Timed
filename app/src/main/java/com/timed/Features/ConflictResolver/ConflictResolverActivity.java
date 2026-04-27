@@ -61,6 +61,25 @@ public class ConflictResolverActivity extends AppCompatActivity {
         }
 
         detectConflictsOnDay(newEventStartMillis, newEventEndMillis);
+        setupClickListeners();
+    }
+
+    private void setupClickListeners() {
+        findViewById(R.id.btn_ignore_conflict).setOnClickListener(v -> {
+            setResult(RESULT_OK);
+            finish();
+        });
+
+        findViewById(R.id.btn_edit_manually).setOnClickListener(v -> {
+            setResult(RESULT_CANCELED);
+            finish();
+        });
+
+        findViewById(R.id.btn_auto_reschedule).setOnClickListener(v -> {
+            // TODO: We will build the Auto-Reschedule logic next!
+            // For now, just show a toast.
+            Toast.makeText(this, "Auto-Reschedule coming soon!", Toast.LENGTH_SHORT).show();
+        });
     }
 
     private void detectConflictsOnDay(long newStart, long newEnd) {
@@ -70,11 +89,6 @@ public class ConflictResolverActivity extends AppCompatActivity {
                 conflictEventList.clear();
                 conflictEventList.addAll(conflicts);
                 adapter.notifyDataSetChanged();
-
-                if (conflictEventList.isEmpty()) {
-                    Toast.makeText(ConflictResolverActivity.this, "No conflicts! Safe to save.", Toast.LENGTH_SHORT).show();
-                    // In production: Auto-save event here and finish();
-                }
             }
 
             @Override
