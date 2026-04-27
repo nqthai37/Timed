@@ -47,15 +47,22 @@ import com.timed.activities.SearchFilterActivity;
 import com.timed.activities.SettingsActivity;
 import com.timed.Auth.LoginActivity;
 import com.timed.managers.EventsManager;
+import com.timed.managers.InvitationManager;
 import com.timed.models.Event;
 import com.timed.models.User;
+import com.timed.models.Invitation;
 import com.timed.managers.UserManager;
 import com.timed.repositories.AuthRepository;
 import com.timed.repositories.UserRepository;
+import com.timed.repositories.RepositoryCallback;
 import com.timed.utils.CalendarIntegrationService;
 import com.timed.utils.FirebaseAuthManager;
 import com.timed.utils.FirebaseHelper;
 import com.timed.utils.FirebaseInitializer;
+import com.timed.utils.InvitationService;
+import com.timed.dialogs.InvitationsDialog;
+import com.timed.dialogs.ShareCalendarDialog;
+import com.google.firebase.auth.FirebaseAuth;
 import com.bumptech.glide.Glide;
 
 import java.time.LocalDate;
@@ -114,6 +121,10 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
     private final Map<Integer, String> drawerCalendarIdMap = new HashMap<>();
 
     private EventsManager eventsManager;
+    private InvitationManager invitationManager;
+    private InvitationService invitationService;
+    private android.app.Dialog currentInvitationsDialog;
+    private FirebaseAuth firebaseAuth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -126,6 +137,14 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         eventsManager = EventsManager.getInstance(this);
         calendarIntegrationService = new CalendarIntegrationService();
         defaultCalendarId = calendarIntegrationService.getCachedDefaultCalendarId(this);
+        
+        // Khởi tạo Invitation Manager và Service
+        invitationManager = InvitationManager.getInstance(this);
+        invitationService = new InvitationService(this);
+        firebaseAuth = FirebaseAuth.getInstance();
+        
+        // Tải số lượng lời mời khi app mở
+        loadInvitationCount();
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.mainContent), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -157,6 +176,16 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         ImageButton btnSearch = findViewById(R.id.btnSearch);
         if (btnSearch != null) {
             btnSearch.setOnClickListener(v -> startActivity(new Intent(this, SearchFilterActivity.class)));
+        }
+
+        ImageButton btnInvitations = findViewById(R.id.btnInvitations);
+        if (btnInvitations != null) {
+            btnInvitations.setOnClickListener(v -> showPendingInvitations());
+        }
+
+        ImageButton btnShareCalendar = findViewById(R.id.btnShareCalendar);
+        if (btnShareCalendar != null) {
+            btnShareCalendar.setOnClickListener(v -> showShareCalendarDialog());
         }
 
         imgProfile = findViewById(R.id.imgProfile);
@@ -358,6 +387,8 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
     protected void onResume() {
         super.onResume();
         updateEventsForDate(selectedDate);
+        // Refresh invitation count badge when returning to activity
+        loadInvitationCount();
 
         // Don't need to update bottom nav selection on resume
         // It will maintain its state from before
@@ -1243,7 +1274,23 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
 
     private void updateVisibleCalendarIds(List<CalendarModel> calendars) {
         visibleCalendarIds.clear();
-        if (defaultCalendarId != null && !defaultCalendarId.isEmpty()) {
+        if (calendars != null) {
+            // Add all owned and joined calendars to visible list
+            String userId = firebaseInitializer.getCurrentUserId();
+            for (CalendarModel calendar : calendars) {
+                if (calendar == null || calendar.getId() == null) {
+                    continue;
+                }
+                // Include owned calendars and joined calendars
+                if ((userId != null && userId.equals(calendar.getOwnerId())) ||
+                    (userId != null && calendar.getMemberIds() != null && 
+                     calendar.getMemberIds().contains(userId))) {
+                    visibleCalendarIds.add(calendar.getId());
+                }
+            }
+        }
+        // If no calendars found, add default calendar as fallback
+        if (visibleCalendarIds.isEmpty() && defaultCalendarId != null && !defaultCalendarId.isEmpty()) {
             visibleCalendarIds.add(defaultCalendarId);
         }
     }
@@ -1298,14 +1345,24 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
 
         String userId = firebaseInitializer.getCurrentUserId();
         List<CalendarModel> owned = new ArrayList<>();
+        List<CalendarModel> joined = new ArrayList<>();
         List<CalendarModel> others = new ArrayList<>();
+        
         for (CalendarModel calendar : calendars) {
             if (calendar == null || calendar.getId() == null) {
                 continue;
             }
+            // Check if user is owner
             if (userId != null && userId.equals(calendar.getOwnerId())) {
                 owned.add(calendar);
-            } else {
+            } 
+            // Check if user is a member (participated/joined calendar)
+            else if (userId != null && calendar.getMemberIds() != null && 
+                     calendar.getMemberIds().contains(userId)) {
+                joined.add(calendar);
+            } 
+            // Other calendars (public calendars not yet joined)
+            else {
                 others.add(calendar);
             }
         }
@@ -1313,6 +1370,10 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         if (!owned.isEmpty()) {
             SubMenu myMenu = menu.addSubMenu("MY CALENDARS");
             addCalendarMenuItems(myMenu, owned);
+        }
+        if (!joined.isEmpty()) {
+            SubMenu joinedMenu = menu.addSubMenu("JOINED CALENDARS");
+            addCalendarMenuItems(joinedMenu, joined);
         }
         if (!others.isEmpty()) {
             SubMenu otherMenu = menu.addSubMenu("OTHER CALENDARS");
@@ -1564,5 +1625,405 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             this.startMinute = startMinute;
             this.durationMinutes = durationMinutes;
         }
+    }
+
+    // ======================== INVITATION FEATURES ========================
+    
+    private MenuItem invitationsMenuItem;
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+        
+        // Thêm menu item cho lời mời
+        invitationsMenuItem = menu.add("Lời mời");
+        invitationsMenuItem.setIcon(android.R.drawable.ic_dialog_email);
+        invitationsMenuItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
+        invitationsMenuItem.setOnMenuItemClickListener(item -> {
+            showPendingInvitations();
+            return true;
+        });
+        
+        MenuItem shareCalendarItem = menu.add("Chia sẻ lịch");
+        shareCalendarItem.setIcon(android.R.drawable.ic_menu_share);
+        shareCalendarItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
+        shareCalendarItem.setOnMenuItemClickListener(item -> {
+            showShareCalendarDialog();
+            return true;
+        });
+        
+        // Load invitation count to show badge
+        loadInvitationCount();
+        
+        return true;
+    }
+
+    private void loadInvitationCount() {
+        if (firebaseAuth.getCurrentUser() == null) return;
+        
+        String currentUserId = firebaseAuth.getCurrentUser().getUid();
+        invitationService.getPendingInvitationCount(currentUserId,
+            new InvitationService.InvitationCountListener() {
+                @Override
+                public void onCountLoaded(int count) {
+                    // Display badge on menu item by updating title
+                    if (invitationsMenuItem != null) {
+                        if (count > 0) {
+                            // Show count indicator in menu item title
+                            invitationsMenuItem.setTitle("Lời mời (" + count + ")");
+                            Log.d(TAG, "Badge set: " + count + " invitations");
+                        } else {
+                            invitationsMenuItem.setTitle("Lời mời");
+                        }
+                    }
+                    Log.d(TAG, "Bạn có " + count + " lời mời");
+                }
+
+                @Override
+                public void onError(String error) {
+                    Log.e(TAG, "Lỗi tải số lời mời: " + error);
+                }
+            });
+    }
+
+    private void showShareCalendarDialog() {
+        if (firebaseAuth.getCurrentUser() == null) {
+            Toast.makeText(this, "Vui lòng đăng nhập", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        ShareCalendarDialog.createShareCalendarDialog(this,
+            new ShareCalendarDialog.OnShareListener() {
+                @Override
+                public void onShare(String email, String role, String message) {
+                    shareCalendarWithUser(email, role, message);
+                }
+
+                @Override
+                public void onCancel() {
+                    Toast.makeText(MainActivity.this, "Đã hủy chia sẻ", 
+                        Toast.LENGTH_SHORT).show();
+                }
+            }).show();
+    }
+
+    private void shareCalendarWithUser(String toUserEmail, String role, String message) {
+        if (firebaseAuth.getCurrentUser() == null) {
+            Toast.makeText(this, "Vui lòng đăng nhập", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String calendarId = defaultCalendarId;
+        String currentUserId = firebaseAuth.getCurrentUser().getUid();
+        String currentUserEmail = firebaseAuth.getCurrentUser().getEmail();
+        String currentUserName = firebaseAuth.getCurrentUser().getDisplayName();
+
+        // Cần convert email sang userId
+        convertEmailToUserId(toUserEmail, userId -> {
+            if (userId == null) {
+                Toast.makeText(MainActivity.this, 
+                    "Không tìm thấy người dùng với email này", 
+                    Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            invitationManager.inviteToCalendar(
+                calendarId, toUserEmail, userId, role, message,
+                currentUserId, currentUserName, currentUserEmail,
+                new RepositoryCallback<String>() {
+                    @Override
+                    public void onSuccess(String result) {
+                        Toast.makeText(MainActivity.this, 
+                            "Lời mời đã được gửi!", 
+                            Toast.LENGTH_SHORT).show();
+                    }
+
+                    @Override
+                    public void onFailure(String errorMessage) {
+                        Toast.makeText(MainActivity.this, 
+                            "Lỗi: " + errorMessage, 
+                            Toast.LENGTH_SHORT).show();
+                    }
+                });
+        });
+    }
+
+    private void showPendingInvitations() {
+        if (firebaseAuth.getCurrentUser() == null) {
+            Toast.makeText(this, "Vui lòng đăng nhập", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String currentUserId = firebaseAuth.getCurrentUser().getUid();
+        
+        invitationService.loadPendingInvitations(currentUserId,
+            new InvitationService.InvitationLoadListener() {
+                @Override
+                public void onInvitationsLoaded(List<Invitation> invitations) {
+                    if (invitations.isEmpty()) {
+                        Toast.makeText(MainActivity.this, "Không có lời mời nào", 
+                            Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    currentInvitationsDialog = InvitationsDialog.createInvitationsListDialog(MainActivity.this, 
+                        invitations,
+                        new InvitationsDialog.OnInvitationActionListener() {
+                            @Override
+                            public void onAccept(Invitation invitation) {
+                                handleAcceptInvitation(invitation);
+                            }
+
+                            @Override
+                            public void onDecline(Invitation invitation) {
+                                handleDeclineInvitation(invitation);
+                            }
+                        });
+                    currentInvitationsDialog.show();
+                }
+
+                @Override
+                public void onError(String error) {
+                    Toast.makeText(MainActivity.this, 
+                        "Lỗi: " + error, 
+                        Toast.LENGTH_SHORT).show();
+                }
+            });
+    }
+
+    private void handleAcceptInvitation(Invitation invitation) {
+        String invitationType = invitation.getInvitationType();
+        
+        if ("calendar".equals(invitationType)) {
+            acceptCalendarInvitation(invitation);
+        } else if ("event".equals(invitationType)) {
+            acceptEventInvitation(invitation);
+        }
+    }
+
+    private void acceptCalendarInvitation(Invitation invitation) {
+        if (firebaseAuth.getCurrentUser() == null) return;
+
+        String currentUserId = firebaseAuth.getCurrentUser().getUid();
+        
+        invitationManager.acceptCalendarInvitation(
+            invitation.getId(), currentUserId,
+            new RepositoryCallback<String>() {
+                @Override
+                public void onSuccess(String result) {
+                    Toast.makeText(MainActivity.this, 
+                        "Đã chấp nhận lời mời!", 
+                        Toast.LENGTH_SHORT).show();
+                    
+                    // Close the invitations dialog
+                    if (currentInvitationsDialog != null && currentInvitationsDialog.isShowing()) {
+                        currentInvitationsDialog.dismiss();
+                    }
+                    
+                    // Refresh calendar list to show the new joined calendar
+                    ensureDefaultCalendarReady(() -> {
+                        Log.d(TAG, "Calendar drawer refreshed after accepting invitation");
+                    });
+                    
+                    // Refresh invitation count
+                    loadInvitationCount();
+                }
+
+                @Override
+                public void onFailure(String errorMessage) {
+                    Toast.makeText(MainActivity.this, 
+                        "Lỗi: " + errorMessage, 
+                        Toast.LENGTH_SHORT).show();
+                }
+            });
+    }
+
+    private void acceptEventInvitation(Invitation invitation) {
+        if (firebaseAuth.getCurrentUser() == null) return;
+
+        String currentUserId = firebaseAuth.getCurrentUser().getUid();
+        
+        invitationManager.respondToEventInvitation(
+            invitation.getId(), currentUserId, "accepted",
+            new RepositoryCallback<String>() {
+                @Override
+                public void onSuccess(String result) {
+                    Toast.makeText(MainActivity.this, 
+                        "Bạn sẽ tham dự sự kiện!", 
+                        Toast.LENGTH_SHORT).show();
+                    
+                    // Close the invitations dialog
+                    if (currentInvitationsDialog != null && currentInvitationsDialog.isShowing()) {
+                        currentInvitationsDialog.dismiss();
+                    }
+                    
+                    // Refresh events to show the accepted event
+                    updateEventsForDate(selectedDate);
+                    
+                    // Refresh invitation count
+                    loadInvitationCount();
+                }
+
+                @Override
+                public void onFailure(String errorMessage) {
+                    Toast.makeText(MainActivity.this, 
+                        "Lỗi: " + errorMessage, 
+                        Toast.LENGTH_SHORT).show();
+                }
+            });
+    }
+
+    private void handleDeclineInvitation(Invitation invitation) {
+        String invitationType = invitation.getInvitationType();
+        
+        if ("calendar".equals(invitationType)) {
+            invitationManager.declineCalendarInvitation(
+                invitation.getId(),
+                new RepositoryCallback<String>() {
+                    @Override
+                    public void onSuccess(String result) {
+                        Toast.makeText(MainActivity.this, 
+                            "Đã từ chối lời mời", 
+                            Toast.LENGTH_SHORT).show();
+                        
+                        // Close the invitations dialog
+                        if (currentInvitationsDialog != null && currentInvitationsDialog.isShowing()) {
+                            currentInvitationsDialog.dismiss();
+                        }
+                        
+                        // Refresh invitation count
+                        loadInvitationCount();
+                    }
+
+                    @Override
+                    public void onFailure(String errorMessage) {
+                        Toast.makeText(MainActivity.this, 
+                            "Lỗi: " + errorMessage, 
+                            Toast.LENGTH_SHORT).show();
+                    }
+                });
+        } else if ("event".equals(invitationType)) {
+            invitationManager.declineEventInvitation(
+                invitation.getId(),
+                new RepositoryCallback<String>() {
+                    @Override
+                    public void onSuccess(String result) {
+                        Toast.makeText(MainActivity.this, 
+                            "Đã từ chối lời mời", 
+                            Toast.LENGTH_SHORT).show();
+                        
+                        // Close the invitations dialog
+                        if (currentInvitationsDialog != null && currentInvitationsDialog.isShowing()) {
+                            currentInvitationsDialog.dismiss();
+                        }
+                        
+                        // Refresh invitation count
+                        loadInvitationCount();
+                    }
+
+                    @Override
+                    public void onFailure(String errorMessage) {
+                        Toast.makeText(MainActivity.this, 
+                            "Lỗi: " + errorMessage, 
+                            Toast.LENGTH_SHORT).show();
+                    }
+                });
+        }
+    }
+
+    private void convertEmailToUserId(String email, EmailToUserIdCallback callback) {
+        if (email == null || email.isEmpty()) {
+            Log.e(TAG, "Email trống");
+            Toast.makeText(this, "Email không được để trống", Toast.LENGTH_SHORT).show();
+            callback.onResult(null);
+            return;
+        }
+        
+        // Normalize email: convert to lowercase and trim whitespace
+        String normalizedEmail = email.toLowerCase().trim();
+        Log.d(TAG, "Tìm kiếm email: " + normalizedEmail);
+        
+        UserRepository userRepository = new UserRepository();
+        
+        userRepository.getUserByEmail(normalizedEmail)
+                .addOnSuccessListener(querySnapshot -> {
+                    Log.d(TAG, "Query success. Số kết quả: " + querySnapshot.size());
+                    
+                    if (querySnapshot.isEmpty()) {
+                        Log.w(TAG, "Không tìm thấy người dùng với email: " + normalizedEmail);
+                        
+                        // Try alternative: search with different case variations
+                        tryAlternativeEmailSearch(normalizedEmail, callback);
+                        return;
+                    }
+                    
+                    String userId = querySnapshot.getDocuments().get(0).getId();
+                    Log.d(TAG, "Tìm thấy userId: " + userId);
+                    callback.onResult(userId);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Lỗi query Firestore: " + e.getMessage(), e);
+                    Toast.makeText(MainActivity.this, "Lỗi tìm kiếm: " + e.getMessage(), 
+                        Toast.LENGTH_SHORT).show();
+                    callback.onResult(null);
+                });
+    }
+    
+    private void tryAlternativeEmailSearch(String email, EmailToUserIdCallback callback) {
+        // If exact match fails, try searching all users and comparing emails
+        Log.d(TAG, "Cố gắng tìm kiếm thay thế...");
+        
+        UserRepository userRepository = new UserRepository();
+        // This is a workaround - get all users and check manually
+        // In production, consider using Cloud Functions for better security
+        
+        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                .collection("users")
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    Log.d(TAG, "Tổng số người dùng: " + querySnapshot.size());
+                    
+                    for (com.google.firebase.firestore.DocumentSnapshot doc : querySnapshot.getDocuments()) {
+                        com.timed.models.User user = doc.toObject(com.timed.models.User.class);
+                        if (user != null && user.getEmail() != null) {
+                            String userEmail = user.getEmail().toLowerCase().trim();
+                            Log.d(TAG, "So sánh: " + userEmail + " với " + email);
+                            if (userEmail.equals(email)) {
+                                Log.d(TAG, "Tìm thấy người dùng: " + doc.getId());
+                                callback.onResult(doc.getId());
+                                return;
+                            }
+                        }
+                    }
+                    
+                    Log.w(TAG, "Không tìm thấy người dùng trong danh sách");
+                    callback.onResult(null);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Lỗi tìm kiếm thay thế: " + e.getMessage(), e);
+                    callback.onResult(null);
+                });
+    }
+
+    /**
+     * Test function để debug email lookup - gọi từ Console hoặc button
+     */
+    public void debugEmailLookup(String email) {
+        Log.d(TAG, "=== DEBUG EMAIL LOOKUP ===");
+        Log.d(TAG, "Email cần tìm: " + email);
+        
+        convertEmailToUserId(email, userId -> {
+            if (userId != null) {
+                Log.d(TAG, "✓ Tìm thấy userId: " + userId);
+                Toast.makeText(this, "✓ Tìm thấy: " + userId, Toast.LENGTH_SHORT).show();
+            } else {
+                Log.d(TAG, "✗ Không tìm thấy userId");
+                Toast.makeText(this, "✗ Không tìm thấy email này", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    interface EmailToUserIdCallback {
+        void onResult(String userId);
     }
 }
