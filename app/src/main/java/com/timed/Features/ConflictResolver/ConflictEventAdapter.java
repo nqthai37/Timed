@@ -15,34 +15,6 @@ import com.timed.R;
 import java.util.List;
 
 public class ConflictEventAdapter extends RecyclerView.Adapter<ConflictEventAdapter.ViewHolder> {
-
-    // --- MODEL DỮ LIỆU ĐÃ ĐƯỢC ĐỊNH NGHĨA SẴN CỦA BẠN (Rất tốt) ---
-    public static class ConflictEvent {
-        private String title;
-        private String timeRange;
-        private String description; // Nội dung Conflicts with...
-        private String id;
-        private boolean isConflicting;
-        private Class<?> activity;
-
-        public ConflictEvent(String title, String timeRange, String description, String id, boolean isConflicting, Class<?> activity) {
-            this.title = title;
-            this.timeRange = timeRange;
-            this.description = description;
-            this.id = id;
-            this.isConflicting = isConflicting;
-            this.activity = activity;
-        }
-
-        public String getTitle() { return title; }
-        public String getTimeRange() { return timeRange; }
-        public String getDescription() { return description; }
-        public String getId() { return id; }
-        public boolean isConflicting() { return isConflicting; }
-        public Class<?> getActivity() { return activity; }
-    }
-    // -------------------------------------------------------------
-
     private Context context;
     private List<ConflictEvent> conflictEventList;
 
