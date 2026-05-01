@@ -162,6 +162,14 @@ public class CalendarRepository {
             payload.put("member_ids", calendar.getMemberIds());
             payload.put("roles", calendar.getRoles());
             payload.put("color", calendar.getColor());
+            payload.put("color_name", calendar.getColorName());
+            payload.put("type", calendar.getType());
+            payload.put("icon", calendar.getIcon());
+            payload.put("is_visible", calendar.isVisible());
+            payload.put("sort_order", calendar.getSortOrder());
+            payload.put("is_archived", calendar.isArchived());
+            payload.put("settings", calendar.getSettings());
+            payload.put("stats", calendar.getStats());
             payload.put("is_public", calendar.isPublic());
         }
         if (includeCreateTimestamps) {

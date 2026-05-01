@@ -32,8 +32,10 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Calendar;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import android.Manifest;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -66,6 +68,7 @@ public class CreateEventActivity extends AppCompatActivity {
     private String eventId;
     private String calendarId;
     private final List<CalendarModel> calendarOptions = new ArrayList<>();
+    private final Map<String, CalendarModel> calendarsById = new HashMap<>();
     private Event editingEvent;
     
     // 🔔 REMINDERS: Track user-selected reminders
@@ -362,8 +365,14 @@ public class CreateEventActivity extends AppCompatActivity {
                     @Override
                     public void onReady(String defaultId, List<CalendarModel> calendars) {
                         calendarOptions.clear();
+                        calendarsById.clear();
                         if (calendars != null) {
                             calendarOptions.addAll(calendars);
+                            for (CalendarModel calendar : calendars) {
+                                if (calendar != null && calendar.getId() != null) {
+                                    calendarsById.put(calendar.getId(), calendar);
+                                }
+                            }
                         }
 
                         if (calendarId == null || calendarId.isEmpty()) {
@@ -661,7 +670,13 @@ public class CreateEventActivity extends AppCompatActivity {
     private void saveEventWithCalendar(String title, String description, String location, boolean isAllDay,
             String calendarId) {
         Event newEvent = new Event();
+        CalendarModel selectedCalendar = calendarsById.get(calendarId);
+
         newEvent.setCalendarId(calendarId);
+        if (selectedCalendar != null) {
+            newEvent.setCalendarName(selectedCalendar.getName());
+            newEvent.setColor(selectedCalendar.getColor());
+        }
         newEvent.setTitle(title);
         newEvent.setDescription(description);
         newEvent.setLocation(location);
@@ -737,8 +752,14 @@ public class CreateEventActivity extends AppCompatActivity {
         }
 
         Event target = editingEvent != null ? editingEvent : new Event();
+        CalendarModel selectedCalendar = calendarsById.get(calendarId);
+
         target.setId(eventId);
         target.setCalendarId(calendarId);
+        if (selectedCalendar != null) {
+            target.setCalendarName(selectedCalendar.getName());
+            target.setColor(selectedCalendar.getColor());
+        }
         target.setTitle(title);
         target.setDescription(description);
         target.setLocation(location);
