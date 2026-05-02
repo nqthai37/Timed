@@ -1,9 +1,12 @@
 package com.timed.Features.ConflictResolver;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -25,6 +28,8 @@ public class ConflictResolverActivity extends AppCompatActivity {
 
     private EventsRepository eventsRepository;
 
+    private ActivityResultLauncher<Intent> freeSlotLauncher;
+
     private long newEventStartMillis;
     private long newEventEndMillis;
     private String newEventTitle;
@@ -44,6 +49,16 @@ public class ConflictResolverActivity extends AppCompatActivity {
         conflictEventList = new ArrayList<>();
         adapter = new ConflictEventAdapter(this, conflictEventList);
         recyclerView.setAdapter(adapter);
+
+        freeSlotLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                        setResult(RESULT_OK, result.getData());
+                        finish();
+                    }
+                }
+        );
 
         newEventStartMillis = getIntent().getLongExtra("NEW_EVENT_START", -1);
         newEventEndMillis = getIntent().getLongExtra("NEW_EVENT_END", -1);
@@ -76,9 +91,12 @@ public class ConflictResolverActivity extends AppCompatActivity {
         });
 
         findViewById(R.id.btn_auto_reschedule).setOnClickListener(v -> {
-            // TODO: We will build the Auto-Reschedule logic next!
-            // For now, just show a toast.
-            Toast.makeText(this, "Auto-Reschedule coming soon!", Toast.LENGTH_SHORT).show();
+            Intent intent = new Intent(this, com.timed.Features.FreeSlotFinder.FreeSlotFinderActivity.class);
+            intent.putExtra("MODE", "RESOLVER");
+            intent.putExtra("EVENT_DURATION", newEventEndMillis - newEventStartMillis);
+            intent.putExtra("ORIGINAL_START", newEventStartMillis);
+            intent.putExtra("ORIGINAL_END", newEventEndMillis);
+            freeSlotLauncher.launch(intent);
         });
     }
 
