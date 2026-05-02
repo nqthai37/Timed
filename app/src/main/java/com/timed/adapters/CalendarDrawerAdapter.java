@@ -48,6 +48,18 @@ public class CalendarDrawerAdapter extends RecyclerView.Adapter<CalendarDrawerAd
 
         holder.tvCalendarName.setText(calendar.getName() != null ? calendar.getName() : "Calendar");
 
+        String ownerName = calendar.getOwnerName();
+        if (ownerName != null) {
+            ownerName = ownerName.trim();
+        }
+        if (ownerName != null && !ownerName.isEmpty()) {
+            holder.tvCalendarOwner.setText("Owner: " + ownerName);
+            holder.tvCalendarOwner.setVisibility(View.VISIBLE);
+        } else {
+            holder.tvCalendarOwner.setText("");
+            holder.tvCalendarOwner.setVisibility(View.GONE);
+        }
+
         boolean isVisible = visibleCalendarIds.contains(calendar.getId());
         holder.cbVisibility.setChecked(isVisible);
         holder.cbVisibility.setOnCheckedChangeListener((buttonView, isChecked) -> {
@@ -90,6 +102,7 @@ public class CalendarDrawerAdapter extends RecyclerView.Adapter<CalendarDrawerAd
         CheckBox cbVisibility;
         View vColorDot;
         TextView tvCalendarName;
+        TextView tvCalendarOwner;
         ImageButton btnEdit;
 
         CalendarViewHolder(@NonNull View itemView) {
@@ -97,6 +110,7 @@ public class CalendarDrawerAdapter extends RecyclerView.Adapter<CalendarDrawerAd
             cbVisibility = itemView.findViewById(R.id.cbCalendarVisibility);
             vColorDot = itemView.findViewById(R.id.vCalendarColorDot);
             tvCalendarName = itemView.findViewById(R.id.tvCalendarName);
+            tvCalendarOwner = itemView.findViewById(R.id.tvCalendarOwner);
             btnEdit = itemView.findViewById(R.id.btnEditCalendar);
         }
     }

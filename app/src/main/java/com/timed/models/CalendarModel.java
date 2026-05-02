@@ -21,6 +21,8 @@ public class CalendarModel implements Serializable {
 
     private String ownerId;
 
+    private String ownerName;
+
     private List<String> memberIds; // For fast array-contains queries
 
     private Map<String, String> roles; // uid -> permission mapping (admin, editor, viewer)
@@ -102,6 +104,16 @@ public class CalendarModel implements Serializable {
     @PropertyName("owner_id")
     public void setOwnerId(String ownerId) {
         this.ownerId = ownerId;
+    }
+
+    @PropertyName("owner_name")
+    public String getOwnerName() {
+        return ownerName;
+    }
+
+    @PropertyName("owner_name")
+    public void setOwnerName(String ownerName) {
+        this.ownerName = ownerName;
     }
 
     @PropertyName("member_ids")
