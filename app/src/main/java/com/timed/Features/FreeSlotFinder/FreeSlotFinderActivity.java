@@ -339,8 +339,26 @@ public class FreeSlotFinderActivity extends AppCompatActivity {
                     setResult(RESULT_OK, resultIntent);
                     finish();
                 } else {
-                    // Normal independent mode behavior
-                    Toast.makeText(this, "Successfully selected: " + currentSelectedSlot.getTimeRange(), Toast.LENGTH_SHORT).show();
+                    Intent createEventIntent = new Intent(FreeSlotFinderActivity.this, com.timed.activities.CreateEventActivity.class);
+
+                    long freeStart = currentSelectedSlot.getStartMillis();
+                    long freeEnd = currentSelectedSlot.getEndMillis();
+
+                    long defaultDuration = filterDurationMs > 0 ? filterDurationMs : (60 * 60 * 1000L);
+                    long suggestedEnd = freeStart + defaultDuration;
+
+                    long finalEnd = Math.min(suggestedEnd, freeEnd);
+
+                    // Pass the data over
+                    createEventIntent.putExtra("mode", "create");
+                    createEventIntent.putExtra("startTime", freeStart);
+                    createEventIntent.putExtra("endTime", finalEnd);
+
+                    if (!filterCalendarId.equals("Any")) {
+                        createEventIntent.putExtra("calendarId", filterCalendarId);
+                    }
+
+                    startActivity(createEventIntent);
                     finish();
                 }
             });
