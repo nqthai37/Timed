@@ -300,11 +300,26 @@ public class FreeSlotFinderActivity extends AppCompatActivity {
                     long finalStart;
                     long finalEnd;
 
+                    Calendar origStartCal = Calendar.getInstance();
+                    origStartCal.setTimeInMillis(originalStartMs);
+                    int origHour = origStartCal.get(Calendar.HOUR_OF_DAY);
+                    int origMinute = origStartCal.get(Calendar.MINUTE);
+
+                    Calendar projectedStartCal = Calendar.getInstance();
+                    projectedStartCal.setTimeInMillis(freeStart);
+                    projectedStartCal.set(Calendar.HOUR_OF_DAY, origHour);
+                    projectedStartCal.set(Calendar.MINUTE, origMinute);
+                    projectedStartCal.set(Calendar.SECOND, 0);
+                    projectedStartCal.set(Calendar.MILLISECOND, 0);
+
+                    long projectedStartMs = projectedStartCal.getTimeInMillis();
+                    long projectedEndMs = projectedStartMs + eventDurationMs;
+
                     // SCENARIO 1: Does the original time fit entirely inside this free slot?
-                    if (originalStartMs >= freeStart && originalEndMs <= freeEnd) {
+                    if (projectedStartMs >= freeStart && projectedEndMs <= freeEnd) {
                         // Yes! Keep the original times.
-                        finalStart = originalStartMs;
-                        finalEnd = originalEndMs;
+                        finalStart = projectedStartMs;
+                        finalEnd = projectedEndMs;
                     }
                     // SCENARIO 2: It doesn't fit perfectly. Snap to the start of the free slot.
                     else {
