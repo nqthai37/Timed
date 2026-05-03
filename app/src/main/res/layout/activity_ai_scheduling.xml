@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#FFF8FAFC"
-    tools:context=".Setting.AI.AiSchedulingActivity">
+    tools:context=".Features.AI.AiSchedulingActivity">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/clHeader"
@@ -100,7 +100,12 @@
             android:padding="12dp"
             android:textColor="#0F172A"
             android:textColorHint="#94A3B8"
-            android:textSize="14sp" />
+            android:textSize="14sp"
+            android:inputType="textMultiLine|textCapSentences"
+            android:minLines="1"
+            android:maxLines="5"
+            android:gravity="center_vertical|start"
+            android:scrollbars="vertical" />
 
         <ImageView
             android:id="@+id/iv_send"
@@ -109,7 +114,7 @@
             android:background="@drawable/bg_rounded"
             android:backgroundTint="@color/primary"
             android:padding="10dp"
-            android:src="@drawable/ic_send" 
+            android:src="@drawable/ic_send"
             app:tint="#FFFFFF" />
     </LinearLayout>
 
@@ -135,8 +140,10 @@
         app:layout_constraintTop_toBottomOf="@+id/tv_try_these">
 
         <com.google.android.material.chip.ChipGroup
+            android:id="@+id/chip_group_try_these"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            app:chipSpacingHorizontal="8dp"
             app:singleLine="true">
 
             <com.google.android.material.chip.Chip
@@ -151,6 +158,14 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="&quot;Gym every Monday 7am&quot;"
+                android:textColor="#475569"
+                android:background="@drawable/bg_day_event_light"
+                app:chipStrokeWidth="0dp" />
+
+            <com.google.android.material.chip.Chip
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="&quot;Meeting tonight at 10pm&quot;"
                 android:textColor="#475569"
                 android:background="@drawable/bg_day_event_light"
                 app:chipStrokeWidth="0dp" />
