@@ -64,15 +64,10 @@ public class ConflictResolverActivity extends AppCompatActivity {
         newEventEndMillis = getIntent().getLongExtra("NEW_EVENT_END", -1);
         newEventTitle = getIntent().getStringExtra("NEW_EVENT_TITLE");
 
-        if (newEventStartMillis == -1) {
-            Calendar cal = Calendar.getInstance();
-            cal.set(Calendar.HOUR_OF_DAY, 10);
-            cal.set(Calendar.MINUTE, 0);
-            newEventStartMillis = cal.getTimeInMillis(); // 10:00 AM Today
-
-            cal.set(Calendar.HOUR_OF_DAY, 11);
-            newEventEndMillis = cal.getTimeInMillis(); // 11:00 AM Today
-            newEventTitle = "Dev Test Event";
+        if (newEventStartMillis == -1 || newEventEndMillis == -1) {
+            Toast.makeText(this, "Error loading event details.", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
         }
 
         detectConflictsOnDay(newEventStartMillis, newEventEndMillis);
