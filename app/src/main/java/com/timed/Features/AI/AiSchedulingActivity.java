@@ -1,5 +1,6 @@
 package com.timed.Features.AI;
 
+import android.app.Dialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
@@ -14,7 +15,10 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.chip.Chip;
@@ -22,6 +26,12 @@ import com.google.android.material.chip.ChipGroup;
 import com.timed.Features.FreeSlotFinder.FreeSlot;
 import com.timed.Features.FreeSlotFinder.FreeSlotAdapter;
 import com.timed.R;
+import com.timed.managers.UserManager;
+import com.timed.models.CalendarModel;
+import com.timed.repositories.AiRepository;
+import com.timed.repositories.CalendarRepository;
+import com.timed.repositories.EventsRepository;
+import com.timed.repositories.RepositoryCallback;
 
 public class AiSchedulingActivity extends AppCompatActivity {
 
@@ -29,8 +39,16 @@ public class AiSchedulingActivity extends AppCompatActivity {
     private AiScheduleAdapter adapter;
     private List<AiSchedule> scheduleList;
     private FreeSlot currentSelectedAiSlot = null;
+    private EventsRepository eventsRepository;
+    private TextView tvSelectedCalendar;
+    private String selectedCalendarId = "";
+    private Dialog loadingDialog;
+    private CalendarRepository calendarRepository;
+    private List<String> calendarNames = new ArrayList<>();
+    private List<String> calendarIds = new ArrayList<>();
     private EditText etAiInput;
     private ImageView ivSend;
+    private AiRepository aiRepository;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,52 +61,14 @@ public class AiSchedulingActivity extends AppCompatActivity {
         ivSend = findViewById(R.id.iv_send);
         rvSchedules = findViewById(R.id.rv_ai_schedules);
 
-        ivSend.setOnClickListener(v -> {
-            String prompt = etAiInput.getText().toString().trim();
-            if (!prompt.isEmpty()) {
-                Toast.makeText(this, "AI is thinking...", Toast.LENGTH_SHORT).show();
-                etAiInput.setText(""); // Clear the input
+        aiRepository = new AiRepository();
+        eventsRepository = new EventsRepository();
+        calendarRepository = new CalendarRepository();
 
-                // MOCK DATA: Simulate a 1.5-second network delay
-                new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
 
-                    // 1. Create some fake base timestamps for tomorrow
-                    java.util.Calendar cal = java.util.Calendar.getInstance();
-                    cal.add(java.util.Calendar.DAY_OF_YEAR, 1); // Set to tomorrow
-
-                    // Slot 1: 10:00 AM - 11:00 AM
-                    cal.set(java.util.Calendar.HOUR_OF_DAY, 10);
-                    cal.set(java.util.Calendar.MINUTE, 0);
-                    long start1 = cal.getTimeInMillis();
-                    long end1 = start1 + (60 * 60 * 1000L); // + 1 hour
-
-                    // Slot 2: 11:30 AM - 12:30 PM
-                    cal.set(java.util.Calendar.HOUR_OF_DAY, 11);
-                    cal.set(java.util.Calendar.MINUTE, 30);
-                    long start2 = cal.getTimeInMillis();
-                    long end2 = start2 + (60 * 60 * 1000L);
-
-                    // Slot 3: 2:00 PM - 3:00 PM
-                    cal.set(java.util.Calendar.HOUR_OF_DAY, 14);
-                    cal.set(java.util.Calendar.MINUTE, 0);
-                    long start3 = cal.getTimeInMillis();
-                    long end3 = start3 + (60 * 60 * 1000L);
-
-                    // 2. Build the fake list of FreeSlots
-                    List<FreeSlot> fakeSlots = new ArrayList<>();
-                    fakeSlots.add(new FreeSlot("10:00 AM - 11:00 AM", "1 hour", "mock_id_1", start1, end1));
-                    fakeSlots.add(new FreeSlot("11:30 AM - 12:30 PM", "1 hour", "mock_id_2", start2, end2));
-                    fakeSlots.add(new FreeSlot("2:00 PM - 3:00 PM", "1 hour", "mock_id_3", start3, end3));
-
-                    SimpleDateFormat sdf = new SimpleDateFormat("EEEE, MMM d", java.util.Locale.getDefault());
-                    String displayDate = sdf.format(cal.getTime());
-                    showAiOptionsBottomSheet(displayDate, fakeSlots);
-
-                }, 1500);
-            }
-        });
-
+        setupPromptButton();
         setupChipListeners();
+        setupCalendarSelector();
 
         if (rvSchedules != null) {
             rvSchedules.setLayoutManager(new LinearLayoutManager(this));
@@ -101,6 +81,126 @@ public class AiSchedulingActivity extends AppCompatActivity {
             adapter = new AiScheduleAdapter(scheduleList);
             rvSchedules.setAdapter(adapter);
         }
+    }
+
+    private void setupPromptButton() {
+        ivSend.setOnClickListener(v -> {
+            String prompt = etAiInput.getText().toString().trim();
+            if (!prompt.isEmpty()) {
+                showLoadingDialog();
+                etAiInput.setText("");
+
+                aiRepository.extractScheduleFromText(prompt, new AiRepository.AiExtractionCallback() {
+                    @Override
+                    public void onSuccess(AiScheduleRequest extractedData) {
+                        runOnUiThread(() -> {
+                            long targetDateMillis = convertKeywordToMillis(extractedData.dayKeyword);
+
+                            SimpleDateFormat sdf = new SimpleDateFormat("EEEE, MMM d", Locale.getDefault());
+                            String displayDate = sdf.format(new Date(targetDateMillis));
+
+                            eventsRepository.findFreeSlots(
+                                    targetDateMillis,
+                                    extractedData.durationMs,
+                                    extractedData.timeBound,
+                                    selectedCalendarId,
+                                    new EventsRepository.OnFreeSlotsFoundListener() {
+                                        @Override
+                                        public void onSlotsFound(List<FreeSlot> freeSlots) {
+                                            hideLoadingDialog();
+                                            if (freeSlots.isEmpty()) {
+                                                Toast.makeText(AiSchedulingActivity.this, "No free slots found for that time.", Toast.LENGTH_SHORT).show();
+                                            } else {
+                                                List<FreeSlot> top3 = carveProposedSlots(freeSlots, targetDateMillis, extractedData);
+
+                                                if (top3.isEmpty()) {
+                                                    Toast.makeText(AiSchedulingActivity.this, "Couldn't fit the event in your schedule.", Toast.LENGTH_SHORT).show();
+                                                    return;
+                                                }
+
+                                                etAiInput.setText(extractedData.title);
+                                                showAiOptionsBottomSheet(displayDate, top3);
+                                            }
+                                        }
+
+                                        @Override
+                                        public void onError(Exception e) {
+                                            hideLoadingDialog();
+                                            Toast.makeText(AiSchedulingActivity.this, "Error finding slots", Toast.LENGTH_SHORT).show();
+                                        }
+                                    }
+                            );
+                        });
+                    }
+
+                    @Override
+                    public void onError(Exception e) {
+                        runOnUiThread(() -> {
+                            hideLoadingDialog();
+                            Toast.makeText(AiSchedulingActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        });
+                    }
+                });
+            }
+        });
+    }
+
+    private void setupCalendarSelector() {
+        tvSelectedCalendar = findViewById(R.id.tv_selected_calendar);
+
+        String currentUserId = UserManager.getInstance().getCurrentUser().getUid();
+
+        if (currentUserId == null) {
+            tvSelectedCalendar.setText("📅 Not Logged In ▼");
+            return;
+        }
+
+        calendarNames.clear();
+        calendarIds.clear();
+
+        calendarRepository.getCalendarsByUser(currentUserId, new RepositoryCallback<List<CalendarModel>>() {
+            @Override
+            public void onSuccess(List<CalendarModel> calendars) {
+                runOnUiThread(() -> {
+                    if (calendars != null && !calendars.isEmpty()) {
+                        for (com.timed.models.CalendarModel cal : calendars) {
+                            calendarNames.add(cal.getName());
+                            calendarIds.add(cal.getId());
+                        }
+
+                        tvSelectedCalendar.setText("📅 " + calendarNames.get(0) + " ▼");
+                        selectedCalendarId = calendarIds.get(0);
+                    } else {
+                        tvSelectedCalendar.setText("📅 No Calendars ▼");
+                    }
+                });
+
+            }
+
+            @Override
+            public void onFailure(String e) {
+                Toast.makeText(AiSchedulingActivity.this, "Failed to load calendars", Toast.LENGTH_SHORT).show();
+                tvSelectedCalendar.setText("📅 Error ▼");
+            }
+        });
+
+        tvSelectedCalendar.setOnClickListener(v -> {
+            if (calendarNames.isEmpty()) {
+                Toast.makeText(this, "Loading calendars...", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            String[] namesArray = calendarNames.toArray(new String[0]);
+
+            new android.app.AlertDialog.Builder(this)
+                    .setTitle("Select Calendar")
+                    .setItems(namesArray, (dialog, which) -> {
+                        String chosenName = calendarNames.get(which);
+                        selectedCalendarId = calendarIds.get(which);
+                        tvSelectedCalendar.setText("📅 " + chosenName + " ▼");
+                    })
+                    .show();
+        });
     }
 
     private void setupChipListeners() {
@@ -123,6 +223,82 @@ public class AiSchedulingActivity extends AppCompatActivity {
                 });
             }
         }
+    }
+
+    private long convertKeywordToMillis(String keyword) {
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        if (keyword == null) return cal.getTimeInMillis();
+
+        String lower = keyword.toLowerCase();
+
+        if (lower.contains("tomorrow")) {
+            cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
+        } else if (lower.contains("monday")) {
+            while (cal.get(java.util.Calendar.DAY_OF_WEEK) != java.util.Calendar.MONDAY) cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
+        } else if (lower.contains("tuesday")) {
+            while (cal.get(java.util.Calendar.DAY_OF_WEEK) != java.util.Calendar.TUESDAY) cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
+        } else if (lower.contains("wednesday")) {
+            while (cal.get(java.util.Calendar.DAY_OF_WEEK) != java.util.Calendar.WEDNESDAY) cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
+        } else if (lower.contains("thursday")) {
+            while (cal.get(java.util.Calendar.DAY_OF_WEEK) != java.util.Calendar.THURSDAY) cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
+        } else if (lower.contains("friday")) {
+            while (cal.get(java.util.Calendar.DAY_OF_WEEK) != java.util.Calendar.FRIDAY) cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
+        } else if (lower.contains("saturday")) {
+            while (cal.get(java.util.Calendar.DAY_OF_WEEK) != java.util.Calendar.SATURDAY) cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
+        } else if (lower.contains("sunday")) {
+            while (cal.get(java.util.Calendar.DAY_OF_WEEK) != java.util.Calendar.SUNDAY) cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
+        }
+
+        return cal.getTimeInMillis();
+    }
+
+    private List<FreeSlot> carveProposedSlots(List<FreeSlot> availableGaps, long baseDateMillis, AiScheduleRequest aiData) {
+        List<FreeSlot> proposed = new ArrayList<>();
+        long duration = aiData.durationMs > 0 ? aiData.durationMs : 3600000L; // Default 1 hour
+
+        for (FreeSlot gap : availableGaps) {
+            long gapStart = gap.getStartMillis();
+            long gapEnd = gap.getEndMillis();
+
+            if (aiData.exactTime != null && !aiData.exactTime.isEmpty() && !aiData.exactTime.equals("null")) {
+                try {
+                    String[] parts = aiData.exactTime.split(":");
+                    int hour = Integer.parseInt(parts[0]);
+                    int minute = Integer.parseInt(parts[1]);
+
+                    Calendar cal = Calendar.getInstance();
+                    cal.setTimeInMillis(baseDateMillis);
+                    cal.set(Calendar.HOUR_OF_DAY, hour);
+                    cal.set(Calendar.MINUTE, minute);
+                    cal.set(Calendar.SECOND, 0);
+
+                    long proposedStart = cal.getTimeInMillis();
+                    long proposedEnd = proposedStart + duration;
+
+                    if (proposedStart >= gapStart && proposedEnd <= gapEnd) {
+                        SimpleDateFormat sdf = new SimpleDateFormat("h:mm a", Locale.getDefault());
+                        String timeString = sdf.format(new Date(proposedStart)) + " - " + sdf.format(new Date(proposedEnd));
+
+                        proposed.add(new FreeSlot(timeString, (duration / 60000) + " mins", "ai_slot_exact", proposedStart, proposedEnd));
+                        continue;
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+
+            if (gapEnd - gapStart >= duration) {
+                long proposedEnd = gapStart + duration;
+
+                SimpleDateFormat sdf = new SimpleDateFormat("h:mm a", Locale.getDefault());
+                String timeString = sdf.format(new Date(gapStart)) + " - " + sdf.format(new Date(proposedEnd));
+
+                proposed.add(new FreeSlot(timeString, (duration / 60000) + " mins", "ai_slot_" + gapStart, gapStart, proposedEnd));
+            }
+
+            if (proposed.size() >= 3) break;
+        }
+        return proposed;
     }
 
     private void showAiOptionsBottomSheet(String dateString, List<FreeSlot> generatedSlots) {
@@ -156,6 +332,48 @@ public class AiSchedulingActivity extends AppCompatActivity {
         });
 
         bottomSheetDialog.show();
+    }
+
+    private void showLoadingDialog() {
+        if (loadingDialog == null) {
+            loadingDialog = new android.app.Dialog(this);
+            loadingDialog.setContentView(R.layout.dialog_ai_loading);
+
+            loadingDialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+
+            loadingDialog.setCancelable(false);
+
+            View dotBlue = loadingDialog.findViewById(R.id.dot_blue);
+            View dotYellow = loadingDialog.findViewById(R.id.dot_yellow);
+            View dotRed = loadingDialog.findViewById(R.id.dot_red);
+
+            animateDot(dotBlue, 0);
+            animateDot(dotYellow, 150);
+            animateDot(dotRed, 300);
+        }
+        loadingDialog.show();
+    }
+
+    private void hideLoadingDialog() {
+        if (loadingDialog != null && loadingDialog.isShowing()) {
+            loadingDialog.dismiss();
+        }
+    }
+
+    private void animateDot(View dot, long delay) {
+        dot.animate()
+                .translationY(-24f)
+                .setDuration(300)
+                .setStartDelay(delay)
+                .withEndAction(() -> {
+                    dot.animate()
+                            .translationY(0f)
+                            .setDuration(300)
+                            .setStartDelay(0)
+                            .withEndAction(() -> animateDot(dot, 400))
+                            .start();
+                })
+                .start();
     }
 
     private void navigateToCreateEvent(FreeSlot selectedSlot) {
