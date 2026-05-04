@@ -3,7 +3,9 @@ package com.timed.Features.AI;
 import android.app.Dialog;
 import android.content.Intent;
 import android.os.Bundle;
+import android.transition.TransitionManager;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -20,6 +22,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
@@ -42,7 +45,8 @@ public class AiSchedulingActivity extends AppCompatActivity {
     private EventsRepository eventsRepository;
     private TextView tvSelectedCalendar;
     private String selectedCalendarId = "";
-    private Dialog loadingDialog;
+    private BottomSheetDialog aiSheetDialog;
+    private View sheetView;
     private CalendarRepository calendarRepository;
     private List<String> calendarNames = new ArrayList<>();
     private List<String> calendarIds = new ArrayList<>();
@@ -87,7 +91,7 @@ public class AiSchedulingActivity extends AppCompatActivity {
         ivSend.setOnClickListener(v -> {
             String prompt = etAiInput.getText().toString().trim();
             if (!prompt.isEmpty()) {
-                showLoadingDialog();
+                openBottomSheetInLoadingState();
                 etAiInput.setText("");
 
                 aiRepository.extractScheduleFromText(prompt, new AiRepository.AiExtractionCallback() {
@@ -107,7 +111,6 @@ public class AiSchedulingActivity extends AppCompatActivity {
                                     new EventsRepository.OnFreeSlotsFoundListener() {
                                         @Override
                                         public void onSlotsFound(List<FreeSlot> freeSlots) {
-                                            hideLoadingDialog();
                                             if (freeSlots.isEmpty()) {
                                                 Toast.makeText(AiSchedulingActivity.this, "No free slots found for that time.", Toast.LENGTH_SHORT).show();
                                             } else {
@@ -119,13 +122,13 @@ public class AiSchedulingActivity extends AppCompatActivity {
                                                 }
 
                                                 etAiInput.setText(extractedData.title);
-                                                showAiOptionsBottomSheet(displayDate, top3);
+                                                updateBottomSheetWithResults(displayDate, top3);
                                             }
                                         }
 
                                         @Override
                                         public void onError(Exception e) {
-                                            hideLoadingDialog();
+                                            if (aiSheetDialog != null) aiSheetDialog.dismiss();
                                             Toast.makeText(AiSchedulingActivity.this, "Error finding slots", Toast.LENGTH_SHORT).show();
                                         }
                                     }
@@ -136,7 +139,7 @@ public class AiSchedulingActivity extends AppCompatActivity {
                     @Override
                     public void onError(Exception e) {
                         runOnUiThread(() -> {
-                            hideLoadingDialog();
+                            if (aiSheetDialog != null) aiSheetDialog.dismiss();
                             Toast.makeText(AiSchedulingActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                         });
                     }
@@ -285,15 +288,19 @@ public class AiSchedulingActivity extends AppCompatActivity {
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-            }
+            } else {
+                long currentStart = gapStart;
 
-            if (gapEnd - gapStart >= duration) {
-                long proposedEnd = gapStart + duration;
+                while (currentStart + duration <= gapEnd && proposed.size() < 3) {
+                    long proposedEnd = currentStart + duration;
 
-                SimpleDateFormat sdf = new SimpleDateFormat("h:mm a", Locale.getDefault());
-                String timeString = sdf.format(new Date(gapStart)) + " - " + sdf.format(new Date(proposedEnd));
+                    SimpleDateFormat sdf = new SimpleDateFormat("h:mm a", Locale.getDefault());
+                    String timeString = sdf.format(new Date(currentStart)) + " - " + sdf.format(new Date(proposedEnd));
 
-                proposed.add(new FreeSlot(timeString, (duration / 60000) + " mins", "ai_slot_" + gapStart, gapStart, proposedEnd));
+                    proposed.add(new FreeSlot(timeString, (duration / 60000) + " mins", "ai_slot_" + currentStart, currentStart, proposedEnd));
+
+                    currentStart += 1800000L;
+                }
             }
 
             if (proposed.size() >= 3) break;
@@ -301,24 +308,45 @@ public class AiSchedulingActivity extends AppCompatActivity {
         return proposed;
     }
 
-    private void showAiOptionsBottomSheet(String dateString, List<FreeSlot> generatedSlots) {
-        BottomSheetDialog bottomSheetDialog = new BottomSheetDialog(this);
+    private void openBottomSheetInLoadingState() {
+        if (aiSheetDialog == null) {
+            aiSheetDialog = new BottomSheetDialog(this);
+            sheetView = getLayoutInflater().inflate(R.layout.layout_ai_bottom_sheet, null);
+            aiSheetDialog.setContentView(sheetView);
+        }
 
-        View sheetView = getLayoutInflater().inflate(R.layout.layout_ai_bottom_sheet, null);
-        bottomSheetDialog.setContentView(sheetView);
+        ((TextView) sheetView.findViewById(R.id.tv_sheet_title)).setText("AI is thinking...");
+        ((TextView) sheetView.findViewById(R.id.tv_sheet_subtitle)).setText("Scanning your calendar for the best times...");
+        sheetView.findViewById(R.id.ll_loading_state).setVisibility(View.VISIBLE);
+        sheetView.findViewById(R.id.ll_results_state).setVisibility(View.GONE);
 
-        TextView tvSubtitle = sheetView.findViewById(R.id.tv_sheet_subtitle);
-        tvSubtitle.setText("Best available slots for " + dateString + ":");
+        animateDot(sheetView.findViewById(R.id.dot_blue), 0);
+        animateDot(sheetView.findViewById(R.id.dot_yellow), 150);
+        animateDot(sheetView.findViewById(R.id.dot_red), 300);
+
+        aiSheetDialog.show();
+    }
+
+    private void updateBottomSheetWithResults(String dateString, List<FreeSlot> generatedSlots) {
+        if (aiSheetDialog == null || !aiSheetDialog.isShowing()) return;
+
+        TransitionManager.beginDelayedTransition((ViewGroup) sheetView);
+
+        sheetView.findViewById(R.id.ll_loading_state).setVisibility(View.GONE);
+        sheetView.findViewById(R.id.ll_results_state).setVisibility(View.VISIBLE);
+
+        aiSheetDialog.getBehavior().setState(com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED);
+
+        ((TextView) sheetView.findViewById(R.id.tv_sheet_title)).setText("Select a Time");
+        ((TextView) sheetView.findViewById(R.id.tv_sheet_subtitle)).setText("Best available slots for " + dateString + ":");
 
         RecyclerView rvGeneratedSlots = sheetView.findViewById(R.id.rv_ai_generated_slots);
         Button btnConfirm = sheetView.findViewById(R.id.btn_confirm_ai);
 
         currentSelectedAiSlot = null;
-
         FreeSlotAdapter adapter = new FreeSlotAdapter(this, generatedSlots, selectedSlot -> {
             currentSelectedAiSlot = selectedSlot;
         });
-
         rvGeneratedSlots.setAdapter(adapter);
 
         btnConfirm.setOnClickListener(v -> {
@@ -326,38 +354,9 @@ public class AiSchedulingActivity extends AppCompatActivity {
                 Toast.makeText(this, "Please select a time slot first", Toast.LENGTH_SHORT).show();
                 return;
             }
-
-            bottomSheetDialog.dismiss();
+            aiSheetDialog.dismiss();
             navigateToCreateEvent(currentSelectedAiSlot);
         });
-
-        bottomSheetDialog.show();
-    }
-
-    private void showLoadingDialog() {
-        if (loadingDialog == null) {
-            loadingDialog = new android.app.Dialog(this);
-            loadingDialog.setContentView(R.layout.dialog_ai_loading);
-
-            loadingDialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
-
-            loadingDialog.setCancelable(false);
-
-            View dotBlue = loadingDialog.findViewById(R.id.dot_blue);
-            View dotYellow = loadingDialog.findViewById(R.id.dot_yellow);
-            View dotRed = loadingDialog.findViewById(R.id.dot_red);
-
-            animateDot(dotBlue, 0);
-            animateDot(dotYellow, 150);
-            animateDot(dotRed, 300);
-        }
-        loadingDialog.show();
-    }
-
-    private void hideLoadingDialog() {
-        if (loadingDialog != null && loadingDialog.isShowing()) {
-            loadingDialog.dismiss();
-        }
     }
 
     private void animateDot(View dot, long delay) {
