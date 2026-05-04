@@ -1,19 +1,20 @@
 package com.timed.Setting.Main;
 
-import android.content.Intent;
 import android.os.Bundle;
 import android.widget.ImageView;
-import android.widget.Toast;
+import android.view.View;
 
-import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.google.android.material.button.MaterialButton;
-import com.timed.Auth.LoginActivity;
 import com.timed.R;
+import com.timed.activities.BaseBottomNavActivity;
 import com.timed.Features.AI.AiSchedulingActivity;
 import com.timed.Features.Analytics.AnalyticsActivity;
 import com.timed.Features.ConflictResolver.ConflictResolverActivity;
@@ -24,61 +25,70 @@ import com.timed.Setting.Profile.ProfileActivity;
 import com.timed.Setting.SyncStorage.SyncStorageActivity;
 import com.timed.Setting.Timezone.TimezoneSettingActivity;
 import com.timed.Setting.Themes.ThemeActivity;
-import com.timed.repositories.AuthRepository;
 
-public class SettingActivity extends AppCompatActivity {
+public class SettingActivity extends BaseBottomNavActivity {
 
     private RecyclerView recyclerView;
     private SettingsAdapter adapter;
     private List<SettingItem> settingList;
-    private MaterialButton btnLogout;
     private ImageView ivBack;
-    private AuthRepository authRepository;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_setting);
+        setupInsets();
 
-        authRepository = new AuthRepository();
-
-        btnLogout = findViewById(R.id.btnLogout);
-        btnLogout.setOnClickListener(v -> handleLogout());
-
-        ivBack  = findViewById(R.id.iv_back);
-        ivBack.setOnClickListener(v -> finish());
+        ivBack = findViewById(R.id.iv_back);
+        if (ivBack != null) {
+            ivBack.setOnClickListener(v -> finish());
+        }
 
         recyclerView = findViewById(R.id.rv_settings);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
         settingList = new ArrayList<>();
-        settingList.add(new SettingItem("Time & Timezone",R.drawable.ic_time_zone, "Timezone Setting", TimezoneSettingActivity.class));
-        settingList.add(new SettingItem(R.drawable.ic_conflict_resolver, "Conflict Resolver", ConflictResolverActivity.class));
-        settingList.add(new SettingItem(R.drawable.ic_free_slot_finder, "Free Slot Finder", FreeSlotFinderActivity.class));
-        settingList.add(new SettingItem("Productivity & Focus",R.drawable.ic_habit_tracker, "Habit Tracker", HabitTrackerActivity.class));
+        settingList.add(new SettingItem("Time & Timezone", R.drawable.ic_time_zone, "Timezone Setting",
+                TimezoneSettingActivity.class));
+        settingList.add(
+                new SettingItem(R.drawable.ic_conflict_resolver, "Conflict Resolver", ConflictResolverActivity.class));
+        settingList
+                .add(new SettingItem(R.drawable.ic_free_slot_finder, "Free Slot Finder", FreeSlotFinderActivity.class));
+        settingList.add(new SettingItem("Productivity & Focus", R.drawable.ic_habit_tracker, "Habit Tracker",
+                HabitTrackerActivity.class));
         settingList.add(new SettingItem(R.drawable.ic_focus, "Focus Mode", FocusModeActivity.class));
         settingList.add(new SettingItem(R.drawable.ic_focus, "AI Scheduling", AiSchedulingActivity.class));
         settingList.add(new SettingItem(R.drawable.ic_analytics, "Analytics", AnalyticsActivity.class));
-        settingList.add(new SettingItem("System & Security",R.drawable.ic_security, "Profile", ProfileActivity.class));
+        settingList.add(new SettingItem("System & Security", R.drawable.ic_security, "Profile", ProfileActivity.class));
         settingList.add(new SettingItem(R.drawable.ic_cloud, "Sync & Storage", SyncStorageActivity.class));
-        settingList.add(new SettingItem(R.drawable.ic_theme, "Theme & Appearance", ThemeActivity.class)); // Placeholder for future implementation
+        settingList.add(new SettingItem(R.drawable.ic_theme, "Theme & Appearance", ThemeActivity.class)); // Placeholder
+                                                                                                          // for future
+                                                                                                          // implementation
         adapter = new SettingsAdapter(this, settingList);
         recyclerView.setAdapter(adapter);
+        setupBottomNavigation();
     }
 
-    private void handleLogout() {
-        authRepository.logout();
+    @Override
+    protected int getNavigationMenuItemId() {
+        return R.id.nav_settings;
+    }
 
-        getSharedPreferences("TimedAppPrefs", MODE_PRIVATE)
-                .edit()
-                .putBoolean("REMEMBER_ME", false)
-                .apply();
-
-        Toast.makeText(this, "Logged out successfully", Toast.LENGTH_SHORT).show();
-
-        Intent intent = new Intent(SettingActivity.this, LoginActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        startActivity(intent);
-        finish();
+    private void setupInsets() {
+        View root = findViewById(R.id.settingsRoot);
+        if (root == null) {
+            return;
+        }
+        final int baseTop = root.getPaddingTop();
+        final int baseBottom = root.getPaddingBottom();
+        final int baseLeft = root.getPaddingLeft();
+        final int baseRight = root.getPaddingRight();
+        ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
+            Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(baseLeft + bars.left, baseTop + bars.top,
+                    baseRight + bars.right, baseBottom + bars.bottom);
+            return insets;
+        });
     }
 }

@@ -13,7 +13,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Header Name"
-        android:textColor="#64748B"
+        android:textColor="?attr/colorOnSurfaceVariant"
         android:textSize="13sp"
         android:paddingStart="4dp"
         android:paddingBottom="8dp"

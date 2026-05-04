@@ -9,6 +9,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.firebase.Timestamp;
+import com.google.android.material.color.MaterialColors;
 import com.timed.R;
 import com.timed.models.Event;
 
@@ -43,12 +44,20 @@ public class WeekEventAdapter extends RecyclerView.Adapter<WeekEventAdapter.Week
         // Tùy biến màu thẻ (Ví dụ: Thẻ chẵn màu trắng viền, thẻ lẻ màu tím đặc)
         if (position % 2 == 0) {
             holder.layoutEventCard.setBackgroundResource(R.drawable.bg_day_event_light);
-            holder.tvEventTitle.setTextColor(android.graphics.Color.parseColor("#0f172a"));
-            holder.tvEventSubtitle.setTextColor(android.graphics.Color.parseColor("#64748b"));
+            int onSurface = MaterialColors.getColor(holder.itemView,
+                    com.google.android.material.R.attr.colorOnSurface);
+            int onSurfaceVariant = MaterialColors.getColor(holder.itemView,
+                    com.google.android.material.R.attr.colorOnSurfaceVariant);
+            holder.tvEventTitle.setTextColor(onSurface);
+            holder.tvEventSubtitle.setTextColor(onSurfaceVariant);
+            holder.tvEventSubtitle.setAlpha(1.0f);
         } else {
             holder.layoutEventCard.setBackgroundResource(R.drawable.bg_day_selected);
-            holder.tvEventTitle.setTextColor(android.graphics.Color.WHITE);
-            holder.tvEventSubtitle.setTextColor(android.graphics.Color.parseColor("#E6FFFFFF"));
+            int onPrimary = MaterialColors.getColor(holder.itemView,
+                    com.google.android.material.R.attr.colorOnPrimary);
+            holder.tvEventTitle.setTextColor(onPrimary);
+            holder.tvEventSubtitle.setTextColor(onPrimary);
+            holder.tvEventSubtitle.setAlpha(0.85f);
         }
     }
 

@@ -1,10 +1,55 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <style name="Base.Theme.Timed" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <item name="colorPrimary">@color/timed_blue_primary</item>
+        <item name="colorOnPrimary">@color/timed_on_primary</item>
+        <item name="colorPrimaryContainer">@color/timed_blue_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/timed_blue_on_primary_container</item>
+
+        <item name="colorSecondary">@color/timed_blue_secondary</item>
+        <item name="colorOnSecondary">@color/timed_on_secondary</item>
+        <item name="colorSecondaryContainer">@color/timed_blue_secondary_container</item>
+
+        <item name="colorTertiary">@color/timed_blue_tertiary</item>
+        <item name="colorOnTertiary">@color/timed_on_tertiary</item>
+        <item name="colorTertiaryContainer">@color/timed_blue_tertiary_container</item>
+
+        <item name="android:colorBackground">@color/background_light</item>
+        <item name="colorOnBackground">@color/slate_900</item>
+        <item name="colorSurface">@color/white</item>
+        <item name="colorOnSurface">@color/slate_900</item>
     </style>
 
-    <style name="Theme.Timed" parent="Base.Theme.Timed" />
+    <style name="Theme.Timed" parent="Theme.Timed.Blue" />
+
+    <style name="Theme.Timed.Blue" parent="Base.Theme.Timed">
+        <item name="colorPrimary">@color/timed_blue_primary</item>
+        <item name="colorPrimaryContainer">@color/timed_blue_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/timed_blue_on_primary_container</item>
+        <item name="colorSecondary">@color/timed_blue_secondary</item>
+        <item name="colorSecondaryContainer">@color/timed_blue_secondary_container</item>
+        <item name="colorTertiary">@color/timed_blue_tertiary</item>
+        <item name="colorTertiaryContainer">@color/timed_blue_tertiary_container</item>
+    </style>
+
+    <style name="Theme.Timed.Emerald" parent="Base.Theme.Timed">
+        <item name="colorPrimary">@color/timed_emerald_primary</item>
+        <item name="colorPrimaryContainer">@color/timed_emerald_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/timed_emerald_on_primary_container</item>
+        <item name="colorSecondary">@color/timed_emerald_secondary</item>
+        <item name="colorSecondaryContainer">@color/timed_emerald_secondary_container</item>
+        <item name="colorTertiary">@color/timed_emerald_tertiary</item>
+        <item name="colorTertiaryContainer">@color/timed_emerald_tertiary_container</item>
+    </style>
+
+    <style name="Theme.Timed.Sunset" parent="Base.Theme.Timed">
+        <item name="colorPrimary">@color/timed_sunset_primary</item>
+        <item name="colorPrimaryContainer">@color/timed_sunset_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/timed_sunset_on_primary_container</item>
+        <item name="colorSecondary">@color/timed_sunset_secondary</item>
+        <item name="colorSecondaryContainer">@color/timed_sunset_secondary_container</item>
+        <item name="colorTertiary">@color/timed_sunset_tertiary</item>
+        <item name="colorTertiaryContainer">@color/timed_sunset_tertiary_container</item>
+    </style>
 
     <style name="ShapeAppearanceOverlay.Timed.CircularFab" parent="">
         <item name="cornerFamily">rounded</item>

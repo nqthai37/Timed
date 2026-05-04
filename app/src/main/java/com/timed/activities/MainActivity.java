@@ -15,8 +15,8 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 import android.util.Log;
 import android.widget.Toast;
+import android.view.ViewGroup;
 
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.GravityCompat;
 import androidx.core.view.ViewCompat;
@@ -27,7 +27,6 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-
 import com.timed.R;
 import com.timed.adapters.CalendarAdapter;
 import com.timed.adapters.EventAdapter;
@@ -36,9 +35,7 @@ import com.timed.adapters.WeekEventAdapter;
 import com.timed.models.CalendarDay;
 import com.timed.models.CalendarModel;
 
-import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.tabs.TabLayout;
-import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.Timestamp;
 import com.timed.activities.CreateEventActivity;
@@ -60,10 +57,13 @@ import com.timed.utils.FirebaseAuthManager;
 import com.timed.utils.FirebaseHelper;
 import com.timed.utils.FirebaseInitializer;
 import com.timed.utils.InvitationService;
+import com.timed.utils.NetworkUtils;
+import com.timed.utils.OfflineCacheManager;
 import com.timed.dialogs.InvitationsDialog;
 import com.timed.dialogs.ShareCalendarDialog;
 import com.google.firebase.auth.FirebaseAuth;
 import com.bumptech.glide.Glide;
+import com.google.android.material.color.MaterialColors;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -77,7 +77,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.HashMap;
 
-public class MainActivity extends AppCompatActivity implements CalendarAdapter.OnItemListener {
+public class MainActivity extends BaseBottomNavActivity implements CalendarAdapter.OnItemListener {
 
     private static final String TAG = "MainActivity";
     private RecyclerView rvCalendar;
@@ -125,6 +125,8 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
     private InvitationService invitationService;
     private android.app.Dialog currentInvitationsDialog;
     private FirebaseAuth firebaseAuth;
+    private boolean offlineMode;
+    private boolean offlineToastShown = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -132,25 +134,43 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_main);
 
+        offlineMode = getIntent() != null
+                && getIntent().getBooleanExtra(OfflineCacheManager.EXTRA_OFFLINE_MODE, false);
+
+        firebaseInitializer = FirebaseInitializer.getInstance();
+
         // Khởi tạo Firebase
-        initializeFirebase();
+        if (!isOfflineMode()) {
+            initializeFirebase();
+        }
         eventsManager = EventsManager.getInstance(this);
         calendarIntegrationService = new CalendarIntegrationService();
         defaultCalendarId = calendarIntegrationService.getCachedDefaultCalendarId(this);
-        
+
         // Khởi tạo Invitation Manager và Service
         invitationManager = InvitationManager.getInstance(this);
         invitationService = new InvitationService(this);
         firebaseAuth = FirebaseAuth.getInstance();
-        
-        // Tải số lượng lời mời khi app mở
-        loadInvitationCount();
 
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.mainContent), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, 0);
-            return insets;
-        });
+        // Tải số lượng lời mời khi app mở
+        if (!isOfflineMode()) {
+            loadInvitationCount();
+        }
+
+        View mainContent = findViewById(R.id.mainContent);
+        if (mainContent != null) {
+            final int baseLeft = mainContent.getPaddingLeft();
+            final int baseTop = mainContent.getPaddingTop();
+            final int baseRight = mainContent.getPaddingRight();
+            final int baseBottom = mainContent.getPaddingBottom();
+            ViewCompat.setOnApplyWindowInsetsListener(mainContent, (v, insets) -> {
+                Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+                v.setPadding(baseLeft + systemBars.left, baseTop + systemBars.top,
+                        baseRight + systemBars.right, baseBottom);
+                return insets;
+            });
+        }
+        setupBottomInsets();
 
         DrawerLayout drawerLayout = findViewById(R.id.drawerLayout);
         ImageButton btnMenu = findViewById(R.id.btnMenu);
@@ -161,8 +181,10 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         navView = findViewById(R.id.navView);
         setupDrawerHeader();
         setupDrawerSelection(drawerLayout);
-        ensureDefaultCalendarReady(() -> {
-        });
+        if (!isOfflineMode()) {
+            ensureDefaultCalendarReady(() -> {
+            });
+        }
 
         layoutMonthView = findViewById(R.id.layoutMonthView);
         layoutDayView = findViewById(R.id.layoutDayView);
@@ -198,6 +220,16 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         selectedDate = LocalDate.now();
         startDate3Days = LocalDate.now();
         selectedWeekDate = LocalDate.now();
+
+        OfflineCacheManager.ViewState cachedState = OfflineCacheManager.loadViewState(this);
+        if (cachedState != null) {
+            LocalDate cachedSelected = parseCachedDate(cachedState.selectedDate, selectedDate);
+            LocalDate cached3Days = parseCachedDate(cachedState.startDate3Days, startDate3Days);
+            LocalDate cachedWeek = parseCachedDate(cachedState.selectedWeekDate, selectedWeekDate);
+            selectedDate = cachedSelected;
+            startDate3Days = cached3Days;
+            selectedWeekDate = cachedWeek;
+        }
 
         ImageButton btnPrevWeek = findViewById(R.id.btnPrevWeek);
         ImageButton btnNextWeek = findViewById(R.id.btnNextWeek);
@@ -241,12 +273,18 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         TabLayout tabLayout = findViewById(R.id.tabLayout);
         if (tabLayout != null) {
             TabLayout.Tab monthTab = tabLayout.getTabAt(3);
-            if (monthTab != null)
+            int lastTab = OfflineCacheManager.getLastTab(this);
+            TabLayout.Tab savedTab = tabLayout.getTabAt(lastTab);
+            if (savedTab != null) {
+                savedTab.select();
+            } else if (monthTab != null) {
                 monthTab.select();
+            }
 
             tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
                 @Override
                 public void onTabSelected(TabLayout.Tab tab) {
+                    OfflineCacheManager.saveLastTab(MainActivity.this, tab.getPosition());
                     layoutMonthView.setVisibility(View.GONE);
                     layoutDayView.setVisibility(View.GONE);
                     layout3DaysView.setVisibility(View.GONE);
@@ -337,12 +375,14 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         if (btnPrevMonth != null)
             btnPrevMonth.setOnClickListener(v -> {
                 selectedDate = selectedDate.minusMonths(1);
+                saveOfflineViewState();
                 updateMonthYearText();
                 setMonthView();
             });
         if (btnNextMonth != null)
             btnNextMonth.setOnClickListener(v -> {
                 selectedDate = selectedDate.plusMonths(1);
+                saveOfflineViewState();
                 updateMonthYearText();
                 setMonthView();
             });
@@ -357,32 +397,50 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         updateEventsForDate(selectedDate);
     }
 
-    private void setupBottomNavigation() {
-        BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
-        if (bottomNav == null) return;
+    @Override
+    protected int getNavigationMenuItemId() {
+        return R.id.nav_schedule;
+    }
 
-        bottomNav.setOnItemSelectedListener(item -> {
-            int itemId = item.getItemId();
+    private void setupBottomInsets() {
+        View bottomNav = findViewById(R.id.bottomNav);
+        if (bottomNav != null) {
+            final int baseLeft = bottomNav.getPaddingLeft();
+            final int baseTop = bottomNav.getPaddingTop();
+            final int baseRight = bottomNav.getPaddingRight();
+            final int baseBottom = bottomNav.getPaddingBottom();
+            ViewCompat.setOnApplyWindowInsetsListener(bottomNav, (v, insets) -> {
+                Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+                v.setPadding(baseLeft, baseTop, baseRight, baseBottom + bars.bottom);
+                return insets;
+            });
+        }
 
-            if (itemId == R.id.nav_schedule) {
-                return true;
-            }
+        View fabMain = findViewById(R.id.fabAddEvent);
+        View fabClose = findViewById(R.id.fabCloseMenu);
+        applyFabInsets(fabMain);
+        applyFabInsets(fabClose);
+    }
 
-            if (itemId == R.id.nav_settings) {
-                Intent intent = new Intent(this, SettingsActivity.class);
-                startActivity(intent);
-                return true;
-            }
-
-            if (itemId == R.id.nav_features) {
-                Intent intent = new Intent(this, FeaturesActivity.class);
-                startActivity(intent);
-                return true;
-            }
-
-            return false;
+    private void applyFabInsets(View fab) {
+        if (fab == null) {
+            return;
+        }
+        ViewGroup.LayoutParams params = fab.getLayoutParams();
+        if (!(params instanceof ViewGroup.MarginLayoutParams)) {
+            return;
+        }
+        ViewGroup.MarginLayoutParams marginParams = (ViewGroup.MarginLayoutParams) params;
+        final int baseBottomMargin = marginParams.bottomMargin;
+        ViewCompat.setOnApplyWindowInsetsListener(fab, (v, insets) -> {
+            Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            ViewGroup.MarginLayoutParams updated = (ViewGroup.MarginLayoutParams) v.getLayoutParams();
+            updated.bottomMargin = baseBottomMargin + bars.bottom;
+            v.setLayoutParams(updated);
+            return insets;
         });
     }
+
     @Override
     protected void onResume() {
         super.onResume();
@@ -397,6 +455,58 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
     private int dpToPx(int dp) {
         float density = getResources().getDisplayMetrics().density;
         return Math.round((float) dp * density);
+    }
+
+    private boolean isOfflineMode() {
+        return offlineMode || !NetworkUtils.isOnline(this);
+    }
+
+    private void saveOfflineViewState() {
+        OfflineCacheManager.saveViewState(this, selectedDate, startDate3Days, selectedWeekDate);
+    }
+
+    private void maybeNotifyOfflineEmpty(List<Event> events) {
+        if (!isOfflineMode() || offlineToastShown) {
+            return;
+        }
+        if (events == null || events.isEmpty()) {
+            offlineToastShown = true;
+            Toast.makeText(this, "Offline mode: no cached events available", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private LocalDate parseCachedDate(String value, LocalDate fallback) {
+        if (value == null || value.isEmpty()) {
+            return fallback;
+        }
+        try {
+            return LocalDate.parse(value);
+        } catch (Exception e) {
+            return fallback;
+        }
+    }
+
+    private void applyMonthIndicators(List<CalendarDay> days, CalendarAdapter adapter, List<Event> events) {
+        Map<LocalDate, Integer> counts = new HashMap<>();
+        if (events != null) {
+            for (Event event : events) {
+                if (event == null || event.getStartTime() == null) {
+                    continue;
+                }
+                LocalDate eventDate = toLocalDate(event.getStartTime());
+                if (eventDate == null) {
+                    continue;
+                }
+                counts.put(eventDate, counts.getOrDefault(eventDate, 0) + 1);
+            }
+        }
+
+        for (CalendarDay day : days) {
+            if (day != null && day.date != null) {
+                day.eventCount = counts.getOrDefault(day.date, 0);
+            }
+        }
+        adapter.notifyDataSetChanged();
     }
 
     private void setupHorizontalCalendar() {
@@ -428,6 +538,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             tvCurrentDayFull.setText(selectedDate.format(formatter));
         }
         loadDayEvents(selectedDate);
+        saveOfflineViewState();
     }
 
     private void renderDayViewTimeline(LocalDate date, List<Event> events) {
@@ -439,12 +550,21 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         int hourHeightDp = 80;
         int hourHeightPx = dpToPx(hourHeightDp);
         timelineContainer.setMinimumHeight(hourHeightPx * 24);
+        int primary = MaterialColors.getColor(timelineContainer,
+                androidx.appcompat.R.attr.colorPrimary);
+        int onSurface = MaterialColors.getColor(timelineContainer,
+                com.google.android.material.R.attr.colorOnSurface);
+        int onSurfaceVariant = MaterialColors.getColor(timelineContainer,
+                com.google.android.material.R.attr.colorOnSurfaceVariant);
+        int onPrimary = MaterialColors.getColor(timelineContainer,
+                com.google.android.material.R.attr.colorOnPrimary);
 
         for (int i = 0; i < 24; i++) {
             TextView tvTime = new TextView(this);
             tvTime.setId(View.generateViewId());
             tvTime.setText(String.format(Locale.getDefault(), "%02d:00", i));
-            tvTime.setTextColor(android.graphics.Color.parseColor("#99741CE9"));
+            tvTime.setTextColor(primary);
+            tvTime.setAlpha(0.65f);
             tvTime.setTextSize(12f);
             tvTime.setTypeface(null, android.graphics.Typeface.BOLD);
 
@@ -454,7 +574,8 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             timelineContainer.addView(tvTime, timeParams);
 
             View line = new View(this);
-            line.setBackgroundColor(android.graphics.Color.parseColor("#1A741CE9"));
+            line.setBackgroundColor(primary);
+            line.setAlpha(0.15f);
             android.widget.RelativeLayout.LayoutParams lineParams = new android.widget.RelativeLayout.LayoutParams(
                     android.widget.RelativeLayout.LayoutParams.MATCH_PARENT, dpToPx(1));
             lineParams.addRule(android.widget.RelativeLayout.RIGHT_OF, tvTime.getId());
@@ -476,17 +597,18 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             String title = event.getTitle() != null ? event.getTitle() : "(Untitled)";
             String details = buildEventDetails(event);
             int bgRes = pickEventBackground(colorIndex++);
-            String titleColor = bgRes == R.drawable.bg_day_event_light ? "#741ce9" : "#FFFFFF";
-            String detailsColor = bgRes == R.drawable.bg_day_event_light ? "#64748b" : "#E6FFFFFF";
+            int titleColor = bgRes == R.drawable.bg_day_event_light ? onSurface : onPrimary;
+            int detailsColor = bgRes == R.drawable.bg_day_event_light ? onSurfaceVariant : onPrimary;
+            float detailsAlpha = bgRes == R.drawable.bg_day_event_light ? 1.0f : 0.85f;
 
             addEventCardToTimeline(timelineContainer, hourHeightPx, title, details, parts.startHour,
-                    parts.startMinute, parts.durationMinutes, bgRes, titleColor, detailsColor);
+                    parts.startMinute, parts.durationMinutes, bgRes, titleColor, detailsColor, detailsAlpha);
         }
     }
 
     private void addEventCardToTimeline(android.widget.RelativeLayout container, int hourHeightPx, String title,
             String details, int startHour, int startMinute, int durationMinutes, int backgroundResId,
-            String titleColorHex, String detailsColorHex) {
+            int titleColor, int detailsColor, float detailsAlpha) {
         android.widget.LinearLayout card = new android.widget.LinearLayout(this);
         card.setOrientation(android.widget.LinearLayout.VERTICAL);
         card.setBackgroundResource(backgroundResId);
@@ -495,14 +617,15 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
 
         TextView tvTitle = new TextView(this);
         tvTitle.setText(title);
-        tvTitle.setTextColor(android.graphics.Color.parseColor(titleColorHex));
+        tvTitle.setTextColor(titleColor);
         tvTitle.setTextSize(14f);
         tvTitle.setTypeface(null, android.graphics.Typeface.BOLD);
         card.addView(tvTitle);
 
         TextView tvDetails = new TextView(this);
         tvDetails.setText(details);
-        tvDetails.setTextColor(android.graphics.Color.parseColor(detailsColorHex));
+        tvDetails.setTextColor(detailsColor);
+        tvDetails.setAlpha(detailsAlpha);
         tvDetails.setTextSize(12f);
         tvDetails.setPadding(0, dpToPx(4), 0, 0);
         card.addView(tvDetails);
@@ -534,9 +657,13 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                 dateTvs[i].setText(String.valueOf(day.getDayOfMonth()));
 
                 if (day.equals(LocalDate.now())) {
-                    dateTvs[i].setTextColor(android.graphics.Color.parseColor("#741ce9"));
+                    int primary = MaterialColors.getColor(dateTvs[i],
+                            androidx.appcompat.R.attr.colorPrimary);
+                    dateTvs[i].setTextColor(primary);
                 } else {
-                    dateTvs[i].setTextColor(android.graphics.Color.parseColor("#0f172a"));
+                    int onSurface = MaterialColors.getColor(dateTvs[i],
+                            com.google.android.material.R.attr.colorOnSurface);
+                    dateTvs[i].setTextColor(onSurface);
                 }
             }
         }
@@ -548,6 +675,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         }
 
         loadThreeDaysEvents(startDate3Days);
+        saveOfflineViewState();
     }
 
     private void render3DaysTimeline(LocalDate startDate, List<Event> events) {
@@ -560,6 +688,15 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             int hourHeightPx = dpToPx(80);
             container.setMinimumHeight(hourHeightPx * 24);
 
+            int primary = MaterialColors.getColor(container,
+                    androidx.appcompat.R.attr.colorPrimary);
+            int onSurface = MaterialColors.getColor(container,
+                    com.google.android.material.R.attr.colorOnSurface);
+            int onSurfaceVariant = MaterialColors.getColor(container,
+                    com.google.android.material.R.attr.colorOnSurfaceVariant);
+            int onPrimary = MaterialColors.getColor(container,
+                    com.google.android.material.R.attr.colorOnPrimary);
+
             int timeColumnWidth = dpToPx(50);
             int totalGridWidth = container.getWidth() - timeColumnWidth;
             int colWidth = totalGridWidth / 3;
@@ -568,7 +705,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                 TextView tvTime = new TextView(this);
                 tvTime.setId(View.generateViewId());
                 tvTime.setText(String.format(Locale.getDefault(), "%02d:00", i));
-                tvTime.setTextColor(android.graphics.Color.parseColor("#94a3b8"));
+                tvTime.setTextColor(onSurfaceVariant);
                 tvTime.setTextSize(10f);
                 tvTime.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
 
@@ -578,7 +715,8 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                 container.addView(tvTime, timeParams);
 
                 View line = new View(this);
-                line.setBackgroundColor(android.graphics.Color.parseColor("#0D741CE9"));
+                line.setBackgroundColor(primary);
+                line.setAlpha(0.15f);
                 android.widget.RelativeLayout.LayoutParams lineParams = new android.widget.RelativeLayout.LayoutParams(
                         android.widget.RelativeLayout.LayoutParams.MATCH_PARENT, dpToPx(1));
                 lineParams.leftMargin = timeColumnWidth;
@@ -588,7 +726,8 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
 
             for (int i = 1; i < 3; i++) {
                 View verticalLine = new View(this);
-                verticalLine.setBackgroundColor(android.graphics.Color.parseColor("#0D741CE9"));
+                verticalLine.setBackgroundColor(primary);
+                verticalLine.setAlpha(0.15f);
                 android.widget.RelativeLayout.LayoutParams vParams = new android.widget.RelativeLayout.LayoutParams(
                         dpToPx(1), android.widget.RelativeLayout.LayoutParams.MATCH_PARENT);
                 vParams.leftMargin = timeColumnWidth + (i * colWidth);
@@ -616,20 +755,21 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                 }
 
                 int bgRes = pickEventBackground(colorIndex++);
-                String titleColor = bgRes == R.drawable.bg_day_event_light ? "#334155" : "#FFFFFF";
-                String detailColor = bgRes == R.drawable.bg_day_event_light ? "#64748b" : "#E6FFFFFF";
+                int titleColor = bgRes == R.drawable.bg_day_event_light ? onSurface : onPrimary;
+                int detailColor = bgRes == R.drawable.bg_day_event_light ? onSurfaceVariant : onPrimary;
+                float detailAlpha = bgRes == R.drawable.bg_day_event_light ? 1.0f : 0.85f;
 
                 addEventTo3Days(container, hourHeightPx, timeColumnWidth, colWidth, dayIndex,
                         event.getTitle() != null ? event.getTitle() : "(Untitled)",
                         buildEventLocation(event), parts.startHour, parts.startMinute,
-                        parts.durationMinutes, bgRes, titleColor, detailColor);
+                        parts.durationMinutes, bgRes, titleColor, detailColor, detailAlpha);
             }
         });
     }
 
     private void addEventTo3Days(android.widget.RelativeLayout container, int hourHeightPx, int timeOffset,
             int colWidth, int dayIndex, String title, String details, int startHour, int startMinute, int durationMins,
-            int bgRes, String titleHex, String detailHex) {
+            int bgRes, int titleColor, int detailColor, float detailAlpha) {
         android.widget.LinearLayout card = new android.widget.LinearLayout(this);
         card.setOrientation(android.widget.LinearLayout.VERTICAL);
         card.setBackgroundResource(bgRes);
@@ -638,7 +778,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
 
         TextView tvTitle = new TextView(this);
         tvTitle.setText(title);
-        tvTitle.setTextColor(android.graphics.Color.parseColor(titleHex));
+        tvTitle.setTextColor(titleColor);
         tvTitle.setTextSize(11f);
         tvTitle.setTypeface(null, android.graphics.Typeface.BOLD);
         card.addView(tvTitle);
@@ -646,7 +786,8 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         if (!details.isEmpty()) {
             TextView tvDetails = new TextView(this);
             tvDetails.setText(details);
-            tvDetails.setTextColor(android.graphics.Color.parseColor(detailHex));
+            tvDetails.setTextColor(detailColor);
+            tvDetails.setAlpha(detailAlpha);
             tvDetails.setTextSize(9f);
             card.addView(tvDetails);
         }
@@ -677,6 +818,13 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             headerContainer.removeAllViews();
             DateTimeFormatter dowFormatter = DateTimeFormatter.ofPattern("E", Locale.ENGLISH);
 
+            int primary = MaterialColors.getColor(headerContainer,
+                    androidx.appcompat.R.attr.colorPrimary);
+            int onSurface = MaterialColors.getColor(headerContainer,
+                    com.google.android.material.R.attr.colorOnSurface);
+            int onSurfaceVariant = MaterialColors.getColor(headerContainer,
+                    com.google.android.material.R.attr.colorOnSurfaceVariant);
+
             for (int i = 0; i < 7; i++) {
                 LocalDate day = startOfWeek.plusDays(i);
 
@@ -690,7 +838,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                 TextView tvDow = new TextView(this);
                 tvDow.setText(day.format(dowFormatter).toUpperCase().substring(0, 1));
                 tvDow.setTextSize(10f);
-                tvDow.setTextColor(android.graphics.Color.parseColor("#94a3b8"));
+                tvDow.setTextColor(onSurfaceVariant);
 
                 TextView tvDate = new TextView(this);
                 tvDate.setText(String.valueOf(day.getDayOfMonth()));
@@ -698,10 +846,10 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                 tvDate.setTypeface(null, android.graphics.Typeface.BOLD);
 
                 if (day.equals(LocalDate.now())) {
-                    tvDate.setTextColor(android.graphics.Color.parseColor("#741ce9"));
-                    tvDow.setTextColor(android.graphics.Color.parseColor("#741ce9"));
+                    tvDate.setTextColor(primary);
+                    tvDow.setTextColor(primary);
                 } else {
-                    tvDate.setTextColor(android.graphics.Color.parseColor("#0f172a"));
+                    tvDate.setTextColor(onSurface);
                 }
 
                 dayCol.addView(tvDow);
@@ -711,6 +859,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         }
 
         loadWeekEvents(startOfWeek);
+        saveOfflineViewState();
     }
 
     private void renderWeekGridTimeline(LocalDate startOfWeek, List<Event> events) {
@@ -723,6 +872,11 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             int hourHeightPx = dpToPx(60);
             container.setMinimumHeight(hourHeightPx * 24);
 
+            int primary = MaterialColors.getColor(container,
+                    androidx.appcompat.R.attr.colorPrimary);
+            int onSurfaceVariant = MaterialColors.getColor(container,
+                    com.google.android.material.R.attr.colorOnSurfaceVariant);
+
             int timeColumnWidth = dpToPx(40);
             int totalGridWidth = container.getWidth() - timeColumnWidth;
             int colWidth = totalGridWidth / 7;
@@ -731,7 +885,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                 TextView tvTime = new TextView(this);
                 tvTime.setId(View.generateViewId());
                 tvTime.setText(String.format(Locale.getDefault(), "%02d", i));
-                tvTime.setTextColor(android.graphics.Color.parseColor("#94a3b8"));
+                tvTime.setTextColor(onSurfaceVariant);
                 tvTime.setTextSize(10f);
                 tvTime.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
 
@@ -741,7 +895,8 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                 container.addView(tvTime, timeParams);
 
                 View line = new View(this);
-                line.setBackgroundColor(android.graphics.Color.parseColor("#0D741CE9"));
+                line.setBackgroundColor(primary);
+                line.setAlpha(0.15f);
                 android.widget.RelativeLayout.LayoutParams lineParams = new android.widget.RelativeLayout.LayoutParams(
                         android.widget.RelativeLayout.LayoutParams.MATCH_PARENT, dpToPx(1));
                 lineParams.leftMargin = timeColumnWidth;
@@ -751,7 +906,8 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
 
             for (int i = 1; i < 7; i++) {
                 View verticalLine = new View(this);
-                verticalLine.setBackgroundColor(android.graphics.Color.parseColor("#0D741CE9"));
+                verticalLine.setBackgroundColor(primary);
+                verticalLine.setAlpha(0.15f);
                 android.widget.RelativeLayout.LayoutParams vParams = new android.widget.RelativeLayout.LayoutParams(
                         dpToPx(1), android.widget.RelativeLayout.LayoutParams.MATCH_PARENT);
                 vParams.leftMargin = timeColumnWidth + (i * colWidth);
@@ -792,7 +948,11 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         android.widget.TextView card = new android.widget.TextView(this);
         card.setBackgroundResource(bgRes);
         card.setText(shortTitle);
-        card.setTextColor(android.graphics.Color.WHITE);
+        int onPrimary = MaterialColors.getColor(card,
+                com.google.android.material.R.attr.colorOnPrimary);
+        int primary = MaterialColors.getColor(card,
+                androidx.appcompat.R.attr.colorPrimary);
+        card.setTextColor(onPrimary);
         card.setTextSize(9f);
         card.setTypeface(null, android.graphics.Typeface.BOLD);
         card.setPadding(dpToPx(4), dpToPx(4), dpToPx(2), dpToPx(2));
@@ -800,7 +960,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         card.setMaxLines(2);
 
         if (bgRes == R.drawable.bg_day_event_light) {
-            card.setTextColor(android.graphics.Color.parseColor("#741ce9"));
+            card.setTextColor(primary);
         }
 
         int topMargin = (startHour * hourHeightPx) + (startMinute * hourHeightPx / 60) + dpToPx(10);
@@ -823,33 +983,26 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
 
     private void loadMonthEventIndicators(LocalDate month, List<CalendarDay> days, CalendarAdapter adapter) {
         List<String> calendarIds = getVisibleCalendarIds();
+        LocalDate startOfMonth = month.withDayOfMonth(1);
+        LocalDate endOfMonth = month.withDayOfMonth(month.lengthOfMonth());
+
+        if (isOfflineMode()) {
+            List<Event> offlineEvents = OfflineCacheManager.getEventsForRange(this,
+                    OfflineCacheManager.KEY_MONTH_CACHE, startOfMonth, endOfMonth);
+            applyMonthIndicators(days, adapter, offlineEvents);
+            maybeNotifyOfflineEmpty(offlineEvents);
+            return;
+        }
+
         if (calendarIds.isEmpty()) {
             ensureDefaultCalendarReady(() -> loadMonthEventIndicators(month, days, adapter));
             return;
         }
 
-        LocalDate startOfMonth = month.withDayOfMonth(1);
-        LocalDate endOfMonth = month.withDayOfMonth(month.lengthOfMonth());
-
         fetchEventsForCalendars(startOfMonth, endOfMonth, calendarIds, events -> {
-            Map<LocalDate, Integer> counts = new HashMap<>();
-            for (Event event : events) {
-                if (event == null || event.getStartTime() == null) {
-                    continue;
-                }
-                LocalDate eventDate = toLocalDate(event.getStartTime());
-                if (eventDate == null) {
-                    continue;
-                }
-                counts.put(eventDate, counts.getOrDefault(eventDate, 0) + 1);
-            }
-
-            for (CalendarDay day : days) {
-                if (day != null && day.date != null) {
-                    day.eventCount = counts.getOrDefault(day.date, 0);
-                }
-            }
-            adapter.notifyDataSetChanged();
+            applyMonthIndicators(days, adapter, events);
+            OfflineCacheManager.saveRange(this, OfflineCacheManager.KEY_MONTH_CACHE, startOfMonth, endOfMonth, events);
+            saveOfflineViewState();
         });
     }
 
@@ -917,6 +1070,10 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
     }
 
     private void refreshProfileAvatar() {
+        if (isOfflineMode()) {
+            updateDrawerHeader(null);
+            return;
+        }
         User currentUser = UserManager.getInstance().getCurrentUser();
         if (currentUser != null) {
             updateDrawerHeader(currentUser);
@@ -1023,8 +1180,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                 "High",
                 userId,
                 "default_list",
-                taskReminders
-        );
+                taskReminders);
 
         com.timed.managers.TasksManager tasksManager = com.timed.managers.TasksManager.getInstance(this);
         tasksManager.createTask(task)
@@ -1081,6 +1237,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
     public void onItemClick(int position, LocalDate date) {
         if (date != null) {
             selectedDate = date;
+            saveOfflineViewState();
             setMonthView();
             updateEventsForDate(date);
         }
@@ -1093,6 +1250,17 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         String formattedDate = date.format(formatter).toUpperCase();
         tvUpcomingTitle.setText("UPCOMING FOR " + formattedDate);
 
+        if (isOfflineMode()) {
+            List<Event> offlineEvents = OfflineCacheManager.getEventsForRange(this,
+                    OfflineCacheManager.KEY_DAY_CACHE, date, date);
+            currentEvents.clear();
+            currentEvents.addAll(offlineEvents);
+            eventAdapter.notifyDataSetChanged();
+            renderDayViewTimeline(date, offlineEvents);
+            maybeNotifyOfflineEmpty(offlineEvents);
+            return;
+        }
+
         List<String> calendarIds = getVisibleCalendarIds();
         if (calendarIds.isEmpty()) {
             ensureDefaultCalendarReady(() -> updateEventsForDate(date));
@@ -1103,6 +1271,8 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             currentEvents.addAll(events);
             eventAdapter.notifyDataSetChanged();
             renderDayViewTimeline(date, events);
+            OfflineCacheManager.saveRange(this, OfflineCacheManager.KEY_DAY_CACHE, date, date, events);
+            saveOfflineViewState();
         });
     }
 
@@ -1237,6 +1407,9 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
     }
 
     private void ensureDefaultCalendarReady(Runnable onReady) {
+        if (isOfflineMode()) {
+            return;
+        }
         if (calendarIntegrationService == null) {
             calendarIntegrationService = new CalendarIntegrationService();
         }
@@ -1283,8 +1456,8 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                 }
                 // Include owned calendars and joined calendars
                 if ((userId != null && userId.equals(calendar.getOwnerId())) ||
-                    (userId != null && calendar.getMemberIds() != null && 
-                     calendar.getMemberIds().contains(userId))) {
+                        (userId != null && calendar.getMemberIds() != null &&
+                                calendar.getMemberIds().contains(userId))) {
                     visibleCalendarIds.add(calendar.getId());
                 }
             }
@@ -1309,6 +1482,9 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
 
     private void updateDrawerHeader(User user) {
         if (user == null) {
+            if (isOfflineMode() && tvDrawerName != null) {
+                tvDrawerName.setText("Offline mode");
+            }
             return;
         }
         if (tvDrawerName != null && user.getName() != null) {
@@ -1336,6 +1512,9 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
     }
 
     private void updateDrawerCalendars(List<CalendarModel> calendars) {
+        if (isOfflineMode()) {
+            return;
+        }
         if (navView == null || calendars == null) {
             return;
         }
@@ -1347,7 +1526,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         List<CalendarModel> owned = new ArrayList<>();
         List<CalendarModel> joined = new ArrayList<>();
         List<CalendarModel> others = new ArrayList<>();
-        
+
         for (CalendarModel calendar : calendars) {
             if (calendar == null || calendar.getId() == null) {
                 continue;
@@ -1355,12 +1534,12 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             // Check if user is owner
             if (userId != null && userId.equals(calendar.getOwnerId())) {
                 owned.add(calendar);
-            } 
+            }
             // Check if user is a member (participated/joined calendar)
-            else if (userId != null && calendar.getMemberIds() != null && 
-                     calendar.getMemberIds().contains(userId)) {
+            else if (userId != null && calendar.getMemberIds() != null &&
+                    calendar.getMemberIds().contains(userId)) {
                 joined.add(calendar);
-            } 
+            }
             // Other calendars (public calendars not yet joined)
             else {
                 others.add(calendar);
@@ -1474,32 +1653,67 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
     }
 
     private void loadDayEvents(LocalDate date) {
+        if (isOfflineMode()) {
+            List<Event> offlineEvents = OfflineCacheManager.getEventsForRange(this,
+                    OfflineCacheManager.KEY_DAY_CACHE, date, date);
+            renderDayViewTimeline(date, offlineEvents);
+            maybeNotifyOfflineEmpty(offlineEvents);
+            return;
+        }
         List<String> calendarIds = getVisibleCalendarIds();
         if (calendarIds.isEmpty()) {
             ensureDefaultCalendarReady(() -> loadDayEvents(date));
             return;
         }
-        fetchEventsForCalendars(date, date, calendarIds, events -> renderDayViewTimeline(date, events));
+        fetchEventsForCalendars(date, date, calendarIds, events -> {
+            renderDayViewTimeline(date, events);
+            OfflineCacheManager.saveRange(this, OfflineCacheManager.KEY_DAY_CACHE, date, date, events);
+            saveOfflineViewState();
+        });
     }
 
     private void loadThreeDaysEvents(LocalDate startDate) {
+        if (isOfflineMode()) {
+            List<Event> offlineEvents = OfflineCacheManager.getEventsForRange(this,
+                    OfflineCacheManager.KEY_3DAYS_CACHE, startDate, startDate.plusDays(2));
+            render3DaysTimeline(startDate, offlineEvents);
+            maybeNotifyOfflineEmpty(offlineEvents);
+            return;
+        }
         List<String> calendarIds = getVisibleCalendarIds();
         if (calendarIds.isEmpty()) {
             ensureDefaultCalendarReady(() -> loadThreeDaysEvents(startDate));
             return;
         }
         fetchEventsForCalendars(startDate, startDate.plusDays(2), calendarIds,
-                events -> render3DaysTimeline(startDate, events));
+                events -> {
+                    render3DaysTimeline(startDate, events);
+                    OfflineCacheManager.saveRange(this, OfflineCacheManager.KEY_3DAYS_CACHE, startDate,
+                            startDate.plusDays(2), events);
+                    saveOfflineViewState();
+                });
     }
 
     private void loadWeekEvents(LocalDate startOfWeek) {
+        if (isOfflineMode()) {
+            List<Event> offlineEvents = OfflineCacheManager.getEventsForRange(this,
+                    OfflineCacheManager.KEY_WEEK_CACHE, startOfWeek, startOfWeek.plusDays(6));
+            renderWeekGridTimeline(startOfWeek, offlineEvents);
+            maybeNotifyOfflineEmpty(offlineEvents);
+            return;
+        }
         List<String> calendarIds = getVisibleCalendarIds();
         if (calendarIds.isEmpty()) {
             ensureDefaultCalendarReady(() -> loadWeekEvents(startOfWeek));
             return;
         }
         fetchEventsForCalendars(startOfWeek, startOfWeek.plusDays(6), calendarIds,
-                events -> renderWeekGridTimeline(startOfWeek, events));
+                events -> {
+                    renderWeekGridTimeline(startOfWeek, events);
+                    OfflineCacheManager.saveRange(this, OfflineCacheManager.KEY_WEEK_CACHE, startOfWeek,
+                            startOfWeek.plusDays(6), events);
+                    saveOfflineViewState();
+                });
     }
 
     private void fetchEventsForRange(LocalDate startDate, LocalDate endDate, String calendarId,
@@ -1628,13 +1842,13 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
     }
 
     // ======================== INVITATION FEATURES ========================
-    
+
     private MenuItem invitationsMenuItem;
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_main, menu);
-        
+
         // Thêm menu item cho lời mời
         invitationsMenuItem = menu.add("Lời mời");
         invitationsMenuItem.setIcon(android.R.drawable.ic_dialog_email);
@@ -1643,7 +1857,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             showPendingInvitations();
             return true;
         });
-        
+
         MenuItem shareCalendarItem = menu.add("Chia sẻ lịch");
         shareCalendarItem.setIcon(android.R.drawable.ic_menu_share);
         shareCalendarItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
@@ -1651,39 +1865,43 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             showShareCalendarDialog();
             return true;
         });
-        
+
         // Load invitation count to show badge
         loadInvitationCount();
-        
+
         return true;
     }
 
     private void loadInvitationCount() {
-        if (firebaseAuth.getCurrentUser() == null) return;
-        
+        if (isOfflineMode()) {
+            return;
+        }
+        if (firebaseAuth.getCurrentUser() == null)
+            return;
+
         String currentUserId = firebaseAuth.getCurrentUser().getUid();
         invitationService.getPendingInvitationCount(currentUserId,
-            new InvitationService.InvitationCountListener() {
-                @Override
-                public void onCountLoaded(int count) {
-                    // Display badge on menu item by updating title
-                    if (invitationsMenuItem != null) {
-                        if (count > 0) {
-                            // Show count indicator in menu item title
-                            invitationsMenuItem.setTitle("Lời mời (" + count + ")");
-                            Log.d(TAG, "Badge set: " + count + " invitations");
-                        } else {
-                            invitationsMenuItem.setTitle("Lời mời");
+                new InvitationService.InvitationCountListener() {
+                    @Override
+                    public void onCountLoaded(int count) {
+                        // Display badge on menu item by updating title
+                        if (invitationsMenuItem != null) {
+                            if (count > 0) {
+                                // Show count indicator in menu item title
+                                invitationsMenuItem.setTitle("Lời mời (" + count + ")");
+                                Log.d(TAG, "Badge set: " + count + " invitations");
+                            } else {
+                                invitationsMenuItem.setTitle("Lời mời");
+                            }
                         }
+                        Log.d(TAG, "Bạn có " + count + " lời mời");
                     }
-                    Log.d(TAG, "Bạn có " + count + " lời mời");
-                }
 
-                @Override
-                public void onError(String error) {
-                    Log.e(TAG, "Lỗi tải số lời mời: " + error);
-                }
-            });
+                    @Override
+                    public void onError(String error) {
+                        Log.e(TAG, "Lỗi tải số lời mời: " + error);
+                    }
+                });
     }
 
     private void showShareCalendarDialog() {
@@ -1693,18 +1911,18 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         }
 
         ShareCalendarDialog.createShareCalendarDialog(this,
-            new ShareCalendarDialog.OnShareListener() {
-                @Override
-                public void onShare(String email, String role, String message) {
-                    shareCalendarWithUser(email, role, message);
-                }
+                new ShareCalendarDialog.OnShareListener() {
+                    @Override
+                    public void onShare(String email, String role, String message) {
+                        shareCalendarWithUser(email, role, message);
+                    }
 
-                @Override
-                public void onCancel() {
-                    Toast.makeText(MainActivity.this, "Đã hủy chia sẻ", 
-                        Toast.LENGTH_SHORT).show();
-                }
-            }).show();
+                    @Override
+                    public void onCancel() {
+                        Toast.makeText(MainActivity.this, "Đã hủy chia sẻ",
+                                Toast.LENGTH_SHORT).show();
+                    }
+                }).show();
     }
 
     private void shareCalendarWithUser(String toUserEmail, String role, String message) {
@@ -1721,30 +1939,30 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         // Cần convert email sang userId
         convertEmailToUserId(toUserEmail, userId -> {
             if (userId == null) {
-                Toast.makeText(MainActivity.this, 
-                    "Không tìm thấy người dùng với email này", 
-                    Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this,
+                        "Không tìm thấy người dùng với email này",
+                        Toast.LENGTH_SHORT).show();
                 return;
             }
 
             invitationManager.inviteToCalendar(
-                calendarId, toUserEmail, userId, role, message,
-                currentUserId, currentUserName, currentUserEmail,
-                new RepositoryCallback<String>() {
-                    @Override
-                    public void onSuccess(String result) {
-                        Toast.makeText(MainActivity.this, 
-                            "Lời mời đã được gửi!", 
-                            Toast.LENGTH_SHORT).show();
-                    }
+                    calendarId, toUserEmail, userId, role, message,
+                    currentUserId, currentUserName, currentUserEmail,
+                    new RepositoryCallback<String>() {
+                        @Override
+                        public void onSuccess(String result) {
+                            Toast.makeText(MainActivity.this,
+                                    "Lời mời đã được gửi!",
+                                    Toast.LENGTH_SHORT).show();
+                        }
 
-                    @Override
-                    public void onFailure(String errorMessage) {
-                        Toast.makeText(MainActivity.this, 
-                            "Lỗi: " + errorMessage, 
-                            Toast.LENGTH_SHORT).show();
-                    }
-                });
+                        @Override
+                        public void onFailure(String errorMessage) {
+                            Toast.makeText(MainActivity.this,
+                                    "Lỗi: " + errorMessage,
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                    });
         });
     }
 
@@ -1755,45 +1973,45 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         }
 
         String currentUserId = firebaseAuth.getCurrentUser().getUid();
-        
+
         invitationService.loadPendingInvitations(currentUserId,
-            new InvitationService.InvitationLoadListener() {
-                @Override
-                public void onInvitationsLoaded(List<Invitation> invitations) {
-                    if (invitations.isEmpty()) {
-                        Toast.makeText(MainActivity.this, "Không có lời mời nào", 
-                            Toast.LENGTH_SHORT).show();
-                        return;
+                new InvitationService.InvitationLoadListener() {
+                    @Override
+                    public void onInvitationsLoaded(List<Invitation> invitations) {
+                        if (invitations.isEmpty()) {
+                            Toast.makeText(MainActivity.this, "Không có lời mời nào",
+                                    Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+
+                        currentInvitationsDialog = InvitationsDialog.createInvitationsListDialog(MainActivity.this,
+                                invitations,
+                                new InvitationsDialog.OnInvitationActionListener() {
+                                    @Override
+                                    public void onAccept(Invitation invitation) {
+                                        handleAcceptInvitation(invitation);
+                                    }
+
+                                    @Override
+                                    public void onDecline(Invitation invitation) {
+                                        handleDeclineInvitation(invitation);
+                                    }
+                                });
+                        currentInvitationsDialog.show();
                     }
 
-                    currentInvitationsDialog = InvitationsDialog.createInvitationsListDialog(MainActivity.this, 
-                        invitations,
-                        new InvitationsDialog.OnInvitationActionListener() {
-                            @Override
-                            public void onAccept(Invitation invitation) {
-                                handleAcceptInvitation(invitation);
-                            }
-
-                            @Override
-                            public void onDecline(Invitation invitation) {
-                                handleDeclineInvitation(invitation);
-                            }
-                        });
-                    currentInvitationsDialog.show();
-                }
-
-                @Override
-                public void onError(String error) {
-                    Toast.makeText(MainActivity.this, 
-                        "Lỗi: " + error, 
-                        Toast.LENGTH_SHORT).show();
-                }
-            });
+                    @Override
+                    public void onError(String error) {
+                        Toast.makeText(MainActivity.this,
+                                "Lỗi: " + error,
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
     private void handleAcceptInvitation(Invitation invitation) {
         String invitationType = invitation.getInvitationType();
-        
+
         if ("calendar".equals(invitationType)) {
             acceptCalendarInvitation(invitation);
         } else if ("event".equals(invitationType)) {
@@ -1802,132 +2020,134 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
     }
 
     private void acceptCalendarInvitation(Invitation invitation) {
-        if (firebaseAuth.getCurrentUser() == null) return;
+        if (firebaseAuth.getCurrentUser() == null)
+            return;
 
         String currentUserId = firebaseAuth.getCurrentUser().getUid();
-        
-        invitationManager.acceptCalendarInvitation(
-            invitation.getId(), currentUserId,
-            new RepositoryCallback<String>() {
-                @Override
-                public void onSuccess(String result) {
-                    Toast.makeText(MainActivity.this, 
-                        "Đã chấp nhận lời mời!", 
-                        Toast.LENGTH_SHORT).show();
-                    
-                    // Close the invitations dialog
-                    if (currentInvitationsDialog != null && currentInvitationsDialog.isShowing()) {
-                        currentInvitationsDialog.dismiss();
-                    }
-                    
-                    // Refresh calendar list to show the new joined calendar
-                    ensureDefaultCalendarReady(() -> {
-                        Log.d(TAG, "Calendar drawer refreshed after accepting invitation");
-                    });
-                    
-                    // Refresh invitation count
-                    loadInvitationCount();
-                }
 
-                @Override
-                public void onFailure(String errorMessage) {
-                    Toast.makeText(MainActivity.this, 
-                        "Lỗi: " + errorMessage, 
-                        Toast.LENGTH_SHORT).show();
-                }
-            });
+        invitationManager.acceptCalendarInvitation(
+                invitation.getId(), currentUserId,
+                new RepositoryCallback<String>() {
+                    @Override
+                    public void onSuccess(String result) {
+                        Toast.makeText(MainActivity.this,
+                                "Đã chấp nhận lời mời!",
+                                Toast.LENGTH_SHORT).show();
+
+                        // Close the invitations dialog
+                        if (currentInvitationsDialog != null && currentInvitationsDialog.isShowing()) {
+                            currentInvitationsDialog.dismiss();
+                        }
+
+                        // Refresh calendar list to show the new joined calendar
+                        ensureDefaultCalendarReady(() -> {
+                            Log.d(TAG, "Calendar drawer refreshed after accepting invitation");
+                        });
+
+                        // Refresh invitation count
+                        loadInvitationCount();
+                    }
+
+                    @Override
+                    public void onFailure(String errorMessage) {
+                        Toast.makeText(MainActivity.this,
+                                "Lỗi: " + errorMessage,
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
     private void acceptEventInvitation(Invitation invitation) {
-        if (firebaseAuth.getCurrentUser() == null) return;
+        if (firebaseAuth.getCurrentUser() == null)
+            return;
 
         String currentUserId = firebaseAuth.getCurrentUser().getUid();
-        
-        invitationManager.respondToEventInvitation(
-            invitation.getId(), currentUserId, "accepted",
-            new RepositoryCallback<String>() {
-                @Override
-                public void onSuccess(String result) {
-                    Toast.makeText(MainActivity.this, 
-                        "Bạn sẽ tham dự sự kiện!", 
-                        Toast.LENGTH_SHORT).show();
-                    
-                    // Close the invitations dialog
-                    if (currentInvitationsDialog != null && currentInvitationsDialog.isShowing()) {
-                        currentInvitationsDialog.dismiss();
-                    }
-                    
-                    // Refresh events to show the accepted event
-                    updateEventsForDate(selectedDate);
-                    
-                    // Refresh invitation count
-                    loadInvitationCount();
-                }
 
-                @Override
-                public void onFailure(String errorMessage) {
-                    Toast.makeText(MainActivity.this, 
-                        "Lỗi: " + errorMessage, 
-                        Toast.LENGTH_SHORT).show();
-                }
-            });
+        invitationManager.respondToEventInvitation(
+                invitation.getId(), currentUserId, "accepted",
+                new RepositoryCallback<String>() {
+                    @Override
+                    public void onSuccess(String result) {
+                        Toast.makeText(MainActivity.this,
+                                "Bạn sẽ tham dự sự kiện!",
+                                Toast.LENGTH_SHORT).show();
+
+                        // Close the invitations dialog
+                        if (currentInvitationsDialog != null && currentInvitationsDialog.isShowing()) {
+                            currentInvitationsDialog.dismiss();
+                        }
+
+                        // Refresh events to show the accepted event
+                        updateEventsForDate(selectedDate);
+
+                        // Refresh invitation count
+                        loadInvitationCount();
+                    }
+
+                    @Override
+                    public void onFailure(String errorMessage) {
+                        Toast.makeText(MainActivity.this,
+                                "Lỗi: " + errorMessage,
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
     private void handleDeclineInvitation(Invitation invitation) {
         String invitationType = invitation.getInvitationType();
-        
+
         if ("calendar".equals(invitationType)) {
             invitationManager.declineCalendarInvitation(
-                invitation.getId(),
-                new RepositoryCallback<String>() {
-                    @Override
-                    public void onSuccess(String result) {
-                        Toast.makeText(MainActivity.this, 
-                            "Đã từ chối lời mời", 
-                            Toast.LENGTH_SHORT).show();
-                        
-                        // Close the invitations dialog
-                        if (currentInvitationsDialog != null && currentInvitationsDialog.isShowing()) {
-                            currentInvitationsDialog.dismiss();
-                        }
-                        
-                        // Refresh invitation count
-                        loadInvitationCount();
-                    }
+                    invitation.getId(),
+                    new RepositoryCallback<String>() {
+                        @Override
+                        public void onSuccess(String result) {
+                            Toast.makeText(MainActivity.this,
+                                    "Đã từ chối lời mời",
+                                    Toast.LENGTH_SHORT).show();
 
-                    @Override
-                    public void onFailure(String errorMessage) {
-                        Toast.makeText(MainActivity.this, 
-                            "Lỗi: " + errorMessage, 
-                            Toast.LENGTH_SHORT).show();
-                    }
-                });
+                            // Close the invitations dialog
+                            if (currentInvitationsDialog != null && currentInvitationsDialog.isShowing()) {
+                                currentInvitationsDialog.dismiss();
+                            }
+
+                            // Refresh invitation count
+                            loadInvitationCount();
+                        }
+
+                        @Override
+                        public void onFailure(String errorMessage) {
+                            Toast.makeText(MainActivity.this,
+                                    "Lỗi: " + errorMessage,
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                    });
         } else if ("event".equals(invitationType)) {
             invitationManager.declineEventInvitation(
-                invitation.getId(),
-                new RepositoryCallback<String>() {
-                    @Override
-                    public void onSuccess(String result) {
-                        Toast.makeText(MainActivity.this, 
-                            "Đã từ chối lời mời", 
-                            Toast.LENGTH_SHORT).show();
-                        
-                        // Close the invitations dialog
-                        if (currentInvitationsDialog != null && currentInvitationsDialog.isShowing()) {
-                            currentInvitationsDialog.dismiss();
-                        }
-                        
-                        // Refresh invitation count
-                        loadInvitationCount();
-                    }
+                    invitation.getId(),
+                    new RepositoryCallback<String>() {
+                        @Override
+                        public void onSuccess(String result) {
+                            Toast.makeText(MainActivity.this,
+                                    "Đã từ chối lời mời",
+                                    Toast.LENGTH_SHORT).show();
 
-                    @Override
-                    public void onFailure(String errorMessage) {
-                        Toast.makeText(MainActivity.this, 
-                            "Lỗi: " + errorMessage, 
-                            Toast.LENGTH_SHORT).show();
-                    }
-                });
+                            // Close the invitations dialog
+                            if (currentInvitationsDialog != null && currentInvitationsDialog.isShowing()) {
+                                currentInvitationsDialog.dismiss();
+                            }
+
+                            // Refresh invitation count
+                            loadInvitationCount();
+                        }
+
+                        @Override
+                        public void onFailure(String errorMessage) {
+                            Toast.makeText(MainActivity.this,
+                                    "Lỗi: " + errorMessage,
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                    });
         }
     }
 
@@ -1938,51 +2158,51 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             callback.onResult(null);
             return;
         }
-        
+
         // Normalize email: convert to lowercase and trim whitespace
         String normalizedEmail = email.toLowerCase().trim();
         Log.d(TAG, "Tìm kiếm email: " + normalizedEmail);
-        
+
         UserRepository userRepository = new UserRepository();
-        
+
         userRepository.getUserByEmail(normalizedEmail)
                 .addOnSuccessListener(querySnapshot -> {
                     Log.d(TAG, "Query success. Số kết quả: " + querySnapshot.size());
-                    
+
                     if (querySnapshot.isEmpty()) {
                         Log.w(TAG, "Không tìm thấy người dùng với email: " + normalizedEmail);
-                        
+
                         // Try alternative: search with different case variations
                         tryAlternativeEmailSearch(normalizedEmail, callback);
                         return;
                     }
-                    
+
                     String userId = querySnapshot.getDocuments().get(0).getId();
                     Log.d(TAG, "Tìm thấy userId: " + userId);
                     callback.onResult(userId);
                 })
                 .addOnFailureListener(e -> {
                     Log.e(TAG, "Lỗi query Firestore: " + e.getMessage(), e);
-                    Toast.makeText(MainActivity.this, "Lỗi tìm kiếm: " + e.getMessage(), 
-                        Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, "Lỗi tìm kiếm: " + e.getMessage(),
+                            Toast.LENGTH_SHORT).show();
                     callback.onResult(null);
                 });
     }
-    
+
     private void tryAlternativeEmailSearch(String email, EmailToUserIdCallback callback) {
         // If exact match fails, try searching all users and comparing emails
         Log.d(TAG, "Cố gắng tìm kiếm thay thế...");
-        
+
         UserRepository userRepository = new UserRepository();
         // This is a workaround - get all users and check manually
         // In production, consider using Cloud Functions for better security
-        
+
         com.google.firebase.firestore.FirebaseFirestore.getInstance()
                 .collection("users")
                 .get()
                 .addOnSuccessListener(querySnapshot -> {
                     Log.d(TAG, "Tổng số người dùng: " + querySnapshot.size());
-                    
+
                     for (com.google.firebase.firestore.DocumentSnapshot doc : querySnapshot.getDocuments()) {
                         com.timed.models.User user = doc.toObject(com.timed.models.User.class);
                         if (user != null && user.getEmail() != null) {
@@ -1995,7 +2215,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                             }
                         }
                     }
-                    
+
                     Log.w(TAG, "Không tìm thấy người dùng trong danh sách");
                     callback.onResult(null);
                 })
@@ -2011,7 +2231,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
     public void debugEmailLookup(String email) {
         Log.d(TAG, "=== DEBUG EMAIL LOOKUP ===");
         Log.d(TAG, "Email cần tìm: " + email);
-        
+
         convertEmailToUserId(email, userId -> {
             if (userId != null) {
                 Log.d(TAG, "✓ Tìm thấy userId: " + userId);

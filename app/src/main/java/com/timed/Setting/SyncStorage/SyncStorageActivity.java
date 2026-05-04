@@ -9,6 +9,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.util.ArrayList;
 import java.util.List;
 import com.timed.R;
+import com.timed.utils.OfflineCacheManager;
 
 public class SyncStorageActivity extends AppCompatActivity {
 
@@ -26,6 +27,7 @@ public class SyncStorageActivity extends AppCompatActivity {
         // Nút Xoá Cache (Clear Local Cache)
         LinearLayout btnClearCache = findViewById(R.id.btn_clear_cache);
         btnClearCache.setOnClickListener(v -> {
+            OfflineCacheManager.clearCache(this);
             Toast.makeText(this, "Local cache cleared successfully!", Toast.LENGTH_SHORT).show();
         });
 

@@ -63,7 +63,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Sign up"
-            android:textColor="@color/blue_500"
+            android:textColor="@color/primary"
             android:textSize="14sp"/>
     </LinearLayout>
 
@@ -155,7 +155,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Forgot password?"
-        android:textColor="@color/blue_500"
+        android:textColor="@color/primary"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@+id/cbRememberMe"
         app:layout_constraintBottom_toBottomOf="@+id/cbRememberMe"/>
@@ -169,7 +169,7 @@
         android:textAllCaps="false"
         android:textSize="16sp"
         app:cornerRadius="8dp"
-        app:backgroundTint="@color/blue_500"
+        app:backgroundTint="@color/primary"
         app:icon="@drawable/ic_right_arrow" app:iconGravity="textEnd"
         app:layout_constraintTop_toBottomOf="@+id/cbRememberMe"/>
 

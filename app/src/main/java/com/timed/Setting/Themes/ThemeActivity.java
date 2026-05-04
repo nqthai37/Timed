@@ -1,20 +1,21 @@
 package com.timed.Setting.Themes;
 
 import android.os.Bundle;
-import android.widget.ImageView;
+import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
-import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import com.timed.R;
+import com.timed.utils.ThemeManager;
+import android.widget.ImageView;
 
 public class ThemeActivity extends AppCompatActivity {
 
     private LinearLayout llAppearanceLight, llAppearanceDark, llAppearanceSystem;
-    private LinearLayout llColors;
+    private ImageView ivCheckBlue, ivCheckEmerald, ivCheckSunset;
     private SeekBar seekBarFontSize;
-    private String selectedAppearance = "LIGHT";
-    private String selectedColor = "BLUE";
+    private String selectedAppearance = ThemeManager.APPEARANCE_SYSTEM;
+    private String selectedColor = ThemeManager.PALETTE_BLUE;
     private int selectedFontSize = 50;
 
     @Override
@@ -25,15 +26,25 @@ public class ThemeActivity extends AppCompatActivity {
         // Back button
         findViewById(R.id.iv_back).setOnClickListener(v -> finish());
 
+        View btnReset = findViewById(R.id.btnResetTheme);
+        if (btnReset != null) {
+            btnReset.setOnClickListener(v -> resetToDefault());
+        }
+
         // Initialize Appearance buttons
         llAppearanceLight = findViewById(R.id.ll_appearance_light);
         llAppearanceDark = findViewById(R.id.ll_appearance_dark);
         llAppearanceSystem = findViewById(R.id.ll_appearance_system);
 
+        ivCheckBlue = findViewById(R.id.iv_check_blue);
+        ivCheckEmerald = findViewById(R.id.iv_check_emerald);
+        ivCheckSunset = findViewById(R.id.iv_check_sunset);
+
         // Appearance selection listeners
-        llAppearanceLight.setOnClickListener(v -> selectAppearance("LIGHT", llAppearanceLight));
-        llAppearanceDark.setOnClickListener(v -> selectAppearance("DARK", llAppearanceDark));
-        llAppearanceSystem.setOnClickListener(v -> selectAppearance("SYSTEM", llAppearanceSystem));
+        llAppearanceLight.setOnClickListener(v -> selectAppearance(ThemeManager.APPEARANCE_LIGHT, llAppearanceLight));
+        llAppearanceDark.setOnClickListener(v -> selectAppearance(ThemeManager.APPEARANCE_DARK, llAppearanceDark));
+        llAppearanceSystem
+                .setOnClickListener(v -> selectAppearance(ThemeManager.APPEARANCE_SYSTEM, llAppearanceSystem));
 
         // Initialize Color selection
         initializeColorSelection();
@@ -47,24 +58,27 @@ public class ThemeActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {}
+            public void onStartTrackingTouch(SeekBar seekBar) {
+            }
 
             @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {}
+            public void onStopTrackingTouch(SeekBar seekBar) {
+            }
         });
+
+        loadCurrentSelections();
     }
 
     private void selectAppearance(String appearance, LinearLayout selected) {
+        if (appearance.equals(selectedAppearance)) {
+            return;
+        }
         selectedAppearance = appearance;
-        
-        // Reset all backgrounds
+        ThemeManager.setAppearance(this, appearance);
+        ThemeManager.applyNightMode(this);
         resetAppearanceButtons();
-        
-        // Set selected background
         selected.setBackground(getDrawable(R.drawable.bg_rounded_appearance_selected));
-        
-        Toast.makeText(this, "Appearance: " + appearance, Toast.LENGTH_SHORT).show();
-        // TODO: Apply theme based on selectedAppearance
+        recreate();
     }
 
     private void resetAppearanceButtons() {
@@ -74,24 +88,59 @@ public class ThemeActivity extends AppCompatActivity {
     }
 
     private void initializeColorSelection() {
-        int[] colorIds = {
-            R.id.fl_color_blue,
-            R.id.iv_color_purple,
-            R.id.iv_color_pink,
-            R.id.iv_color_red,
-            R.id.iv_color_orange,
-            R.id.iv_color_green
-        };
+        findViewById(R.id.fl_color_blue).setOnClickListener(v -> selectPalette(ThemeManager.PALETTE_BLUE));
+        findViewById(R.id.fl_color_emerald).setOnClickListener(v -> selectPalette(ThemeManager.PALETTE_EMERALD));
+        findViewById(R.id.fl_color_sunset).setOnClickListener(v -> selectPalette(ThemeManager.PALETTE_SUNSET));
+    }
 
-        String[] colorCodes = {"BLUE", "PURPLE", "PINK", "RED", "ORANGE", "GREEN"};
-
-        for (int i = 0; i < colorIds.length; i++) {
-            final int colorIndex = i;
-            findViewById(colorIds[i]).setOnClickListener(v -> {
-                selectedColor = colorCodes[colorIndex];
-                Toast.makeText(this, "Color: " + selectedColor, Toast.LENGTH_SHORT).show();
-                // TODO: Apply color theme
-            });
+    private void selectPalette(String palette) {
+        if (palette.equals(selectedColor)) {
+            return;
         }
+        selectedColor = palette;
+        ThemeManager.setPalette(this, palette);
+        applyPaletteSelection();
+        recreate();
+    }
+
+    private void loadCurrentSelections() {
+        selectedAppearance = ThemeManager.getAppearance(this);
+        selectedColor = ThemeManager.getPalette(this);
+        applyAppearanceSelection();
+        applyPaletteSelection();
+    }
+
+    private void applyAppearanceSelection() {
+        resetAppearanceButtons();
+        if (ThemeManager.APPEARANCE_LIGHT.equals(selectedAppearance)) {
+            llAppearanceLight.setBackground(getDrawable(R.drawable.bg_rounded_appearance_selected));
+        } else if (ThemeManager.APPEARANCE_DARK.equals(selectedAppearance)) {
+            llAppearanceDark.setBackground(getDrawable(R.drawable.bg_rounded_appearance_selected));
+        } else {
+            llAppearanceSystem.setBackground(getDrawable(R.drawable.bg_rounded_appearance_selected));
+        }
+    }
+
+    private void applyPaletteSelection() {
+        if (ivCheckBlue != null) {
+            ivCheckBlue.setVisibility(ThemeManager.PALETTE_BLUE.equals(selectedColor) ? View.VISIBLE : View.GONE);
+        }
+        if (ivCheckEmerald != null) {
+            ivCheckEmerald.setVisibility(ThemeManager.PALETTE_EMERALD.equals(selectedColor) ? View.VISIBLE : View.GONE);
+        }
+        if (ivCheckSunset != null) {
+            ivCheckSunset.setVisibility(ThemeManager.PALETTE_SUNSET.equals(selectedColor) ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    private void resetToDefault() {
+        selectedAppearance = ThemeManager.APPEARANCE_SYSTEM;
+        selectedColor = ThemeManager.PALETTE_BLUE;
+        ThemeManager.setAppearance(this, selectedAppearance);
+        ThemeManager.setPalette(this, selectedColor);
+        ThemeManager.applyNightMode(this);
+        applyAppearanceSelection();
+        applyPaletteSelection();
+        recreate();
     }
 }

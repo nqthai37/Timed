@@ -160,7 +160,7 @@
                     android:id="@+id/dividerDayView"
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
-                    android:background="#1A741CE9"
+                    android:background="@color/primary_container"
                     app:layout_constraintTop_toBottomOf="@id/layoutWeekNavigation" />
 
                 <androidx.core.widget.NestedScrollView
@@ -235,7 +235,7 @@
                             <TextView android:id="@+id/tv3DaysDate1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="18sp" android:textStyle="bold" android:textColor="@color/primary" />
                         </LinearLayout>
 
-                        <View android:layout_width="1dp" android:layout_height="match_parent" android:background="#0D741CE9" />
+                        <View android:layout_width="1dp" android:layout_height="match_parent" android:background="@color/primary_container" />
 
                         <LinearLayout
                             android:layout_width="0dp"
@@ -248,7 +248,7 @@
                             <TextView android:id="@+id/tv3DaysDate2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="18sp" android:textStyle="bold" android:textColor="@color/slate_900" />
                         </LinearLayout>
 
-                        <View android:layout_width="1dp" android:layout_height="match_parent" android:background="#0D741CE9" />
+                        <View android:layout_width="1dp" android:layout_height="match_parent" android:background="@color/primary_container" />
 
                         <LinearLayout
                             android:layout_width="0dp"
@@ -274,7 +274,7 @@
                     android:id="@+id/divider3Days"
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
-                    android:background="#1A741CE9"
+                    android:background="@color/primary_container"
                     app:layout_constraintTop_toBottomOf="@id/layout3DaysHeader" />
 
                 <androidx.core.widget.NestedScrollView
@@ -340,7 +340,7 @@
                     android:id="@+id/dividerWeekView"
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
-                    android:background="#1A741CE9"
+                    android:background="@color/primary_container"
                     app:layout_constraintTop_toBottomOf="@id/layoutWeekHeader" />
 
                 <androidx.core.widget.NestedScrollView
@@ -511,8 +511,8 @@
             android:layout_gravity="bottom"
             android:background="@color/background_light"
             app:menu="@menu/bottom_nav_menu"
-            app:itemIconTint="@color/slate_500"
-            app:itemTextColor="@color/slate_500" />
+            app:itemIconTint="@color/bottom_nav_item"
+            app:itemTextColor="@color/bottom_nav_item" />
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 

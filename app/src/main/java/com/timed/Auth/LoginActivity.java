@@ -23,7 +23,8 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.FirebaseAuth;
 import com.timed.models.User;
-
+import com.timed.utils.NetworkUtils;
+import com.timed.utils.OfflineCacheManager;
 
 public class LoginActivity extends AppCompatActivity {
     private static final String TAG = "LoginActivity";
@@ -97,6 +98,17 @@ public class LoginActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
 
+        if (!NetworkUtils.isOnline(this)) {
+            if (OfflineCacheManager.hasAnyCache(this)) {
+                Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                intent.putExtra(OfflineCacheManager.EXTRA_OFFLINE_MODE, true);
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                startActivity(intent);
+                return;
+            }
+            Toast.makeText(this, "No internet connection", Toast.LENGTH_SHORT).show();
+        }
+
         boolean wantsToBeRemembered = prefs.getBoolean("REMEMBER_ME", false);
 
         if (FirebaseAuth.getInstance().getCurrentUser() != null) {
@@ -105,7 +117,7 @@ public class LoginActivity extends AppCompatActivity {
                 btnLogin.setText("Restoring Session...");
 
                 authRepository.restoreSession().addOnSuccessListener(user -> {
-                   Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                    Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                     startActivity(intent);
                 }).addOnFailureListener(e -> {

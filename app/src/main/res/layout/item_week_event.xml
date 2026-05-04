@@ -21,7 +21,7 @@
         android:layout_width="2dp"
         android:layout_height="0dp"
         android:layout_marginStart="8dp"
-        android:background="#1A741CE9"
+        android:background="@color/primary_container"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toEndOf="@id/tvEventTime"
         app:layout_constraintTop_toTopOf="parent" />

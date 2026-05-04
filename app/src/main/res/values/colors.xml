@@ -2,7 +2,6 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="primary">#741ce9</color>
     <color name="background_light">#f7f6f8</color>
     <color name="slate_900">#0f172a</color>
     <color name="slate_600">#475569</color>
@@ -20,4 +19,32 @@
     <color name="red_500">#ef4444</color>
     <color name="orange_500">#f97316</color>
     <color name="orange_600">#ea580c</color>
+
+    <color name="timed_on_primary">#FFFFFF</color>
+    <color name="timed_on_secondary">#FFFFFF</color>
+    <color name="timed_on_tertiary">#FFFFFF</color>
+
+    <color name="timed_blue_primary">#2563EB</color>
+    <color name="timed_blue_primary_container">#DBEAFE</color>
+    <color name="timed_blue_on_primary_container">#1E3A8A</color>
+    <color name="timed_blue_secondary">#0EA5E9</color>
+    <color name="timed_blue_secondary_container">#E0F2FE</color>
+    <color name="timed_blue_tertiary">#7C3AED</color>
+    <color name="timed_blue_tertiary_container">#EDE9FE</color>
+
+    <color name="timed_emerald_primary">#10B981</color>
+    <color name="timed_emerald_primary_container">#D1FAE5</color>
+    <color name="timed_emerald_on_primary_container">#065F46</color>
+    <color name="timed_emerald_secondary">#14B8A6</color>
+    <color name="timed_emerald_secondary_container">#CCFBF1</color>
+    <color name="timed_emerald_tertiary">#F59E0B</color>
+    <color name="timed_emerald_tertiary_container">#FEF3C7</color>
+
+    <color name="timed_sunset_primary">#F97316</color>
+    <color name="timed_sunset_primary_container">#FFEDD5</color>
+    <color name="timed_sunset_on_primary_container">#9A3412</color>
+    <color name="timed_sunset_secondary">#EF4444</color>
+    <color name="timed_sunset_secondary_container">#FEE2E2</color>
+    <color name="timed_sunset_tertiary">#F59E0B</color>
+    <color name="timed_sunset_tertiary_container">#FEF3C7</color>
 </resources>

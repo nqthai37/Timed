@@ -18,6 +18,8 @@ public class Task {
     private List<TaskReminder> reminders;
 
     // Bắt buộc phải có constructor rỗng cho Firebase
+    public Task() {}
+
     public Task(String title, String desc, Timestamp deadline, String high, String userId) {}
 
     // Constructor dùng khi bạn tạo Task mới từ Code

@@ -1,12 +1,8 @@
 package com.timed.activities;
 
-import android.content.Intent; // Added missing import
 import android.os.Bundle;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.ImageButton;
 
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
@@ -25,41 +21,39 @@ import com.timed.activities.ImportExportActivity;
 
 import java.util.ArrayList;
 import java.util.List;
-import com.timed.utils.CalendarIntegrationService;
 
-public class SettingsActivity extends AppCompatActivity {
+public class SettingsActivity extends BaseBottomNavActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_setting);
-
         setupInsets();
-        setupListeners();
         setupRecyclerView();
+        setupBottomNavigation();
     }
 
-    private void setupListeners() {
-        ImageButton ivBack = findViewById(R.id.iv_back);
-        if (ivBack != null) {
-            ivBack.setOnClickListener(v -> finish());
-        }
+    @Override
+    protected int getNavigationMenuItemId() {
+        return R.id.nav_settings;
+    }
 
-        // MOVED HERE: Logic for the Import/Export row
-//        View rowImportExport = findViewById(R.id.rowImportExport);
-//        if (rowImportExport != null) {
-//            rowImportExport.setOnClickListener(v -> {
-//                // Ensure ImportExportActivity is created/imported
-//                Intent intent = new Intent(this, ImportExportActivity.class);
-//                CalendarIntegrationService calendarService = new CalendarIntegrationService();
-//                String calendarId = calendarService.getCachedDefaultCalendarId(this);
-//                if (calendarId != null && !calendarId.isEmpty()) {
-//                    intent.putExtra("calendarId", calendarId);
-//                }
-//                startActivity(intent);
-//            });
-//        }
+    private void setupInsets() {
+        View root = findViewById(R.id.settingsRoot);
+        if (root == null) {
+            return;
+        }
+        final int baseTop = root.getPaddingTop();
+        final int baseBottom = root.getPaddingBottom();
+        final int baseLeft = root.getPaddingLeft();
+        final int baseRight = root.getPaddingRight();
+        ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
+            Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(baseLeft + bars.left, baseTop + bars.top,
+                    baseRight + bars.right, baseBottom + bars.bottom);
+            return insets;
+        });
     }
 
     private void setupRecyclerView() {
@@ -75,34 +69,11 @@ public class SettingsActivity extends AppCompatActivity {
         settingList.add(new SettingItem(R.drawable.ic_time_zone, "Timezone Setting", TimezoneSettingActivity.class));
         settingList.add(new SettingItem(R.drawable.ic_security, "Profile", ProfileActivity.class));
         settingList.add(new SettingItem(R.drawable.ic_cloud, "Sync & Storage", SyncStorageActivity.class));
-        settingList.add(new SettingItem(R.drawable.ic_send, "Import ICS/CSV and Export Calendar", ImportExportActivity.class));
+        settingList.add(
+                new SettingItem(R.drawable.ic_send, "Import ICS/CSV and Export Calendar", ImportExportActivity.class));
         settingList.add(new SettingItem(R.drawable.ic_theme, "Theme & Appearance", ThemeActivity.class));
 
         return settingList;
     }
 
-    private void setupInsets() {
-        View root = findViewById(R.id.topBar);
-        if (root == null) return;
-
-        final int baseTopBarHeight = dpToPx(65);
-        final int baseTopPadding = root.getPaddingTop();
-        final int baseBottomPadding = root.getPaddingBottom();
-        final int baseLeftPadding = root.getPaddingLeft();
-        final int baseRightPadding = root.getPaddingRight();
-
-        ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
-            Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            root.setPadding(baseLeftPadding, baseTopPadding + bars.top, baseRightPadding, baseBottomPadding);
-            ViewGroup.LayoutParams lp = root.getLayoutParams();
-            lp.height = baseTopBarHeight + bars.top;
-            root.setLayoutParams(lp);
-            return insets;
-        });
-    }
-
-    private int dpToPx(int dp) {
-        float density = getResources().getDisplayMetrics().density;
-        return Math.round(dp * density);
-    }
 }

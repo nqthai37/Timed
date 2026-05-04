@@ -1,7 +1,9 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
     <style name="Base.Theme.Timed" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your dark theme here. -->
-        <!-- <item name="colorPrimary">@color/my_dark_primary</item> -->
+        <item name="android:colorBackground">@color/background_light</item>
+        <item name="colorOnBackground">@color/slate_900</item>
+        <item name="colorSurface">@color/slate_100</item>
+        <item name="colorOnSurface">@color/slate_900</item>
     </style>
 </resources>

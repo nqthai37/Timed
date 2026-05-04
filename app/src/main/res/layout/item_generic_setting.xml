@@ -34,7 +34,7 @@
                 android:layout_height="wrap_content"
                 android:text="Item Title"
                 android:textSize="15sp"
-                android:textColor="#FF0F172A"
+                android:textColor="?attr/colorOnSurface"
                 android:fontFamily="Inter" />
 
             <TextView
@@ -43,7 +43,7 @@
                 android:layout_height="wrap_content"
                 android:text="Item Subtitle"
                 android:textSize="13sp"
-                android:textColor="#FF64748B"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 android:fontFamily="Inter"
                 android:layout_marginTop="4dp" />
         </LinearLayout>

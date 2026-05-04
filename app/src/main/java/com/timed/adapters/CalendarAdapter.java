@@ -1,6 +1,5 @@
 package com.timed.adapters;
 
-import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -10,6 +9,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.color.MaterialColors;
 import com.timed.R;
 import com.timed.models.CalendarDay;
 
@@ -43,13 +43,19 @@ public class CalendarAdapter extends RecyclerView.Adapter<CalendarAdapter.Calend
 
         if (day.isCurrentMonth) {
             if (day.isSelected) {
-                holder.tvDayNumber.setTextColor(android.graphics.Color.WHITE);
+                int onPrimary = MaterialColors.getColor(holder.itemView,
+                        com.google.android.material.R.attr.colorOnPrimary);
+                holder.tvDayNumber.setTextColor(onPrimary);
                 holder.tvDayNumber.setBackgroundResource(R.drawable.bg_circle_selected);
             } else if (day.isToday) {
-                holder.tvDayNumber.setTextColor(android.graphics.Color.parseColor("#741ce9"));
+                int primary = MaterialColors.getColor(holder.itemView,
+                        androidx.appcompat.R.attr.colorPrimary);
+                holder.tvDayNumber.setTextColor(primary);
                 holder.tvDayNumber.setBackgroundResource(R.drawable.bg_circle_today);
             } else {
-                holder.tvDayNumber.setTextColor(android.graphics.Color.parseColor("#0f172a"));
+                int onSurface = MaterialColors.getColor(holder.itemView,
+                        com.google.android.material.R.attr.colorOnSurface);
+                holder.tvDayNumber.setTextColor(onSurface);
                 holder.tvDayNumber.setBackgroundResource(0);
             }
 
@@ -65,7 +71,9 @@ public class CalendarAdapter extends RecyclerView.Adapter<CalendarAdapter.Calend
             }
 
         } else {
-            holder.tvDayNumber.setTextColor(Color.parseColor("#94a3b8"));
+            int onSurfaceVariant = MaterialColors.getColor(holder.itemView,
+                    com.google.android.material.R.attr.colorOnSurfaceVariant);
+            holder.tvDayNumber.setTextColor(onSurfaceVariant);
             holder.tvDayNumber.setBackgroundResource(0);
         }
 

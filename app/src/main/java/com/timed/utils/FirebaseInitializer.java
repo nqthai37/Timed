@@ -6,6 +6,7 @@ import android.util.Log;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreSettings;
+import com.google.firebase.firestore.PersistentCacheSettings;
 import com.google.firebase.auth.FirebaseAuth;
 
 /**
@@ -18,7 +19,8 @@ public class FirebaseInitializer {
     private FirebaseFirestore db;
     private FirebaseAuth auth;
 
-    private FirebaseInitializer() {}
+    private FirebaseInitializer() {
+    }
 
     /**
      * Lấy singleton instance
@@ -47,7 +49,7 @@ public class FirebaseInitializer {
 
             // Lấy Auth instance
             auth = FirebaseAuth.getInstance();
-            
+
             // Enable Anonymous Authentication as fallback
             enableAnonymousAuthFallback();
 
@@ -85,9 +87,12 @@ public class FirebaseInitializer {
      */
     private void configureFirestore() {
         try {
+            PersistentCacheSettings cacheSettings = PersistentCacheSettings.newBuilder()
+                    .setSizeBytes(FirebaseFirestoreSettings.CACHE_SIZE_UNLIMITED)
+                    .build();
+
             FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder()
-                    .setPersistenceEnabled(true)  // Bật offline persistence
-                    .setCacheSizeBytes(FirebaseFirestoreSettings.CACHE_SIZE_UNLIMITED)
+                    .setLocalCacheSettings(cacheSettings)
                     .build();
 
             db.setFirestoreSettings(settings);
@@ -163,4 +168,3 @@ public class FirebaseInitializer {
         instance = null;
     }
 }
-

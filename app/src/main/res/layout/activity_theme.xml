@@ -22,6 +22,18 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnResetTheme"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:text="Reset"
+            android:textAllCaps="false"
+            android:textColor="@color/primary"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="@id/iv_back"
+            app:layout_constraintBottom_toBottomOf="@id/iv_back" />
+
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -65,7 +77,6 @@
             android:paddingTop="16dp"
             android:paddingBottom="24dp">
 
-            <!-- Appearance Section -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -170,7 +181,6 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- Primary Color Section -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -193,80 +203,84 @@
                 android:paddingHorizontal="12dp"
                 android:paddingVertical="16dp">
 
-                <!-- Blue (Selected) -->
                 <FrameLayout
                     android:id="@+id/fl_color_blue"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:layout_marginEnd="8dp">
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:layout_marginEnd="12dp">
 
                     <ImageView
+                        android:id="@+id/iv_color_blue"
                         android:layout_width="48dp"
                         android:layout_height="48dp"
                         android:src="@drawable/ic_color_circle"
-                        android:tint="#1E40AF"
-                        android:scaleType="centerInside" />
+                        android:tint="#2563EB"
+                        android:scaleType="centerInside"
+                        android:layout_gravity="center" />
 
                     <ImageView
+                        android:id="@+id/iv_check_blue"
                         android:layout_width="56dp"
                         android:layout_height="56dp"
                         android:src="@drawable/ic_check_circle"
-                        android:tint="#1E40AF"
+                        android:tint="#2563EB"
                         android:scaleType="centerInside"
-                        android:layout_gravity="center" />
+                        android:layout_gravity="center"
+                        android:visibility="gone" />
                 </FrameLayout>
 
-                <!-- Purple -->
-                <ImageView
-                    android:id="@+id/iv_color_purple"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:src="@drawable/ic_color_circle"
-                    android:tint="#7C3AED"
-                    android:scaleType="centerInside"
-                    android:layout_marginEnd="8dp" />
+                <FrameLayout
+                    android:id="@+id/fl_color_emerald"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:layout_marginEnd="12dp">
 
-                <!-- Pink -->
-                <ImageView
-                    android:id="@+id/iv_color_pink"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:src="@drawable/ic_color_circle"
-                    android:tint="#DB2777"
-                    android:scaleType="centerInside"
-                    android:layout_marginEnd="8dp" />
+                    <ImageView
+                        android:id="@+id/iv_color_emerald"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:src="@drawable/ic_color_circle"
+                        android:tint="#10B981"
+                        android:scaleType="centerInside"
+                        android:layout_gravity="center" />
 
-                <!-- Red -->
-                <ImageView
-                    android:id="@+id/iv_color_red"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:src="@drawable/ic_color_circle"
-                    android:tint="#DC2626"
-                    android:scaleType="centerInside"
-                    android:layout_marginEnd="8dp" />
+                    <ImageView
+                        android:id="@+id/iv_check_emerald"
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"
+                        android:src="@drawable/ic_check_circle"
+                        android:tint="#10B981"
+                        android:scaleType="centerInside"
+                        android:layout_gravity="center"
+                        android:visibility="gone" />
+                </FrameLayout>
 
-                <!-- Orange -->
-                <ImageView
-                    android:id="@+id/iv_color_orange"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:src="@drawable/ic_color_circle"
-                    android:tint="#EA580C"
-                    android:scaleType="centerInside"
-                    android:layout_marginEnd="8dp" />
+                <FrameLayout
+                    android:id="@+id/fl_color_sunset"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp">
 
-                <!-- Green -->
-                <ImageView
-                    android:id="@+id/iv_color_green"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:src="@drawable/ic_color_circle"
-                    android:tint="#059669"
-                    android:scaleType="centerInside" />
+                    <ImageView
+                        android:id="@+id/iv_color_sunset"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:src="@drawable/ic_color_circle"
+                        android:tint="#F97316"
+                        android:scaleType="centerInside"
+                        android:layout_gravity="center" />
+
+                    <ImageView
+                        android:id="@+id/iv_check_sunset"
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"
+                        android:src="@drawable/ic_check_circle"
+                        android:tint="#F97316"
+                        android:scaleType="centerInside"
+                        android:layout_gravity="center"
+                        android:visibility="gone" />
+                </FrameLayout>
             </LinearLayout>
 
-            <!-- Preview Section -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -332,7 +346,6 @@
                     android:layout_marginTop="8dp" />
             </LinearLayout>
 
-            <!-- Font Size Section -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

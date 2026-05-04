@@ -79,19 +79,21 @@
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:background="#1A741CE9" /> <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rvHorizontalCalendar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:paddingHorizontal="12dp"
-        android:paddingVertical="8dp"
-        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+            android:background="@color/primary_container" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvHorizontalCalendar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="8dp"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:background="#1A741CE9" />
+            android:background="@color/primary_container" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.core.widget.NestedScrollView
@@ -126,7 +128,8 @@
                     android:layout_width="56dp"
                     android:layout_height="wrap_content"
                     android:text="08:00"
-                    android:textColor="#99741CE9"
+                    android:textColor="@color/primary"
+                    android:alpha="0.6"
                     android:textSize="12sp"
                     android:textStyle="bold" />
 
@@ -138,7 +141,7 @@
                     android:layout_marginStart="8dp"
                     android:layout_marginTop="8dp"
                     android:layout_toEndOf="@id/time08"
-                    android:background="#1A741CE9" />
+                    android:background="@color/primary_container" />
 
                 <TextView
                     android:id="@+id/time09"
@@ -147,7 +150,8 @@
                     android:layout_below="@id/time08"
                     android:layout_marginTop="60dp"
                     android:text="09:00"
-                    android:textColor="#99741CE9"
+                    android:textColor="@color/primary"
+                    android:alpha="0.6"
                     android:textSize="12sp"
                     android:textStyle="bold" />
 
@@ -159,7 +163,7 @@
                     android:layout_marginStart="8dp"
                     android:layout_marginTop="8dp"
                     android:layout_toEndOf="@id/time09"
-                    android:background="#1A741CE9" />
+                    android:background="@color/primary_container" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -177,7 +181,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Morning Standup"
-                        android:textColor="@android:color/white"
+                        android:textColor="?attr/colorOnPrimary"
                         android:textSize="14sp"
                         android:textStyle="bold" />
 
@@ -186,7 +190,8 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
                         android:text="09:00 - 10:00 • Office"
-                        android:textColor="#E6FFFFFF"
+                        android:textColor="?attr/colorOnPrimary"
+                        android:alpha="0.85"
                         android:textSize="12sp" />
                 </LinearLayout>
 

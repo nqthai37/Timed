@@ -1,6 +1,5 @@
 package com.timed.adapters;
 
-import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -10,6 +9,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.color.MaterialColors;
 import com.timed.R;
 
 import java.time.LocalDate;
@@ -53,14 +53,18 @@ public class HorizontalCalendarAdapter extends RecyclerView.Adapter<HorizontalCa
         if (date.equals(selectedDate)) {
             // Ngày được chọn: Nền tím, chữ trắng, rõ nét 100%
             holder.layoutDayContainer.setBackgroundResource(R.drawable.bg_day_selected);
-            holder.tvDayOfWeek.setTextColor(Color.WHITE);
-            holder.tvDayOfMonth.setTextColor(Color.WHITE);
+            int onPrimary = MaterialColors.getColor(holder.itemView,
+                    com.google.android.material.R.attr.colorOnPrimary);
+            holder.tvDayOfWeek.setTextColor(onPrimary);
+            holder.tvDayOfMonth.setTextColor(onPrimary);
             holder.layoutDayContainer.setAlpha(1.0f);
         } else {
             // Ngày bình thường: Nền trong suốt, chữ đen mờ 50%
             holder.layoutDayContainer.setBackgroundResource(0);
-            holder.tvDayOfWeek.setTextColor(Color.parseColor("#0f172a")); // slate-900
-            holder.tvDayOfMonth.setTextColor(Color.parseColor("#0f172a"));
+            int onSurface = MaterialColors.getColor(holder.itemView,
+                    com.google.android.material.R.attr.colorOnSurface);
+            holder.tvDayOfWeek.setTextColor(onSurface);
+            holder.tvDayOfMonth.setTextColor(onSurface);
             holder.layoutDayContainer.setAlpha(0.5f); // opacity-50 giống HTML
         }
 
