@@ -1,5 +1,8 @@
 package com.timed.repositories;
 
+import android.os.Handler;
+import android.os.Looper;
+
 import com.google.gson.Gson;
 import com.timed.Features.AI.AiScheduleRequest;
 
@@ -7,6 +10,8 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
+
 import com.timed.BuildConfig;
 
 import okhttp3.Call;
@@ -36,12 +41,22 @@ public class AiRepository {
     }
 
     public AiRepository() {
-        this.client = new OkHttpClient();
+        this.client = new OkHttpClient.Builder()
+                .connectTimeout(60, TimeUnit.SECONDS) // Time to establish connection
+                .writeTimeout(60, TimeUnit.SECONDS)   // Time to send the prompt
+                .readTimeout(60, TimeUnit.SECONDS)    // Time to wait for the AI to respond!
+                .build();
         this.gson = new Gson();
     }
 
     public void extractScheduleFromText(String userText, AiExtractionCallback callback) {
+        extractScheduleFromTextWithRetry(userText, 0, callback);
+    }
+
+    public void extractScheduleFromTextWithRetry(String userText, int attemptCounter, AiExtractionCallback callback) {
+        int maxRetries = 3;
         JSONObject payload = new JSONObject();
+
         try {
             JSONObject config = new JSONObject();
             config.put("responseMimeType", "application/json");
@@ -82,13 +97,30 @@ public class AiRepository {
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
-                callback.onError(e);
+                if (e.getMessage() != null && e.getMessage().contains("timeout") && attemptCounter < maxRetries) {
+                    long waitTimeMs = (long) Math.pow(2, attemptCounter) * 1000L;
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        extractScheduleFromTextWithRetry(userText, attemptCounter + 1, callback);
+                    }, waitTimeMs);
+                } else {
+                    callback.onError(e);
+                }
             }
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
+                if (response.code() == 503 && attemptCounter < maxRetries) {
+                    response.close(); // Prevent memory leaks!
+                    long waitTimeMs = (long) Math.pow(2, attemptCounter) * 1000L;
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        extractScheduleFromTextWithRetry(userText, attemptCounter + 1, callback);
+                    }, waitTimeMs);
+                    return;
+                }
+
                 if (!response.isSuccessful()) {
                     callback.onError(new Exception("API Error: " + response.code()));
+                    response.close();
                     return;
                 }
 
@@ -108,6 +140,8 @@ public class AiRepository {
 
                 } catch (Exception e) {
                     callback.onError(new Exception("Failed to parse AI response", e));
+                } finally {
+                    response.close();
                 }
             }
         });

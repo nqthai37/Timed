@@ -94,6 +94,18 @@
             android:textStyle="bold"
             app:backgroundTint="#3B82F6"
             app:cornerRadius="12dp" />
+
+        <Button
+            android:id="@+id/btn_save_template"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="8dp"
+            android:text="⭐ Save this prompt as a Template"
+            android:textAllCaps="false"
+            android:textColor="#64748B"
+            android:background="@android:color/transparent"
+            android:textSize="14sp" />
+
     </LinearLayout>
 
 </LinearLayout>

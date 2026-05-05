@@ -35,6 +35,7 @@ import com.timed.repositories.AiRepository;
 import com.timed.repositories.CalendarRepository;
 import com.timed.repositories.EventsRepository;
 import com.timed.repositories.RepositoryCallback;
+import com.timed.repositories.TemplateRepository;
 
 public class AiSchedulingActivity extends AppCompatActivity {
 
@@ -48,6 +49,7 @@ public class AiSchedulingActivity extends AppCompatActivity {
     private BottomSheetDialog aiSheetDialog;
     private View sheetView;
     private CalendarRepository calendarRepository;
+    private TemplateRepository templateRepository;
     private List<String> calendarNames = new ArrayList<>();
     private List<String> calendarIds = new ArrayList<>();
     private EditText etAiInput;
@@ -68,23 +70,84 @@ public class AiSchedulingActivity extends AppCompatActivity {
         aiRepository = new AiRepository();
         eventsRepository = new EventsRepository();
         calendarRepository = new CalendarRepository();
+        templateRepository = new TemplateRepository();
 
 
         setupPromptButton();
         setupChipListeners();
         setupCalendarSelector();
 
+        loadSavedTemplates();
+    }
+
+    private void loadSavedTemplates() {
+        String currentUserId = UserManager.getInstance().getCurrentUser().getUid();
+        if (currentUserId == null) return;
+
         if (rvSchedules != null) {
             rvSchedules.setLayoutManager(new LinearLayoutManager(this));
-
-            scheduleList = new ArrayList<>();
-            scheduleList.add(new AiSchedule("Team sync tomorrow at 10 AM", "Scheduled successfully", true));
-            scheduleList.add(new AiSchedule("Doctor appointment on Friday", "Need confirmation", false));
-            scheduleList.add(new AiSchedule("Gym every Monday 7am", "Recurring event added", true));
-
-            adapter = new AiScheduleAdapter(scheduleList);
-            rvSchedules.setAdapter(adapter);
         }
+
+        templateRepository.getUserTemplates(currentUserId, new RepositoryCallback<List<AiPromptTemplate>>() {
+            @Override
+            public void onSuccess(List<AiPromptTemplate> templates) {
+                runOnUiThread(() -> {
+                    TextView tvEmpty = findViewById(R.id.tv_empty_templates);
+                    if (templates.isEmpty()) {
+                        rvSchedules.setVisibility(View.GONE);
+                        tvEmpty.setVisibility(View.VISIBLE);
+                    } else {
+                        rvSchedules.setVisibility(View.VISIBLE);
+                        tvEmpty.setVisibility(View.GONE);
+
+                        scheduleList = new ArrayList<>();
+
+                        for (AiPromptTemplate qt : templates) {
+                            scheduleList.add(new AiSchedule(qt.getId(), qt.getPromptText(), qt.getTitle(), true));
+                        }
+
+                        adapter = new AiScheduleAdapter(scheduleList,
+                                clickedTemplate -> {
+                            etAiInput.setText(clickedTemplate.getTitle());
+                            ivSend.performClick();
+                        }, longClickedTemplate -> {
+                            new android.app.AlertDialog.Builder(AiSchedulingActivity.this)
+                                    .setTitle("Delete Template")
+                                    .setMessage("Are you sure you want to delete '" + longClickedTemplate.getStatus() + "'?")
+                                    .setPositiveButton("Delete", (dialog, which) -> {
+
+                                        templateRepository.deleteTemplate(currentUserId, longClickedTemplate.getId(), new RepositoryCallback<Void>() {
+                                            @Override
+                                            public void onSuccess(Void data) {
+                                                runOnUiThread(() -> {
+                                                    Toast.makeText(AiSchedulingActivity.this, "Deleted", Toast.LENGTH_SHORT).show();
+                                                    loadSavedTemplates();
+                                                });
+                                            }
+
+                                            @Override
+                                            public void onFailure(String e) {
+                                                runOnUiThread(() -> Toast.makeText(AiSchedulingActivity.this, "Failed to delete", Toast.LENGTH_SHORT).show());
+                                            }
+                                        });
+
+                                    })
+                                    .setNegativeButton("Cancel", null)
+                                    .show();
+                        });
+
+                        rvSchedules.setAdapter(adapter);
+                    }
+                });
+            }
+
+            @Override
+            public void onFailure(String errorMessage) {
+                runOnUiThread(() -> {
+                    Toast.makeText(AiSchedulingActivity.this, "Failed to load templates", Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
     }
 
     private void setupPromptButton() {
@@ -342,6 +405,7 @@ public class AiSchedulingActivity extends AppCompatActivity {
 
         RecyclerView rvGeneratedSlots = sheetView.findViewById(R.id.rv_ai_generated_slots);
         Button btnConfirm = sheetView.findViewById(R.id.btn_confirm_ai);
+        Button btnSaveTemplate = sheetView.findViewById(R.id.btn_save_template);
 
         currentSelectedAiSlot = null;
         FreeSlotAdapter adapter = new FreeSlotAdapter(this, generatedSlots, selectedSlot -> {
@@ -354,8 +418,45 @@ public class AiSchedulingActivity extends AppCompatActivity {
                 Toast.makeText(this, "Please select a time slot first", Toast.LENGTH_SHORT).show();
                 return;
             }
-            aiSheetDialog.dismiss();
-            navigateToCreateEvent(currentSelectedAiSlot);
+            scheduleEventDirectly(currentSelectedAiSlot);
+        });
+
+        btnSaveTemplate.setOnClickListener(v -> {
+            String currentPrompt = etAiInput.getText().toString().trim();
+
+            android.widget.EditText inputTitle = new android.widget.EditText(this);
+            inputTitle.setHint("e.g., Focus Time");
+
+            new android.app.AlertDialog.Builder(this)
+                    .setTitle("Save Template")
+                    .setMessage("Give this prompt a quick name:")
+                    .setView(inputTitle)
+                    .setPositiveButton("Save", (dialog, which) -> {
+                        String title = inputTitle.getText().toString().trim();
+                        if (title.isEmpty()) return;
+
+                        AiPromptTemplate newTemplate = new AiPromptTemplate(title, currentPrompt);
+
+                        templateRepository.addTemplate(
+                                UserManager.getInstance().getCurrentUser().getUid(),
+                                newTemplate,
+                                new RepositoryCallback<String>() {
+                                    @Override
+                                    public void onSuccess(String data) {
+                                        runOnUiThread(() -> {
+                                            Toast.makeText(AiSchedulingActivity.this, "Template saved!", Toast.LENGTH_SHORT).show();
+                                            loadSavedTemplates();
+                                            btnSaveTemplate.setVisibility(View.GONE);
+                                        });
+                                    }
+                                    @Override
+                                    public void onFailure(String e) {
+                                        runOnUiThread(() -> Toast.makeText(AiSchedulingActivity.this, "Failed to save", Toast.LENGTH_SHORT).show());
+                                    }
+                                });
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
         });
     }
 
@@ -375,23 +476,39 @@ public class AiSchedulingActivity extends AppCompatActivity {
                 .start();
     }
 
-    private void navigateToCreateEvent(FreeSlot selectedSlot) {
-        Intent intent = new Intent(this, com.timed.activities.CreateEventActivity.class);
-
-        long startMs = selectedSlot.getStartMillis();
-        long endMs = selectedSlot.getEndMillis();
-
-        intent.putExtra("mode", "create");
-        intent.putExtra("startTime", startMs);
-        intent.putExtra("endTime", endMs);
-
-        String aiGeneratedTitle = etAiInput.getText().toString().trim();
-        if (!aiGeneratedTitle.isEmpty()) {
-            intent.putExtra("title", aiGeneratedTitle);
+    private void scheduleEventDirectly(FreeSlot slot) {
+        String title = etAiInput.getText().toString().trim();
+        if (title.isEmpty()) {
+            title = "AI Scheduled Event";
         }
 
-        startActivity(intent);
+        com.timed.models.Event newEvent = new com.timed.models.Event();
+        newEvent.setTitle(title);
+        newEvent.setCalendarId(selectedCalendarId);
+        newEvent.setAllDay(false);
 
-        finish();
+        newEvent.setStartTime(new com.google.firebase.Timestamp(new java.util.Date(slot.getStartMillis())));
+        newEvent.setEndTime(new com.google.firebase.Timestamp(new java.util.Date(slot.getEndMillis())));
+
+        String currentUserId = com.timed.managers.UserManager.getInstance().getCurrentUser().getUid();
+        if (currentUserId != null) {
+            newEvent.setCreatedBy(currentUserId);
+        }
+
+        Toast.makeText(this, "Saving to calendar...", Toast.LENGTH_SHORT).show();
+
+        eventsRepository.createEvent(newEvent)
+                .addOnSuccessListener(aVoid -> {
+                    runOnUiThread(() -> {
+                        if (aiSheetDialog != null) aiSheetDialog.dismiss();
+                        Toast.makeText(AiSchedulingActivity.this, "🎉 Event scheduled!", Toast.LENGTH_LONG).show();
+                        etAiInput.setText("");
+                    });
+                })
+                .addOnFailureListener(e -> {
+                    runOnUiThread(() -> {
+                        Toast.makeText(AiSchedulingActivity.this, "Failed to schedule: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    });
+                });
     }
 }

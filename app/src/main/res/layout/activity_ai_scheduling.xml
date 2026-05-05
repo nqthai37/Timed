@@ -201,7 +201,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginTop="24dp"
-        android:text="Recent schedules"
+        android:text="Quick Prompts"
         android:textColor="#0F172A"
         android:textSize="16sp"
         android:textStyle="bold"
@@ -216,6 +216,20 @@
         android:clipToPadding="false"
         android:paddingBottom="24dp"
         app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tv_recent" />
+
+    <TextView
+        android:id="@+id/tv_empty_templates"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="You haven't saved any templates yet. \nSchedule an event using the AI and save it!"
+        android:textAlignment="center"
+        android:textColor="#94A3B8"
+        android:textSize="14sp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/tv_recent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
