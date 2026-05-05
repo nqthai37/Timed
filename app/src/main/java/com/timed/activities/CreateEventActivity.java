@@ -16,6 +16,8 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.graphics.Insets;
@@ -23,6 +25,7 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.timed.Features.ConflictResolver.ConflictEvent;
 import com.timed.R;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -33,6 +36,7 @@ import com.timed.models.Event;
 import com.timed.models.User;
 import com.timed.repositories.UserRepository;
 import com.timed.services.EventNotificationReceiver;
+import com.timed.repositories.EventsRepository;
 import com.timed.utils.CalendarIntegrationService;
 import com.timed.utils.FirebaseInitializer;
 import com.timed.dialogs.ReminderPickerDialog;
@@ -76,6 +80,8 @@ public class CreateEventActivity extends AppCompatActivity {
     private EventsManager eventsManager;
     private FirebaseInitializer firebaseInitializer;
     private CalendarIntegrationService calendarIntegrationService;
+    private ActivityResultLauncher<Intent> conflictResolverLauncher;
+    private EventsRepository eventsRepository;
     private String mode = "create";
     private String eventId;
     private String calendarId;
@@ -84,7 +90,7 @@ public class CreateEventActivity extends AppCompatActivity {
     private final Map<String, String> ownerNameCache = new HashMap<>();
     private UserRepository userRepository;
     private Event editingEvent;
-    
+
     // 🔔 REMINDERS: Track user-selected reminders
     private List<Long> selectedReminderMinutes = new ArrayList<>();
 
@@ -99,12 +105,12 @@ public class CreateEventActivity extends AppCompatActivity {
         initializeServices();
         readIntentData();
         setupListeners();
-        
+
         //  Initialize default reminders (10 & 30 minutes)
         selectedReminderMinutes.add(10L);
         selectedReminderMinutes.add(30L);
         updateReminderDisplay();
-        
+
         // 🔍 DEBUG: Check notification permissions & settings
         debugNotificationSetup();
 
@@ -121,6 +127,26 @@ public class CreateEventActivity extends AppCompatActivity {
         updateStartTimeButton();
         updateEndDateButton();
         updateEndTimeButton();
+
+        eventsRepository = new EventsRepository();
+        conflictResolverLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == RESULT_OK) {
+                        Intent data = result.getData();
+                        if (data != null) {
+                            long newStart = data.getLongExtra("RESOLVED_START", -1);
+                            long newEnd = data.getLongExtra("RESOLVED_END", -1);
+                            if (newStart != -1 && newEnd != -1) {
+                                startTime = newStart;
+                                endTime = newEnd;
+                                refreshDateTimeButtons();
+                            }
+                        }
+                        proceedToSaveEvent();
+                    }
+                }
+        );
 
         configureModeUI();
         loadCalendars();
@@ -705,22 +731,22 @@ public class CreateEventActivity extends AppCompatActivity {
         if (tvAlertValue == null) {
             return;
         }
-        
+
         if (selectedReminderMinutes.isEmpty()) {
             tvAlertValue.setText("No reminders");
             return;
         }
-        
+
         // Sort reminders
         List<Long> sorted = new ArrayList<>(selectedReminderMinutes);
         sorted.sort(Long::compareTo);
-        
+
         // Format display text
         StringBuilder text = new StringBuilder();
         for (int i = 0; i < sorted.size(); i++) {
             long mins = sorted.get(i);
             if (i > 0) text.append(", ");
-            
+
             if (mins < 60) {
                 text.append(mins).append(" min");
             } else if (mins == 60) {
@@ -733,7 +759,7 @@ public class CreateEventActivity extends AppCompatActivity {
                 text.append(mins / 60).append(" hours");
             }
         }
-        
+
         tvAlertValue.setText(text.toString());
         Log.d(TAG, "📌 Reminders: " + text);
     }
@@ -743,9 +769,6 @@ public class CreateEventActivity extends AppCompatActivity {
      */
     private void saveEvent() {
         String title = etTitle != null ? etTitle.getText().toString().trim() : "";
-        String description = etDescription != null ? etDescription.getText().toString().trim() : "";
-        String location = etLocation != null ? etLocation.getText().toString().trim() : "";
-        boolean isAllDay = cbAllDay != null && cbAllDay.isChecked();
 
         if (title.isEmpty()) {
             if (etTitle != null) {
@@ -760,6 +783,49 @@ public class CreateEventActivity extends AppCompatActivity {
         if (startTime >= endTime) {
             return;
         }
+
+        if (btnSave != null) {
+            btnSave.setEnabled(false);
+            btnSave.setText("Checking...");
+        }
+
+        // SILENT BACKGROUND CHECK
+        eventsRepository.checkConflictsOnDay(startTime, endTime, title, new EventsRepository.OnConflictCheckListener() {
+            @Override
+            public void onConflictsFound(List<ConflictEvent> conflicts) {
+                if (btnSave != null) {
+                    btnSave.setEnabled(true);
+                    btnSave.setText("Save");
+                }
+
+                if (conflicts.isEmpty()) {
+                    proceedToSaveEvent();
+                } else {
+                    Intent intent = new Intent(CreateEventActivity.this, com.timed.Features.ConflictResolver.ConflictResolverActivity.class);
+                    intent.putExtra("NEW_EVENT_START", startTime);
+                    intent.putExtra("NEW_EVENT_END", endTime);
+                    intent.putExtra("NEW_EVENT_TITLE", title);
+                    conflictResolverLauncher.launch(intent);
+                }
+            }
+
+            @Override
+            public void onError(Exception e) {
+                if (btnSave != null) {
+                    btnSave.setEnabled(true);
+                    btnSave.setText("Save");
+                }
+                Log.e(TAG, "Error checking conflicts: " + e.getMessage());
+                proceedToSaveEvent();
+            }
+        });
+    }
+
+    private void proceedToSaveEvent() {
+        String title = etTitle != null ? etTitle.getText().toString().trim() : "";
+        String description = etDescription != null ? etDescription.getText().toString().trim() : "";
+        String location = etLocation != null ? etLocation.getText().toString().trim() : "";
+        boolean isAllDay = cbAllDay != null && cbAllDay.isChecked();
 
         if (isEditMode()) {
             updateExistingEvent(title, description, location, isAllDay);
@@ -794,10 +860,10 @@ public class CreateEventActivity extends AppCompatActivity {
                 });
     }
 
-    // 🔥 ĐÃ SỬA: Lưu Offline + Đặt Alarm Manager
+    // Lưu Offline + Đặt Alarm Manager
     private void saveEventWithCalendar(String title, String description, String location, boolean isAllDay,
             String calendarId) {
-            
+
         // 1. Khởi tạo và sinh ID tĩnh (Đồng bộ giữa Database và Alarm)
         String generatedEventId = FirebaseFirestore.getInstance().collection("events").document().getId();
 
@@ -834,7 +900,7 @@ public class CreateEventActivity extends AppCompatActivity {
 
         // 2. Ghi trực tiếp xuống Cache của Firestore (Không dùng eventsManager để đảm bảo ID không bị ghi đè)
         FirebaseFirestore.getInstance().collection("events").document(generatedEventId).set(newEvent);
-        
+
         // 3. Đặt báo thức Offline cho từng mốc thời gian nhắc nhở
         for (Long mins : selectedReminderMinutes) {
             scheduleEventAlarm(generatedEventId, title, startTime, mins.intValue());
@@ -845,7 +911,7 @@ public class CreateEventActivity extends AppCompatActivity {
         finish();
     }
 
-    // 🔥 ĐÃ SỬA: Cập nhật Offline Fire-and-Forget
+    // Cập nhật Offline Fire-and-Forget
     private void updateExistingEvent(String title, String description, String location, boolean isAllDay) {
         if (eventId == null || eventId.isEmpty()) {
             Toast.makeText(this, "Không tìm thấy sự kiện để cập nhật", Toast.LENGTH_SHORT).show();
@@ -889,7 +955,7 @@ public class CreateEventActivity extends AppCompatActivity {
         target.setAllDay(isAllDay);
         target.setStartTime(new Timestamp(new Date(startTime)));
         target.setEndTime(new Timestamp(new Date(endTime)));
-        
+
         // Cập nhật lại list Reminder
         List<Event.EventReminder> reminders = new ArrayList<>();
         for (Long minutes : selectedReminderMinutes) {
@@ -899,12 +965,12 @@ public class CreateEventActivity extends AppCompatActivity {
 
         // 1. Cập nhật thẳng vào Database
         FirebaseFirestore.getInstance().collection("events").document(eventId).set(target);
-        
+
         // 2. Đặt lại báo thức mới nhất
         for (Long mins : selectedReminderMinutes) {
             scheduleEventAlarm(eventId, title, startTime, mins.intValue());
         }
-        
+
         Toast.makeText(this, "✅ Event updated!", Toast.LENGTH_SHORT).show();
         finish();
     }
@@ -919,7 +985,7 @@ public class CreateEventActivity extends AppCompatActivity {
         Toast.makeText(this, "✅ Event deleted!", Toast.LENGTH_SHORT).show();
         finish();
     }
-    
+
     // 🔔 HÀM MỚI ĐƯỢC THÊM: Đặt báo thức Alarm Manager (Hoạt động offline)
     private void scheduleEventAlarm(String eventId, String title, long eventStartTimeMs, int minutesBefore) {
         AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
@@ -930,7 +996,7 @@ public class CreateEventActivity extends AppCompatActivity {
         // Chỉ đặt nếu giờ báo thức nằm ở tương lai
         if (triggerTime > System.currentTimeMillis()) {
             Intent intent = new Intent(this, EventNotificationReceiver.class);
-            intent.setAction("com.timed.EVENT_REMINDER"); 
+            intent.setAction("com.timed.EVENT_REMINDER");
             intent.putExtra("event_id", eventId);
             intent.putExtra("event_title", title);
 
@@ -961,10 +1027,10 @@ public class CreateEventActivity extends AppCompatActivity {
     // 🔍 DEBUG: Kiểm tra permissions & settings
     private void debugNotificationSetup() {
         Log.d(TAG, "========== DEBUG NOTIFICATION SETUP ==========");
-        
+
         // 1. Check POST_NOTIFICATIONS permission (Android 13+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            int permission = ContextCompat.checkSelfPermission(this, 
+            int permission = ContextCompat.checkSelfPermission(this,
                     Manifest.permission.POST_NOTIFICATIONS);
             if (permission == PackageManager.PERMISSION_GRANTED) {
                 Log.d(TAG, "✅ POST_NOTIFICATIONS: GRANTED");
@@ -977,7 +1043,7 @@ public class CreateEventActivity extends AppCompatActivity {
         } else {
             Log.d(TAG, "✅ POST_NOTIFICATIONS: Not needed (API < 33)");
         }
-        
+
         // 2. Check SCHEDULE_EXACT_ALARM permission (Android 12+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             int permission = ContextCompat.checkSelfPermission(this,
@@ -993,12 +1059,12 @@ public class CreateEventActivity extends AppCompatActivity {
         } else {
             Log.d(TAG, "✅ SCHEDULE_EXACT_ALARM: Not needed (API < 31)");
         }
-        
+
         // 3. Check time settings
         long nowMs = System.currentTimeMillis();
         Log.d(TAG, "Current time: " + new Date(nowMs));
         Log.d(TAG, "Event start time: " + new Date(startTime));
-        
+
         if (startTime <= nowMs) {
             Log.e(TAG, "❌ EVENT TIME IN PAST! Set future time!");
         } else {
@@ -1006,7 +1072,7 @@ public class CreateEventActivity extends AppCompatActivity {
             long diffMins = diffMs / (60 * 1000);
             Log.d(TAG, "✅ Event in future (" + diffMins + " minutes away)");
         }
-        
+
         Log.d(TAG, "========================================");
     }
 

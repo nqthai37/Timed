@@ -60,11 +60,9 @@ public class FeaturesActivity extends AppCompatActivity {
 
         // NHÓM 1: Tối ưu hóa (Hiện tiêu đề ở item đầu tiên)
         features.add(new Feature("AI Scheduling", "...", R.drawable.ic_ai_schedule, AiSchedulingActivity.class, "Optimizing Schedule"));
-        features.add(new Feature("Conflict Resolver", "...", R.drawable.ic_conflict_resolver, ConflictResolverActivity.class, null));
         features.add(new Feature("Free Slot Finder", "...", R.drawable.ic_free_slot_finder, FreeSlotFinderActivity.class, null));
 
         // NHÓM 2: Năng suất (Hiện tiêu đề ở item đầu tiên của nhóm này)
-        features.add(new Feature("Analytics", "...", R.drawable.ic_analytics, AnalyticsActivity.class, "Productivity"));
         features.add(new Feature("Focus Mode", "...", R.drawable.ic_focus, FocusModeActivity.class, null));
         features.add(new Feature("Habit Tracker", "...", R.drawable.ic_habit_tracker, HabitTrackerActivity.class, null));
 
