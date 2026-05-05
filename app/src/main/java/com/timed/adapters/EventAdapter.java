@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.firebase.Timestamp;
 import com.timed.R;
+import com.timed.Setting.Timezone.TimezoneHelper;
 import com.timed.models.Event;
 
 import java.text.SimpleDateFormat;
@@ -21,8 +22,6 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
 
     private final List<Event> events;
     private final OnEventClickListener onEventClickListener;
-
-    private final SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
 
     public interface OnEventClickListener {
         void onEventClick(Event event);
@@ -48,7 +47,7 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
     @Override
     public void onBindViewHolder(@NonNull EventViewHolder holder, int position) {
         Event event = events.get(position);
-        holder.tvEventTime.setText(formatTime(event.getStartTime()));
+        holder.tvEventTime.setText(formatTime(holder.itemView.getContext(), event.getStartTime()));
         holder.tvEventTitle.setText(event.getTitle());
         holder.tvEventDetails.setText(buildDetails(event));
 
@@ -77,12 +76,12 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
         return location;
     }
 
-    private String formatTime(Timestamp timestamp) {
+    private String formatTime(android.content.Context context, Timestamp timestamp) {
         if (timestamp == null) {
             return "";
         }
-        Date date = timestamp.toDate();
-        return timeFormat.format(date);
+        // Use user-selected timezone for time display
+        return TimezoneHelper.formatTime24h(context, timestamp.toDate());
     }
 
     static class EventViewHolder extends RecyclerView.ViewHolder {
