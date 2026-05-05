@@ -73,16 +73,10 @@ public class EventsRepository {
      * Get events by calendar ID and date range
      */
     public Task<QuerySnapshot> getEventsByDateRange(String calendarId, Timestamp startDate, Timestamp endDate) {
-        // Query by start_time only so recurring parent events (which may start before rangeStart)
-        // can still be loaded and expanded on the client side.
-        if (endDate == null) {
-            return db.collection(EVENTS_COLLECTION)
-                .orderBy("start_time", Query.Direction.ASCENDING)
-                .get();
-    }
-
-        return db.collection(EVENTS_COLLECTION)
-            .whereLessThanOrEqualTo("start_time", endDate)
+        Task<QuerySnapshot> t = db.collection(EVENTS_COLLECTION)
+                .whereEqualTo("calendar_id", calendarId)
+                .whereGreaterThanOrEqualTo("start_time", startDate)
+                .whereLessThanOrEqualTo("start_time", endDate)
                 .orderBy("start_time", Query.Direction.ASCENDING)
                 .get();
         t.addOnFailureListener(e -> logRepoError("getEventsByDateRange", e));

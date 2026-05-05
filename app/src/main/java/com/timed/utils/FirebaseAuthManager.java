@@ -35,7 +35,7 @@ public class FirebaseAuthManager {
      */
     public void registerUser(String email, String password, AuthCallback callback) {
         if (email == null || email.isEmpty() || password == null || password.isEmpty()) {
-            callback.onFailure("Email and password must not be empty");
+            callback.onFailure("Email và password không được để trống");
             return;
         }
 
@@ -46,11 +46,11 @@ public class FirebaseAuthManager {
                         Log.d(TAG, "User registered successfully: " + userId);
                         callback.onSuccess(userId);
                     } else {
-                        String errorMessage = "Registration failed";
+                        String errorMessage = "Đăng ký thất bại";
                         if (task.getException() instanceof FirebaseAuthUserCollisionException) {
-                            errorMessage = "Email is already in use";
+                            errorMessage = "Email đã được sử dụng";
                         } else if (task.getException() instanceof FirebaseAuthWeakPasswordException) {
-                            errorMessage = "Password is too weak (minimum 6 characters)";
+                            errorMessage = "Mật khẩu quá yếu (tối thiểu 6 ký tự)";
                         } else if (task.getException() != null) {
                             errorMessage = task.getException().getMessage();
                         }
@@ -69,7 +69,7 @@ public class FirebaseAuthManager {
      */
     public void loginUser(String email, String password, AuthCallback callback) {
         if (email == null || email.isEmpty() || password == null || password.isEmpty()) {
-            callback.onFailure("Email and password must not be empty");
+            callback.onFailure("Email và password không được để trống");
             return;
         }
 
@@ -80,7 +80,7 @@ public class FirebaseAuthManager {
                         Log.d(TAG, "User logged in successfully: " + userId);
                         callback.onSuccess(userId);
                     } else {
-                        String errorMessage = "Login failed";
+                        String errorMessage = "Đăng nhập thất bại";
                         if (task.getException() != null) {
                             errorMessage = task.getException().getMessage();
                         }
@@ -133,7 +133,7 @@ public class FirebaseAuthManager {
      */
     public void sendPasswordResetEmail(String email, AuthCallback callback) {
         if (email == null || email.isEmpty()) {
-            callback.onFailure("Email must not be empty");
+            callback.onFailure("Email không được để trống");
             return;
         }
 
@@ -143,7 +143,7 @@ public class FirebaseAuthManager {
                         Log.d(TAG, "Password reset email sent to: " + email);
                         callback.onSuccess(email);
                     } else {
-                        String errorMessage = "Failed to send email";
+                        String errorMessage = "Gửi email thất bại";
                         if (task.getException() != null) {
                             errorMessage = task.getException().getMessage();
                         }
@@ -161,12 +161,12 @@ public class FirebaseAuthManager {
      */
     public void updatePassword(String newPassword, AuthCallback callback) {
         if (newPassword == null || newPassword.isEmpty()) {
-            callback.onFailure("Password must not be empty");
+            callback.onFailure("Mật khẩu không được để trống");
             return;
         }
 
         if (mAuth.getCurrentUser() == null) {
-            callback.onFailure("User is not logged in");
+            callback.onFailure("Người dùng chưa đăng nhập");
             return;
         }
 
@@ -174,9 +174,9 @@ public class FirebaseAuthManager {
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
                         Log.d(TAG, "Password updated successfully");
-                        callback.onSuccess("Password updated successfully");
+                        callback.onSuccess("Cập nhật mật khẩu thành công");
                     } else {
-                        String errorMessage = "Failed to update password";
+                        String errorMessage = "Cập nhật mật khẩu thất bại";
                         if (task.getException() != null) {
                             errorMessage = task.getException().getMessage();
                         }
