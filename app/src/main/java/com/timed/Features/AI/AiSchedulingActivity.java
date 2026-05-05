@@ -3,6 +3,8 @@ package com.timed.Features.AI;
 import android.app.Dialog;
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.transition.TransitionManager;
 import android.view.View;
 import android.view.ViewGroup;
@@ -55,6 +57,8 @@ public class AiSchedulingActivity extends AppCompatActivity {
     private EditText etAiInput;
     private ImageView ivSend;
     private AiRepository aiRepository;
+    private String lastUsedPrompt = "";
+    private boolean isCurrentPromptFromTemplate = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -71,6 +75,19 @@ public class AiSchedulingActivity extends AppCompatActivity {
         eventsRepository = new EventsRepository();
         calendarRepository = new CalendarRepository();
         templateRepository = new TemplateRepository();
+
+        etAiInput.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                isCurrentPromptFromTemplate = false;
+            }
+        });
 
 
         setupPromptButton();
@@ -103,12 +120,13 @@ public class AiSchedulingActivity extends AppCompatActivity {
                         scheduleList = new ArrayList<>();
 
                         for (AiPromptTemplate qt : templates) {
-                            scheduleList.add(new AiSchedule(qt.getId(), qt.getPromptText(), qt.getTitle(), true));
+                            scheduleList.add(new AiSchedule(qt.getId(), qt.getTitle(), qt.getPromptText(), true));
                         }
 
                         adapter = new AiScheduleAdapter(scheduleList,
                                 clickedTemplate -> {
-                            etAiInput.setText(clickedTemplate.getTitle());
+                            etAiInput.setText(clickedTemplate.getStatus());
+                            isCurrentPromptFromTemplate = true;
                             ivSend.performClick();
                         }, longClickedTemplate -> {
                             new android.app.AlertDialog.Builder(AiSchedulingActivity.this)
@@ -154,6 +172,10 @@ public class AiSchedulingActivity extends AppCompatActivity {
         ivSend.setOnClickListener(v -> {
             String prompt = etAiInput.getText().toString().trim();
             if (!prompt.isEmpty()) {
+                lastUsedPrompt = prompt;
+
+                final boolean wasTemplateUsed = isCurrentPromptFromTemplate;
+
                 openBottomSheetInLoadingState();
                 etAiInput.setText("");
 
@@ -184,8 +206,7 @@ public class AiSchedulingActivity extends AppCompatActivity {
                                                     return;
                                                 }
 
-                                                etAiInput.setText(extractedData.title);
-                                                updateBottomSheetWithResults(displayDate, top3);
+                                                updateBottomSheetWithResults(displayDate, top3, wasTemplateUsed);
                                             }
                                         }
 
@@ -390,7 +411,7 @@ public class AiSchedulingActivity extends AppCompatActivity {
         aiSheetDialog.show();
     }
 
-    private void updateBottomSheetWithResults(String dateString, List<FreeSlot> generatedSlots) {
+    private void updateBottomSheetWithResults(String dateString, List<FreeSlot> generatedSlots, boolean wasTemplateUsed) {
         if (aiSheetDialog == null || !aiSheetDialog.isShowing()) return;
 
         TransitionManager.beginDelayedTransition((ViewGroup) sheetView);
@@ -421,8 +442,14 @@ public class AiSchedulingActivity extends AppCompatActivity {
             scheduleEventDirectly(currentSelectedAiSlot);
         });
 
+        if (wasTemplateUsed) {
+            btnSaveTemplate.setVisibility(View.GONE);
+        } else {
+            btnSaveTemplate.setVisibility(View.VISIBLE);
+        }
+
         btnSaveTemplate.setOnClickListener(v -> {
-            String currentPrompt = etAiInput.getText().toString().trim();
+            String currentPrompt = lastUsedPrompt;
 
             android.widget.EditText inputTitle = new android.widget.EditText(this);
             inputTitle.setHint("e.g., Focus Time");

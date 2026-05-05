@@ -50,6 +50,8 @@
                 android:id="@+id/tv_schedule_status"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:ellipsize="end"
                 android:layout_marginTop="4dp"
                 android:text="Scheduled successfully"
                 android:textColor="#10B981" 
