@@ -48,11 +48,14 @@ public class FirebaseHelper {
         db.collection("_connectionTest")
                 .limit(1)
                 .get()
-                .addOnSuccessListener(queryDocumentSnapshots -> callback.onSuccess(true))
-                        .addOnFailureListener(e -> {
-                            logDetailedError("checkConnection failed", e);
-                            callback.onFailure("Không thể kết nối đến Firebase: " + e.toString());
-                        });
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    Log.d(TAG, "Firebase connection successful");
+                    callback.onSuccess(true);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Firebase connection failed: " + e.getMessage(), e);
+                    callback.onFailure("Unable to connect to Firebase: " + e.getMessage());
+                });
     }
 
     /**
@@ -64,8 +67,8 @@ public class FirebaseHelper {
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> callback.onSuccess(true))
                 .addOnFailureListener(e -> {
-                    logDetailedError("checkUserPermission failed for: " + collection, e);
-                    callback.onFailure("Không có quyền truy cập: " + collection + ": " + e.toString());
+                    Log.e(TAG, "Permission denied for collection: " + collection);
+                    callback.onFailure("No permission to access: " + collection);
                 });
     }
 

@@ -7,14 +7,19 @@ import com.timed.models.Event;
 import com.timed.repositories.EventsRepository;
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.tasks.Tasks;
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
+import com.timed.utils.RecurrenceUtils;
 
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public class EventsManager {
@@ -22,6 +27,7 @@ public class EventsManager {
     private final EventsRepository eventsRepository;
     private final EventsNotificationManager notificationManager;
     private static final String TAG = "EventsManager";
+    private static final int MAX_RANGE_OCCURRENCES = 512;
 
     private EventsManager(Context context) {
         this.eventsRepository = new EventsRepository();
@@ -111,10 +117,15 @@ public class EventsManager {
                                 : new Exception("Failed to load events"));
                     }
 
+                    String currentUserId = getCurrentUserId();
+
                     List<Event> events = new ArrayList<>();
                     QuerySnapshot snapshot = task.getResult();
                     for (QueryDocumentSnapshot doc : snapshot) {
                         Event event = doc.toObject(Event.class);
+                        if (event == null || !isEventVisibleToUser(event, currentUserId)) {
+                            continue;
+                        }
                         event.setId(doc.getId());
                         events.add(event);
                     }
@@ -135,6 +146,15 @@ public class EventsManager {
                                 : new Exception("Failed to load events by date range"));
                     }
 
+                    long rangeStart = startDate != null
+                            ? startDate.toDate().getTime()
+                            : Long.MIN_VALUE;
+                    long rangeEnd = endDate != null
+                            ? endDate.toDate().getTime()
+                            : Long.MAX_VALUE;
+
+                    String currentUserId = getCurrentUserId();
+
                     List<Event> events = new ArrayList<>();
                     QuerySnapshot snapshot = task.getResult();
 
@@ -142,7 +162,20 @@ public class EventsManager {
 
                     for (QueryDocumentSnapshot doc : snapshot) {
                         Event event = doc.toObject(Event.class);
+                        if (event == null) {
+                            continue;
+                        }
+
+                        if (!isEventVisibleToUser(event, currentUserId)) {
+                            continue;
+                        }
+
                         event.setId(doc.getId());
+
+                        if (!isCalendarMatch(event, calendarId)) {
+                            continue;
+                        }
+
 
                         // Determine effective event end time (fallback to startTime if missing)
                         com.google.firebase.Timestamp eventEnd = event.getEndTime() != null ? event.getEndTime()
@@ -155,12 +188,175 @@ public class EventsManager {
 
                         // Include events that end at or after the window start (i.e., they overlap)
                         if (eventEnd.toDate().getTime() >= windowStart) {
-                            events.add(event);
+                            events.addAll(expandEventForRange(event, rangeStart, rangeEnd));
                         }
                     }
 
+                    events.sort(Comparator.comparingLong(this::getStartMillisForSort));
+
                     return events;
                 });
+    }
+
+    private boolean isCalendarMatch(Event event, String expectedCalendarId) {
+        if (expectedCalendarId == null || expectedCalendarId.trim().isEmpty()) {
+            return true;
+        }
+
+        if (event == null || event.getCalendarId() == null) {
+            return false;
+        }
+
+        return expectedCalendarId.equalsIgnoreCase(event.getCalendarId());
+    }
+
+    private String getCurrentUserId() {
+        if (FirebaseAuth.getInstance().getCurrentUser() == null) {
+            return null;
+        }
+        return FirebaseAuth.getInstance().getCurrentUser().getUid();
+    }
+
+    private boolean isEventVisibleToUser(Event event, String currentUserId) {
+        if (event == null || currentUserId == null || currentUserId.trim().isEmpty()) {
+            return false;
+        }
+
+        String createdBy = event.getCreatedBy();
+        if (createdBy != null && currentUserId.equals(createdBy)) {
+            return true;
+        }
+
+        List<String> participantIds = event.getParticipantId();
+        return participantIds != null && participantIds.contains(currentUserId);
+    }
+
+    private List<Event> expandEventForRange(Event event, long rangeStart, long rangeEnd) {
+        List<Event> expanded = new ArrayList<>();
+        if (event == null || event.getStartTime() == null) {
+            return expanded;
+        }
+
+        String recurrenceRule = event.getRecurrenceRule();
+        if (recurrenceRule == null || recurrenceRule.trim().isEmpty()) {
+            if (isEventOverlappingRange(event, rangeStart, rangeEnd)) {
+                expanded.add(event);
+            }
+            return expanded;
+        }
+
+        long eventStart = event.getStartTime().toDate().getTime();
+        long eventEnd = event.getEndTime() != null
+                ? event.getEndTime().toDate().getTime()
+                : eventStart;
+        long duration = Math.max(0L, eventEnd - eventStart);
+
+        RecurrenceUtils.RecurrenceRule parsedRule = RecurrenceUtils.parseRRule(recurrenceRule);
+        List<Long> occurrenceStarts = RecurrenceUtils.generateOccurrencesInRange(
+                eventStart,
+                parsedRule,
+                rangeStart,
+                rangeEnd,
+                event.getRecurrenceExceptions(),
+                MAX_RANGE_OCCURRENCES
+        );
+
+        for (Long occurrenceStart : occurrenceStarts) {
+            if (occurrenceStart == null) {
+                continue;
+            }
+            long occurrenceEnd = occurrenceStart + duration;
+            expanded.add(copyEventForOccurrence(event, occurrenceStart, occurrenceEnd));
+        }
+
+        return expanded;
+    }
+
+    private Event copyEventForOccurrence(Event source, long occurrenceStart, long occurrenceEnd) {
+        Event occurrence = new Event();
+
+        occurrence.setId(source.getId());
+        occurrence.setTitle(source.getTitle());
+        occurrence.setDescription(source.getDescription());
+        occurrence.setLocation(source.getLocation());
+        occurrence.setAllDay(source.getAllDay());
+        occurrence.setTimezone(source.getTimezone());
+        occurrence.setCreatedBy(source.getCreatedBy());
+        occurrence.setCalendarId(source.getCalendarId());
+        occurrence.setVisibility(source.getVisibility());
+        occurrence.setCreatedAt(source.getCreatedAt());
+        occurrence.setUpdatedAt(source.getUpdatedAt());
+        occurrence.setRecurrenceRule(source.getRecurrenceRule());
+
+        if (source.getRecurrenceExceptions() != null) {
+            occurrence.setRecurrenceExceptions(new ArrayList<>(source.getRecurrenceExceptions()));
+        } else {
+            occurrence.setRecurrenceExceptions(new ArrayList<>());
+        }
+
+        if (source.getParticipantId() != null) {
+            occurrence.setParticipantId(new ArrayList<>(source.getParticipantId()));
+        }
+
+        if (source.getParticipantStatus() != null) {
+            occurrence.setParticipantStatus(new HashMap<>(source.getParticipantStatus()));
+        }
+
+        if (source.getReminders() != null) {
+            List<Event.EventReminder> reminders = new ArrayList<>();
+            for (Event.EventReminder reminder : source.getReminders()) {
+                if (reminder == null) {
+                    continue;
+                }
+                reminders.add(new Event.EventReminder(reminder.getMinutesBefore(), reminder.getType()));
+            }
+            occurrence.setReminders(reminders);
+        }
+
+        if (source.getAttachments() != null) {
+            List<Event.EventAttachment> attachments = new ArrayList<>();
+            for (Event.EventAttachment attachment : source.getAttachments()) {
+                if (attachment == null) {
+                    continue;
+                }
+                attachments.add(new Event.EventAttachment(attachment.getName(), attachment.getUrl()));
+            }
+            occurrence.setAttachments(attachments);
+        }
+
+        String parentId = source.getInstanceOf();
+        if (parentId == null || parentId.isEmpty()) {
+            parentId = source.getId();
+        }
+        occurrence.setInstanceOf(parentId);
+
+        occurrence.setStartTime(new Timestamp(new java.util.Date(occurrenceStart)));
+        occurrence.setEndTime(new Timestamp(new java.util.Date(occurrenceEnd)));
+        return occurrence;
+    }
+
+    private boolean isEventOverlappingRange(Event event, long rangeStart, long rangeEnd) {
+        if (event == null || event.getStartTime() == null) {
+            return false;
+        }
+
+        long eventStart = event.getStartTime().toDate().getTime();
+        long eventEnd = event.getEndTime() != null
+                ? event.getEndTime().toDate().getTime()
+                : eventStart;
+
+        if (eventEnd < eventStart) {
+            eventEnd = eventStart;
+        }
+
+        return eventStart <= rangeEnd && eventEnd >= rangeStart;
+    }
+
+    private long getStartMillisForSort(Event event) {
+        if (event == null || event.getStartTime() == null) {
+            return Long.MAX_VALUE;
+        }
+        return event.getStartTime().toDate().getTime();
     }
 
     /**
@@ -297,15 +493,20 @@ public class EventsManager {
      * Call this periodically (e.g., on app startup, in a worker)
      */
     public void rescheduleAllReminders(String userId) {
-        getEventsThatNeedReminders(userId)
-                .addOnSuccessListener(events -> {
-                    for (Event event : events) {
+        eventsRepository.getEventsByParticipant(userId)
+                .addOnSuccessListener(snapshot -> {
+                    int scheduled = 0;
+                    for (QueryDocumentSnapshot doc : snapshot) {
+                        Event event = doc.toObject(Event.class);
+                        if (event == null) {
+                            continue;
+                        }
+                        event.setId(doc.getId());
                         notificationManager.scheduleEventReminders(event);
+                        scheduled++;
                     }
-                    Log.d(TAG, "Rescheduled reminders for " + events.size() + " events");
+                    Log.d(TAG, "Rescheduled reminders for " + scheduled + " events");
                 })
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "Failed to reschedule reminders", e);
-                });
+                .addOnFailureListener(e -> Log.e(TAG, "Failed to reschedule reminders", e));
     }
 }

@@ -15,8 +15,10 @@ import com.timed.R;
 import com.timed.activities.MainActivity;
 import com.timed.models.Event;
 import com.timed.services.EventNotificationReceiver;
+import com.timed.utils.RecurrenceUtils;
 
 import java.util.Date;
+import java.util.List;
 
 public class EventsNotificationManager {
     private static final String TAG = "EventsNotificationManager";
@@ -24,6 +26,8 @@ public class EventsNotificationManager {
     private final NotificationManager notificationManager;
     private static final String CHANNEL_ID = "events_reminders_channel";
     private static final int NOTIFICATION_ID_BASE = 2000;
+    private static final long LOOKAHEAD_WINDOW_MS = 60L * 24L * 60L * 60L * 1000L;
+    private static final int MAX_REMINDER_OCCURRENCES = 256;
 
     public EventsNotificationManager(Context context) {
         this.context = context;
@@ -84,43 +88,178 @@ public class EventsNotificationManager {
         notificationManager.notify(NOTIFICATION_ID_BASE + (int) (eventId.hashCode() % 10000), builder.build());
     }
 
-    // HÀM XÓA THÔNG BÁO
-    public void cancelNotification(String eventId) {
-        if (eventId != null) {
-            notificationManager.cancel(NOTIFICATION_ID_BASE + (int) (eventId.hashCode() % 10000));
+    /**
+     * Schedule reminders for upcoming event occurrences (supports recurrence)
+     */
+    public void scheduleEventReminders(Event event) {
+        if (event == null || event.getId() == null || event.getStartTime() == null) {
+            return;
+        }
+        if (event.getReminders() == null || event.getReminders().isEmpty()) {
+            return;
+        }
+
+        long occurrenceStartTimeMillis = resolveNextOccurrenceStart(event);
+        if (occurrenceStartTimeMillis <= 0L) {
+            Log.d(TAG, "No upcoming occurrence found for event: " + event.getId());
+            return;
+        }
+
+        for (int i = 0; i < event.getReminders().size(); i++) {
+            Event.EventReminder reminder = event.getReminders().get(i);
+            if (reminder == null || reminder.getMinutesBefore() == null) {
+                continue;
+            }
+
+            long notificationTimeMillis = occurrenceStartTimeMillis
+                    - (reminder.getMinutesBefore() * 60L * 1000L);
+
+            if (notificationTimeMillis < System.currentTimeMillis()) {
+                Log.d(TAG, "Skipping reminder in the past for event: " + event.getId());
+                continue;
+            }
+
+            scheduleReminderAtTime(event, reminder, i, notificationTimeMillis, occurrenceStartTimeMillis);
         }
     }
 
-    // HÀM HỦY THÔNG BÁO SỰ KIỆN (EVENT)
-    public void cancelEventReminders(Event event) {
-        if (event != null && event.getId() != null) {
-            cancelNotification(event.getId());
-            // Also cancel any alarms if they exist
-            AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-            if (alarmManager != null) {
-                Intent intent = new Intent(context, EventNotificationReceiver.class);
-                intent.setAction("ACTION_SHOW_EVENT_NOTIFICATION");
-                PendingIntent pendingIntent = PendingIntent.getBroadcast(
-                        context, event.getId().hashCode(), intent,
-                        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-                alarmManager.cancel(pendingIntent);
+    private long resolveNextOccurrenceStart(Event event) {
+        long eventStartTimeMillis = event.getStartTime().toDate().getTime();
+        String recurrenceRuleText = event.getRecurrenceRule();
+
+        if (recurrenceRuleText == null || recurrenceRuleText.trim().isEmpty()) {
+            return eventStartTimeMillis;
+        }
+
+        RecurrenceUtils.RecurrenceRule rule = RecurrenceUtils.parseRRule(recurrenceRuleText);
+        long now = System.currentTimeMillis();
+        long searchStart = Math.max(eventStartTimeMillis, now - ONE_HOUR_MS);
+        long searchEnd = now + LOOKAHEAD_WINDOW_MS;
+
+        List<Long> upcoming = RecurrenceUtils.generateOccurrencesInRange(
+                eventStartTimeMillis,
+                rule,
+                searchStart,
+                searchEnd,
+                event.getRecurrenceExceptions(),
+                MAX_REMINDER_OCCURRENCES
+        );
+
+        for (Long occurrence : upcoming) {
+            if (occurrence != null && occurrence >= now) {
+                return occurrence;
+            }
+        }
+
+        return -1L;
+    }
+
+    private static final long ONE_HOUR_MS = 60L * 60L * 1000L;
+
+    /**
+     * Schedule a single reminder for a specific time
+     */
+    private void scheduleReminderAtTime(Event event, Event.EventReminder reminder,
+                                        int reminderIndex, long notificationTimeMillis,
+                                        long occurrenceStartTimeMillis) {
+        Intent intent = new Intent(context, EventNotificationReceiver.class);
+        intent.setAction("com.timed.EVENT_REMINDER");
+        intent.putExtra("event_id", event.getId());
+        intent.putExtra("event_title", event.getTitle());
+        intent.putExtra("event_description", event.getDescription());
+        intent.putExtra("event_location", event.getLocation());
+        intent.putExtra("occurrence_start_time", occurrenceStartTimeMillis);
+        intent.putExtra("reminder_type", reminder.getType());
+        intent.putExtra("reminder_minutes_before", reminder.getMinutesBefore());
+        intent.putExtra("reminder_index", reminderIndex);
+
+        int requestCode = (event.getId().hashCode() + reminderIndex) % 20000;
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                context,
+                requestCode,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        AlarmManager alarmManager = 
+                (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager != null) {
+            try {
+                alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        notificationTimeMillis,
+                        pendingIntent
+                );
+                Log.d(TAG, "Scheduled reminder for event: " + event.getId() +
+                    " (occurrence at " + new Date(occurrenceStartTimeMillis) + ")" +
+                    " at " + new Date(notificationTimeMillis));
+            } catch (SecurityException e) {
+                Log.e(TAG, "SecurityException when scheduling reminder: " + e.getMessage());
             }
         }
     }
 
-    // ==============================================================
-    // HÀM MỚI: HIỂN THỊ THÔNG BÁO CHO CÔNG VIỆC (TASK)
-    // ==============================================================
+    /**
+     * Cancel all reminders for an event
+     */
+    public void cancelEventReminders(Event event) {
+        if (event == null || event.getReminders() == null) {
+            return;
+        }
+        for (int i = 0; i < event.getReminders().size(); i++) {
+            cancelReminderAtIndex(event.getId(), i);
+        }
+    }
+
+    private void cancelReminderAtIndex(String eventId, int reminderIndex) {
+        if (eventId == null) {
+            return;
+        }
+
+        Intent intent = new Intent(context, EventNotificationReceiver.class);
+        intent.setAction("com.timed.EVENT_REMINDER");
+
+        int requestCode = (eventId.hashCode() + reminderIndex) % 20000;
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                context,
+                requestCode,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager != null) {
+            try {
+                alarmManager.cancel(pendingIntent);
+                Log.d(TAG, "Cancelled reminder for event: " + eventId);
+            } catch (Exception e) {
+                Log.e(TAG, "Error cancelling reminder: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Cancel notification by event ID
+     */
+    public void cancelNotification(String eventId) {
+        if (eventId == null) {
+            return;
+        }
+        int notificationId = NOTIFICATION_ID_BASE + (int) (eventId.hashCode() % 10000);
+        notificationManager.cancel(notificationId);
+    }
+
+    /**
+     * Show notification for tasks
+     */
     public void showTaskNotification(String taskId, String title, String description) {
         if (taskId == null) return;
 
-        // Intent khi nhấn vào thân thông báo (Mở app)
         Intent openAppIntent = new Intent(context, MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(
                 context, taskId.hashCode(), openAppIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-        // Intent cho nút "Xong"
         Intent doneIntent = new Intent(context, EventNotificationReceiver.class);
         doneIntent.setAction("ACTION_TASK_DONE");
         doneIntent.putExtra("TASK_ID", taskId);
@@ -128,81 +267,18 @@ public class EventsNotificationManager {
                 context, taskId.hashCode() + 1, doneIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-        // Xây dựng thông báo Pop-up
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_calendar) // Đổi thành icon thật của app bạn
+                .setSmallIcon(R.drawable.ic_calendar)
                 .setContentTitle(title)
-                .setContentText(description != null && !description.isEmpty() ? description : "Đến hạn hoàn thành công việc!")
+                .setContentText(description != null && !description.isEmpty()
+                        ? description
+                        : "Đến hạn hoàn thành công việc!")
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_REMINDER)
                 .setAutoCancel(true)
-                .setFullScreenIntent(pendingIntent, true) // Lệnh quan trọng nhất để bung Pop-up
+                .setFullScreenIntent(pendingIntent, true)
                 .addAction(R.drawable.ic_check_gray, "Đã xong", donePendingIntent);
 
-        // Hiển thị ra màn hình
         notificationManager.notify(taskId.hashCode(), builder.build());
-    }
-
-    public void scheduleEventReminders(Event event) {
-        // 1. Kiểm tra nếu sự kiện không có thời gian bắt đầu hoặc không có nhắc nhở thì bỏ qua
-        if (event == null || event.getStartTime() == null || event.getReminders() == null || event.getReminders().isEmpty()) {
-            return;
-        }
-
-        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        if (alarmManager == null) return;
-
-        // Lấy thời gian bắt đầu của sự kiện (đổi ra mili-giây)
-        long eventStartTimeMs = event.getStartTime().toDate().getTime();
-        long currentTimeMs = System.currentTimeMillis();
-
-        // 2. Duyệt qua từng chuông báo (nhắc nhở) của sự kiện này
-        for (int i = 0; i < event.getReminders().size(); i++) {
-
-            Event.EventReminder reminder = event.getReminders().get(i);
-            if (reminder == null) continue;
-
-            long minutesBefore = reminder.getMinutesBefore() != null ? reminder.getMinutesBefore() : 10L;
-            String method = reminder.getType() != null ? reminder.getType() : "push";
-
-            // Tính thời gian đổ chuông = Thời gian bắt đầu - Số phút báo trước
-            long triggerTimeMs = eventStartTimeMs - (minutesBefore * 60 * 1000L);
-
-            // 3. CHỈ đặt báo thức nếu thời gian đổ chuông nằm trong tương lai (chưa trôi qua)
-            if (triggerTimeMs > currentTimeMs) {
-
-                // Tạo Intent gửi đến EventNotificationReceiver mà bạn đã viết
-                Intent intent = new Intent(context, EventNotificationReceiver.class);
-                intent.setAction("com.timed.EVENT_REMINDER"); // Action này phải khớp với Receiver
-
-                // Gửi kèm dữ liệu để khi Receiver nhận được có thể vẽ lên Pop-up
-                intent.putExtra("event_id", event.getId());
-                intent.putExtra("event_title", event.getTitle() != null ? event.getTitle() : "Sự kiện");
-                intent.putExtra("event_description", event.getDescription());
-                intent.putExtra("event_location", event.getLocation());
-                intent.putExtra("reminder_type", method);
-
-                // TẠO MÃ UNIQUE CHO REQUEST CODE: Để các chuông báo không đè lên nhau
-                // (Ví dụ: Sự kiện A báo trước 10p là 1 mã, báo trước 30p là 1 mã khác)
-                int requestCode = (event.getId() + "_" + minutesBefore).hashCode();
-
-                PendingIntent pendingIntent = PendingIntent.getBroadcast(
-                        context,
-                        requestCode,
-                        intent,
-                        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-                );
-
-                // 4. Yêu cầu hệ thống Android hẹn giờ chính xác
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    // Cho phép rung chuông ngay cả khi điện thoại đang ngủ (Doze Mode)
-                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTimeMs, pendingIntent);
-                } else {
-                    alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerTimeMs, pendingIntent);
-                }
-
-                Log.d(TAG, "Đã hẹn giờ sự kiện: " + event.getTitle() + " lúc " + new Date(triggerTimeMs).toString());
-            }
-        }
     }
 }

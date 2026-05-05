@@ -1156,8 +1156,9 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         intent.putExtra("title", event.getTitle());
         intent.putExtra("description", event.getDescription());
         intent.putExtra("location", event.getLocation());
-        intent.putExtra("startTime", event.getStartTime() != null ? event.getStartTime().toDate().getTime() : 0L);
-        intent.putExtra("endTime", event.getEndTime() != null ? event.getEndTime().toDate().getTime() : 0L);
+        boolean recurring = event.getRecurrenceRule() != null && !event.getRecurrenceRule().trim().isEmpty();
+        intent.putExtra("startTime", recurring ? 0L : (event.getStartTime() != null ? event.getStartTime().toDate().getTime() : 0L));
+        intent.putExtra("endTime", recurring ? 0L : (event.getEndTime() != null ? event.getEndTime().toDate().getTime() : 0L));
         intent.putExtra("allDay", event.getAllDay() != null && event.getAllDay());
         startActivity(intent);
     }
@@ -1222,7 +1223,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
 
         } catch (Exception e) {
             Log.e(TAG, "Error initializing Firebase: " + e.getMessage(), e);
-            Toast.makeText(this, "Lỗi khởi tạo Firebase", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Failed to initialize Firebase", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -1234,11 +1235,13 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             @Override
             public void onSuccess(Boolean result) {
                 Log.d(TAG, "Firebase connection verified");
+                Toast.makeText(MainActivity.this, "Firebase connected successfully", Toast.LENGTH_SHORT).show();
             }
 
             @Override
             public void onFailure(String errorMessage) {
                 Log.e(TAG, "Firebase connection failed: " + errorMessage);
+                Toast.makeText(MainActivity.this, "Firebase connection error: " + errorMessage, Toast.LENGTH_SHORT).show();
             }
         });
     }
