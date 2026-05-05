@@ -3,6 +3,10 @@ package com.timed.activities;
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
 import android.app.AlertDialog;
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -21,12 +25,14 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.timed.R;
 import com.google.firebase.Timestamp;
+import com.google.firebase.firestore.FirebaseFirestore;
 import com.timed.managers.EventsManager;
 import com.timed.managers.UserManager;
 import com.timed.models.CalendarModel;
 import com.timed.models.Event;
 import com.timed.models.User;
 import com.timed.repositories.UserRepository;
+import com.timed.services.EventNotificationReceiver;
 import com.timed.utils.CalendarIntegrationService;
 import com.timed.utils.FirebaseInitializer;
 import com.timed.dialogs.ReminderPickerDialog;
@@ -94,12 +100,12 @@ public class CreateEventActivity extends AppCompatActivity {
         readIntentData();
         setupListeners();
         
-        // � Initialize default reminders (10 & 30 minutes)
+        //  Initialize default reminders (10 & 30 minutes)
         selectedReminderMinutes.add(10L);
         selectedReminderMinutes.add(30L);
         updateReminderDisplay();
         
-        // �🔍 DEBUG: Check notification permissions & settings
+        // 🔍 DEBUG: Check notification permissions & settings
         debugNotificationSetup();
 
         if (startTime <= 0 || endTime <= 0) {
@@ -788,11 +794,14 @@ public class CreateEventActivity extends AppCompatActivity {
                 });
     }
 
+    // 🔥 ĐÃ SỬA: Lưu Offline + Đặt Alarm Manager
     private void saveEventWithCalendar(String title, String description, String location, boolean isAllDay,
             String calendarId) {
-        Event newEvent = new Event();
-        CalendarModel selectedCalendar = calendarsById.get(calendarId);
+            
+        // 1. Khởi tạo và sinh ID tĩnh (Đồng bộ giữa Database và Alarm)
+        String generatedEventId = FirebaseFirestore.getInstance().collection("events").document().getId();
 
+        Event newEvent = new Event();
         newEvent.setCalendarId(calendarId);
         if (selectedCalendar != null) {
             newEvent.setCalendarName(selectedCalendar.getName());
@@ -812,38 +821,28 @@ public class CreateEventActivity extends AppCompatActivity {
             newEvent.getParticipantStatus().put(userId, "accepted");
         }
 
-        // 🔔 ADD USER-SELECTED REMINDERS
         List<Event.EventReminder> reminders = new ArrayList<>();
         for (Long minutes : selectedReminderMinutes) {
             reminders.add(new Event.EventReminder(minutes, "push"));
         }
         newEvent.setReminders(reminders);
 
-        Log.d(TAG, "📌 Event to save:");
-        Log.d(TAG, "   Title: " + title);
-        Log.d(TAG, "   Start: " + new Date(startTime));
-        Log.d(TAG, "   End: " + new Date(endTime));
-        Log.d(TAG, "   Reminders: " + reminders.size());
-        for (Event.EventReminder r : reminders) {
-            Log.d(TAG, "      - " + r.getMinutesBefore() + " min before");
-        }
-
         calendarIntegrationService.setCachedDefaultCalendarId(this, calendarId);
 
-        eventsManager.createEvent(newEvent)
-                .addOnSuccessListener(docRef -> {
-                    Log.d(TAG, "✅ Event saved: " + docRef.getId());
-                    Toast.makeText(CreateEventActivity.this, 
-                            "✅ Event created! Reminders set: " + selectedReminderMinutes.size(), 
-                            Toast.LENGTH_LONG).show();
-                    finish();
-                })
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "❌ Error saving event: " + e.getMessage(), e);
-                    Toast.makeText(CreateEventActivity.this, "❌ Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
+        // 2. Ghi trực tiếp xuống Cache của Firestore (Không dùng eventsManager để đảm bảo ID không bị ghi đè)
+        FirebaseFirestore.getInstance().collection("events").document(generatedEventId).set(newEvent);
+        
+        // 3. Đặt báo thức Offline cho từng mốc thời gian nhắc nhở
+        for (Long mins : selectedReminderMinutes) {
+            scheduleEventAlarm(generatedEventId, title, startTime, mins.intValue());
+        }
+
+        // Tắt màn hình ngay lập tức
+        Toast.makeText(this, "✅ Đã lưu sự kiện!", Toast.LENGTH_SHORT).show();
+        finish();
     }
 
+    // 🔥 ĐÃ SỬA: Cập nhật Offline Fire-and-Forget
     private void updateExistingEvent(String title, String description, String location, boolean isAllDay) {
         if (eventId == null || eventId.isEmpty()) {
             Toast.makeText(this, "Không tìm thấy sự kiện để cập nhật", Toast.LENGTH_SHORT).show();
@@ -887,22 +886,73 @@ public class CreateEventActivity extends AppCompatActivity {
         target.setAllDay(isAllDay);
         target.setStartTime(new Timestamp(new Date(startTime)));
         target.setEndTime(new Timestamp(new Date(endTime)));
+        
+        // Cập nhật lại list Reminder
+        List<Event.EventReminder> reminders = new ArrayList<>();
+        for (Long minutes : selectedReminderMinutes) {
+            reminders.add(new Event.EventReminder(minutes, "push"));
+        }
+        target.setReminders(reminders);
 
-        eventsManager.updateEvent(eventId, target)
-                .addOnSuccessListener(aVoid -> finish())
-                .addOnFailureListener(e -> Toast.makeText(CreateEventActivity.this,
-                        "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+        // 1. Cập nhật thẳng vào Database
+        FirebaseFirestore.getInstance().collection("events").document(eventId).set(target);
+        
+        // 2. Đặt lại báo thức mới nhất
+        for (Long mins : selectedReminderMinutes) {
+            scheduleEventAlarm(eventId, title, startTime, mins.intValue());
+        }
+        
+        Toast.makeText(this, "✅ Event updated!", Toast.LENGTH_SHORT).show();
+        finish();
     }
 
+    // 🔥 ĐÃ SỬA: Xóa Offline Fire-and-Forget
     private void deleteEvent() {
         if (!isEditMode() || eventId == null || eventId.isEmpty()) {
             return;
         }
 
-        eventsManager.deleteEvent(eventId)
-                .addOnSuccessListener(aVoid -> finish())
-                .addOnFailureListener(e -> Toast.makeText(CreateEventActivity.this,
-                        "Lỗi xóa sự kiện: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+        eventsManager.deleteEvent(eventId);
+        Toast.makeText(this, "✅ Event deleted!", Toast.LENGTH_SHORT).show();
+        finish();
+    }
+    
+    // 🔔 HÀM MỚI ĐƯỢC THÊM: Đặt báo thức Alarm Manager (Hoạt động offline)
+    private void scheduleEventAlarm(String eventId, String title, long eventStartTimeMs, int minutesBefore) {
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager == null) return;
+
+        long triggerTime = eventStartTimeMs - (minutesBefore * 60 * 1000L);
+
+        // Chỉ đặt nếu giờ báo thức nằm ở tương lai
+        if (triggerTime > System.currentTimeMillis()) {
+            Intent intent = new Intent(this, EventNotificationReceiver.class);
+            intent.setAction("com.timed.EVENT_REMINDER"); 
+            intent.putExtra("event_id", eventId);
+            intent.putExtra("event_title", title);
+
+            // Mã hóa ID báo thức để không bị đè nhau
+            int requestCode = (eventId + minutesBefore).hashCode();
+
+            PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                    this,
+                    requestCode,
+                    intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+            );
+
+            // Đặt báo thức tương thích với Android 12+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (alarmManager.canScheduleExactAlarms()) {
+                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
+                } else {
+                    alarmManager.set(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent); // Fallback
+                }
+            } else {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
+            }
+            Log.d(TAG, "⏰ Đã đặt báo thức: " + title + " trước " + minutesBefore + " phút");
+        }
     }
 
     // 🔍 DEBUG: Kiểm tra permissions & settings
