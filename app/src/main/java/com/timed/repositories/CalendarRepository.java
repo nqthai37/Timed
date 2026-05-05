@@ -89,23 +89,62 @@ public class CalendarRepository {
 
     /**
      * Get all calendars for a user (owner or member)
+     * This queries both:
+     * 1. Calendars owned by the user
+     * 2. Calendars where the user is a member
      */
     public void getCalendarsByUser(String userId, RepositoryCallback<List<CalendarModel>> callback) {
+        // First get calendars where user is a member
         db.collection(CALENDARS_COLLECTION)
                 .whereArrayContains("member_ids", userId)
                 .get()
-                .addOnSuccessListener(querySnapshot -> {
+                .addOnSuccessListener(memberQuerySnapshot -> {
                     List<CalendarModel> calendars = new ArrayList<>();
-                    for (int i = 0; i < querySnapshot.getDocuments().size(); i++) {
-                        CalendarModel calendar = querySnapshot.getDocuments().get(i).toObject(CalendarModel.class);
-                        calendars.add(calendar);
+                    
+                    // Add all member calendars
+                    for (int i = 0; i < memberQuerySnapshot.getDocuments().size(); i++) {
+                        CalendarModel calendar = memberQuerySnapshot.getDocuments().get(i).toObject(CalendarModel.class);
+                        if (calendar != null) {
+                            calendars.add(calendar);
+                        }
                     }
-                    callback.onSuccess(calendars);
+                    
+                    // Now also get owned calendars
+                    db.collection(CALENDARS_COLLECTION)
+                            .whereEqualTo("owner_id", userId)
+                            .get()
+                            .addOnSuccessListener(ownedQuerySnapshot -> {
+                                // Add owned calendars that aren't already in the list
+                                for (int i = 0; i < ownedQuerySnapshot.getDocuments().size(); i++) {
+                                    CalendarModel calendar = ownedQuerySnapshot.getDocuments().get(i).toObject(CalendarModel.class);
+                                    if (calendar != null && calendar.getId() != null) {
+                                        // Check if this calendar is already in our list
+                                        boolean exists = false;
+                                        for (CalendarModel existing : calendars) {
+                                            if (existing.getId() != null && existing.getId().equals(calendar.getId())) {
+                                                exists = true;
+                                                break;
+                                            }
+                                        }
+                                        if (!exists) {
+                                            calendars.add(calendar);
+                                        }
+                                    }
+                                }
+                                
+                                Log.d(TAG, "All calendars for user: " + calendars.size() + " (owned + member)");
+                                callback.onSuccess(calendars);
+                            })
+                            .addOnFailureListener(e -> {
+                                // If owned calendars query fails, still return member calendars
+                                Log.w(TAG, "Failed to fetch owned calendars: " + e.getMessage());
+                                callback.onSuccess(calendars);
+                            });
                 })
                 .addOnFailureListener(e -> {
                     String errorMsg = e.getMessage() != null ? e.getMessage() : "Unknown error";
                     callback.onFailure(errorMsg);
-                    Log.e(TAG, "Failed to fetch calendars: " + errorMsg + " | Exception: " + e.toString(), e);
+                    Log.e(TAG, "Failed to fetch member calendars: " + errorMsg + " | Exception: " + e.toString(), e);
                 });
     }
 
