@@ -4,6 +4,7 @@ import com.timed.models.User;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QuerySnapshot;
 
 import java.util.Map;
 
@@ -38,5 +39,11 @@ public class UserRepository {
         return db.collection(COLLECTION_NAME)
                 .document(uid)
                 .delete();
+    }
+
+    public Task<QuerySnapshot> getUserByEmail(String email) {
+        return db.collection(COLLECTION_NAME)
+                .whereEqualTo("email", email)
+                .get();
     }
 }

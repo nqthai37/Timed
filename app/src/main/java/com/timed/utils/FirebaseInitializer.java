@@ -47,10 +47,34 @@ public class FirebaseInitializer {
 
             // Lấy Auth instance
             auth = FirebaseAuth.getInstance();
+            
+            // Enable Anonymous Authentication as fallback
+            enableAnonymousAuthFallback();
 
             Log.d(TAG, "Firebase initialization completed successfully");
         } catch (Exception e) {
             Log.e(TAG, "Error initializing Firebase: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Enable Anonymous Authentication as fallback
+     * This allows the app to access Firestore even without explicit user login
+     */
+    private void enableAnonymousAuthFallback() {
+        if (auth == null) {
+            auth = FirebaseAuth.getInstance();
+        }
+
+        // If user is not authenticated, sign in anonymously
+        if (auth.getCurrentUser() == null) {
+            auth.signInAnonymously()
+                    .addOnSuccessListener(authResult -> {
+                        Log.d(TAG, "Anonymous authentication successful, UID: " + authResult.getUser().getUid());
+                    })
+                    .addOnFailureListener(e -> {
+                        Log.e(TAG, "Anonymous authentication failed: " + e.getMessage());
+                    });
         }
     }
 

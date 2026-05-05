@@ -4,14 +4,16 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#FAFAFA"
-    android:padding="20dp">
+    android:background="#FAFAFA">
 
+    <!-- Top Bar -->
     <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="24dp">
-        
+        android:layout_height="56dp"
+        android:background="@android:color/white"
+        android:paddingHorizontal="16dp"
+        android:elevation="2dp">
+
         <ImageView
             android:id="@+id/iv_back"
             android:layout_width="36dp"
@@ -20,8 +22,9 @@
             android:background="@drawable/bg_rounded"
             android:src="@drawable/ic_back"
             android:layout_alignParentStart="true"
-            android:layout_centerVertical="true"/>
-            
+            android:layout_centerVertical="true"
+            android:contentDescription="Back" />
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -32,6 +35,7 @@
             android:layout_centerInParent="true"/>
     </RelativeLayout>
 
+    <!-- Current Time Card -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -40,94 +44,157 @@
         android:backgroundTint="#FFFFFF"
         android:padding="20dp"
         android:elevation="1dp"
-        android:layout_marginBottom="16dp">
-        
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="12dp">
+
         <TextView
             android:id="@+id/tv_current_time"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="10:50 AM"
-            android:textSize="32sp"
+            android:text="--:-- --"
+            android:textSize="36sp"
             android:textStyle="bold"
-            android:textColor="#0F172A"/>
-            
+            android:textColor="@color/primary"/>
+
         <TextView
+            android:id="@+id/tv_current_date"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Current time"
+            android:text="Loading..."
             android:textSize="14sp"
             android:textColor="#64748B"
-            android:layout_marginBottom="16dp"/>
+            android:layout_marginTop="2dp"
+            android:layout_marginBottom="12dp"/>
 
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
             android:background="#E2E8F0"
-            android:layout_marginBottom="16dp"/>
+            android:layout_marginBottom="12dp"/>
 
+        <!-- Selected timezone info -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:src="@drawable/ic_check_blue"
+                android:layout_marginEnd="8dp"/>
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Selected timezone"
+                android:textSize="13sp"
+                android:textColor="#64748B"/>
+
+            <TextView
+                android:id="@+id/tv_selected_tz"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="UTC+00:00"
+                android:textSize="13sp"
+                android:textColor="@color/primary"
+                android:textStyle="bold"/>
+        </LinearLayout>
+
+        <!-- Detected device timezone -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical">
-            
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:src="@drawable/ic_globe"
+                app:tint="#64748B"
+                android:layout_marginEnd="8dp"/>
+
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="Detected location"
-                android:textSize="14sp"
+                android:textSize="13sp"
                 android:textColor="#64748B" />
-                
+
             <TextView
                 android:id="@+id/tv_detected_location"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Ho Chi Minh City"
-                android:textSize="14sp"
+                android:text="Detecting..."
+                android:textSize="13sp"
                 android:textColor="#0F172A"
-                android:textStyle="bold"
-                android:layout_marginEnd="8dp"/>
-                
-            <ImageView
-                android:layout_width="14dp"
-                android:layout_height="14dp"
-                android:src="@drawable/ic_r_arrow"
-                app:tint="#64748B"/>
+                android:textStyle="bold"/>
         </LinearLayout>
     </LinearLayout>
 
+    <!-- Search Bar -->
     <LinearLayout
-        android:id="@+id/btn_add_timezone"
         android:layout_width="match_parent"
-        android:layout_height="52dp"
-        android:background="@drawable/bg_day_event_light"
-
-        android:gravity="center"
+        android:layout_height="46dp"
         android:orientation="horizontal"
-        android:layout_marginBottom="20dp">
-        
+        android:gravity="center_vertical"
+        android:background="@drawable/bg_rounded"
+        android:backgroundTint="#FFFFFF"
+        android:elevation="1dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="12dp"
+        android:paddingHorizontal="14dp">
+
         <ImageView
-            android:layout_width="18dp"
-            android:layout_height="18dp"
-            android:src="@android:drawable/ic_input_add" 
-            app:tint="@color/primary"
-            android:layout_marginEnd="8dp"/>
-            
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Add timezone"
-            android:textColor="@color/primary"
-            android:textStyle="bold"
-            android:textSize="15sp"/>
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_search"
+            app:tint="#94A3B8"
+            android:layout_marginEnd="10dp"/>
+
+        <EditText
+            android:id="@+id/et_search_timezone"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="@null"
+            android:hint="Search timezone, city, or UTC offset..."
+            android:textSize="14sp"
+            android:textColor="#0F172A"
+            android:textColorHint="#94A3B8"
+            android:inputType="text"
+            android:imeOptions="actionSearch"
+            android:singleLine="true"/>
     </LinearLayout>
 
+    <!-- Section title -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="ALL TIMEZONES"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:textColor="#94A3B8"
+        android:letterSpacing="0.1"
+        android:paddingHorizontal="20dp"
+        android:layout_marginBottom="8dp"/>
+
+    <!-- Timezone List -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_timezone_settings"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:clipToPadding="false"/>
-        
+        android:clipToPadding="false"
+        android:paddingHorizontal="16dp"
+        android:paddingBottom="16dp"/>
+
 </LinearLayout>

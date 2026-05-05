@@ -3,6 +3,7 @@ package com.timed.utils;
 import android.util.Log;
 
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.firestore.DocumentSnapshot;
 
@@ -22,7 +23,22 @@ public class FirebaseHelper {
     }
 
     public FirebaseHelper() {
-        this.db = FirebaseInitializer.getInstance().getFirestore();
+        // Updated to use standard Firestore initialization if FirebaseInitializer is missing
+        this.db = FirebaseFirestore.getInstance();
+    }
+
+    private void logDetailedError(String context, Exception e) {
+        try {
+            Log.e(TAG, context + " -> " + e.toString());
+            // Log stacktrace manually as BuildConfig may be unavailable or in a different package
+            Log.e(TAG, context + " -> stacktrace: " + Log.getStackTraceString(e));
+            if (e instanceof FirebaseFirestoreException) {
+                FirebaseFirestoreException ffe = (FirebaseFirestoreException) e;
+                Log.e(TAG, context + " -> firestore code: " + ffe.getCode());
+            }
+        } catch (Exception ex) {
+            Log.e(TAG, "Failed to log detailed error", ex);
+        }
     }
 
     /**
@@ -49,10 +65,7 @@ public class FirebaseHelper {
         db.collection(collection)
                 .limit(1)
                 .get()
-                .addOnSuccessListener(queryDocumentSnapshots -> {
-                    Log.d(TAG, "User has permission to access: " + collection);
-                    callback.onSuccess(true);
-                })
+                .addOnSuccessListener(queryDocumentSnapshots -> callback.onSuccess(true))
                 .addOnFailureListener(e -> {
                     Log.e(TAG, "Permission denied for collection: " + collection);
                     callback.onFailure("No permission to access: " + collection);
@@ -68,16 +81,14 @@ public class FirebaseHelper {
                 .get()
                 .addOnSuccessListener(documentSnapshot -> {
                     if (documentSnapshot.exists()) {
-                        Log.d(TAG, "Document found: " + documentId);
                         callback.onSuccess(documentSnapshot);
                     } else {
-                        Log.w(TAG, "Document not found: " + documentId);
-                        callback.onFailure("Document does not exist");
+                        callback.onFailure("Tài liệu không tồn tại");
                     }
                 })
                 .addOnFailureListener(e -> {
-                    Log.e(TAG, "Error getting document: " + e.getMessage(), e);
-                    callback.onFailure("Error retrieving data: " + e.getMessage());
+                    logDetailedError("getDocument failed for: " + collection + "/" + documentId, e);
+                    callback.onFailure("Lỗi khi lấy dữ liệu: " + e.toString());
                 });
     }
 
@@ -87,13 +98,10 @@ public class FirebaseHelper {
     public void getCollection(String collection, FirebaseCallback<QuerySnapshot> callback) {
         db.collection(collection)
                 .get()
-                .addOnSuccessListener(queryDocumentSnapshots -> {
-                    Log.d(TAG, "Collection retrieved: " + collection + " (" + queryDocumentSnapshots.size() + " documents)");
-                    callback.onSuccess(queryDocumentSnapshots);
-                })
+                .addOnSuccessListener(callback::onSuccess)
                 .addOnFailureListener(e -> {
-                    Log.e(TAG, "Error getting collection: " + e.getMessage(), e);
-                    callback.onFailure("Error retrieving data: " + e.getMessage());
+                    logDetailedError("getCollection failed for: " + collection, e);
+                    callback.onFailure("Lỗi khi lấy dữ liệu: " + e.toString());
                 });
     }
 
@@ -104,13 +112,10 @@ public class FirebaseHelper {
         db.collection(collection)
                 .document(documentId)
                 .set(data)
-                .addOnSuccessListener(unused -> {
-                    Log.d(TAG, "Document saved/updated: " + documentId);
-                    callback.onSuccess(null);
-                })
+                .addOnSuccessListener(unused -> callback.onSuccess(null))
                 .addOnFailureListener(e -> {
-                    Log.e(TAG, "Error saving document: " + e.getMessage(), e);
-                    callback.onFailure("Error saving data: " + e.getMessage());
+                    logDetailedError("setDocument failed for: " + collection + "/" + documentId, e);
+                    callback.onFailure("Lỗi khi lưu dữ liệu: " + e.toString());
                 });
     }
 
@@ -120,14 +125,10 @@ public class FirebaseHelper {
     public void addDocument(String collection, Object data, FirebaseCallback<String> callback) {
         db.collection(collection)
                 .add(data)
-                .addOnSuccessListener(documentReference -> {
-                    String docId = documentReference.getId();
-                    Log.d(TAG, "Document added with ID: " + docId);
-                    callback.onSuccess(docId);
-                })
+                .addOnSuccessListener(documentReference -> callback.onSuccess(documentReference.getId()))
                 .addOnFailureListener(e -> {
-                    Log.e(TAG, "Error adding document: " + e.getMessage(), e);
-                    callback.onFailure("Error adding data: " + e.getMessage());
+                    logDetailedError("addDocument failed for: " + collection, e);
+                    callback.onFailure("Lỗi khi thêm dữ liệu: " + e.toString());
                 });
     }
 
@@ -138,13 +139,10 @@ public class FirebaseHelper {
         db.collection(collection)
                 .document(documentId)
                 .delete()
-                .addOnSuccessListener(unused -> {
-                    Log.d(TAG, "Document deleted: " + documentId);
-                    callback.onSuccess(null);
-                })
+                .addOnSuccessListener(unused -> callback.onSuccess(null))
                 .addOnFailureListener(e -> {
-                    Log.e(TAG, "Error deleting document: " + e.getMessage(), e);
-                    callback.onFailure("Error deleting data: " + e.getMessage());
+                    logDetailedError("deleteDocument failed for: " + collection + "/" + documentId, e);
+                    callback.onFailure("Lỗi khi xóa dữ liệu: " + e.toString());
                 });
     }
 
@@ -155,4 +153,3 @@ public class FirebaseHelper {
         return db;
     }
 }
-

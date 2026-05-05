@@ -35,6 +35,19 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="@+id/iv_back" />
+
+        <ImageView
+            android:id="@+id/iv_add_preset"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/bg_rounded"
+            android:padding="10dp"
+            android:src="@drawable/ic_add"
+            app:tint="@color/primary"
+            app:layout_constraintBottom_toBottomOf="@+id/iv_back"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="@+id/iv_back" />
+
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <LinearLayout
@@ -46,23 +59,35 @@
         android:orientation="vertical"
         app:layout_constraintTop_toBottomOf="@+id/clHeader">
 
-        <FrameLayout
+        <RelativeLayout
             android:layout_width="240dp"
             android:layout_height="240dp"
-            android:background="@drawable/bg_rounded"> 
+            android:layout_gravity="center">
+
+            <com.google.android.material.progressindicator.CircularProgressIndicator
+                android:id="@+id/progress_timer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true"
+                app:indicatorSize="240dp"
+                app:trackThickness="12dp"
+                app:indicatorColor="@color/blue_500"
+                app:trackColor="#F1F5F9"
+                app:trackCornerRadius="6dp" />
 
             <TextView
                 android:id="@+id/tv_main_timer"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center"
+                android:layout_centerInParent="true"
                 android:text="25:00"
                 android:textColor="#0F172A"
                 android:textSize="56sp"
                 android:textStyle="bold" />
-        </FrameLayout>
+        </RelativeLayout>
 
         <TextView
+            android:id="@+id/tv_timer_subtitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"

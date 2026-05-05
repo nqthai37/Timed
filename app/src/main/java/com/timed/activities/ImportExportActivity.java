@@ -59,7 +59,7 @@ public class ImportExportActivity extends AppCompatActivity {
     private CheckBox cbExportWork;
     private CheckBox cbExportShared;
 
-    private String calendarId = "default_calendar";
+    private String calendarId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -78,13 +78,19 @@ public class ImportExportActivity extends AppCompatActivity {
         String incomingCalendarId = getIntent().getStringExtra("calendarId");
         if (incomingCalendarId != null && !incomingCalendarId.isEmpty()) {
             calendarId = incomingCalendarId;
+        } else {
+            String cachedId = calendarIntegrationService.getCachedDefaultCalendarId(this);
+            if (cachedId != null && !cachedId.isEmpty()) {
+                calendarId = cachedId;
+            }
         }
 
         cbExportPersonal = findViewById(R.id.cbExportPersonal);
         cbExportWork = findViewById(R.id.cbExportWork);
         cbExportShared = findViewById(R.id.cbExportShared);
 
-        openDocumentLauncher = registerForActivityResult(new ActivityResultContracts.OpenDocument(), this::onFileSelected);
+        openDocumentLauncher = registerForActivityResult(new ActivityResultContracts.OpenDocument(),
+                this::onFileSelected);
 
         ImageButton btnBackImport = findViewById(R.id.btnBackImport);
         Button btnChooseFile = findViewById(R.id.btnChooseFile);
@@ -93,7 +99,8 @@ public class ImportExportActivity extends AppCompatActivity {
         Button btnExportAll = findViewById(R.id.btnExportAll);
 
         btnBackImport.setOnClickListener(v -> finish());
-        btnChooseFile.setOnClickListener(v -> openDocumentLauncher.launch(new String[]{"text/calendar", "text/csv", "text/plain", "application/octet-stream"}));
+        btnChooseFile.setOnClickListener(v -> openDocumentLauncher
+                .launch(new String[] { "text/calendar", "text/csv", "text/plain", "application/octet-stream" }));
         btnSyncFromUrl.setOnClickListener(v -> promptSyncUrl());
         btnExportSelected.setOnClickListener(v -> exportCalendars(false));
         btnExportAll.setOnClickListener(v -> exportCalendars(true));
@@ -142,7 +149,8 @@ public class ImportExportActivity extends AppCompatActivity {
                 List<ImportEventItem> items = parseImportContent(content);
                 runOnUiThread(() -> importItems(items));
             } catch (Exception e) {
-                runOnUiThread(() -> Toast.makeText(this, "Import failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                runOnUiThread(
+                        () -> Toast.makeText(this, "Import failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
             }
         }).start();
     }
@@ -170,7 +178,8 @@ public class ImportExportActivity extends AppCompatActivity {
                             List<ImportEventItem> items = parseImportContent(content);
                             runOnUiThread(() -> importItems(items));
                         } catch (Exception e) {
-                            runOnUiThread(() -> Toast.makeText(this, "Sync failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                            runOnUiThread(() -> Toast
+                                    .makeText(this, "Sync failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
                         }
                     }).start();
                 })
@@ -188,7 +197,8 @@ public class ImportExportActivity extends AppCompatActivity {
 
     private void importSequential(List<ImportEventItem> items, int index, int successCount, int failureCount) {
         if (index >= items.size()) {
-            Toast.makeText(this, "Import done: " + successCount + " success, " + failureCount + " failed", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Import done: " + successCount + " success, " + failureCount + " failed",
+                    Toast.LENGTH_LONG).show();
             return;
         }
 
@@ -223,7 +233,8 @@ public class ImportExportActivity extends AppCompatActivity {
 
             @Override
             public void onError(String errorMessage) {
-                Toast.makeText(ImportExportActivity.this, "Cannot load calendars: " + errorMessage, Toast.LENGTH_SHORT).show();
+                Toast.makeText(ImportExportActivity.this, "Cannot load calendars: " + errorMessage, Toast.LENGTH_SHORT)
+                        .show();
             }
         });
     }
@@ -294,7 +305,7 @@ public class ImportExportActivity extends AppCompatActivity {
             return;
         }
 
-        String[] formats = new String[] {"ICS", "CSV"};
+        String[] formats = new String[] { "ICS", "CSV" };
         new AlertDialog.Builder(this)
                 .setTitle("Choose export format")
                 .setItems(formats, (dialog, which) -> {
@@ -316,7 +327,7 @@ public class ImportExportActivity extends AppCompatActivity {
     }
 
     private void ensureCalendarReady(Runnable onReady) {
-        if (calendarId != null && !calendarId.isEmpty() && !"default_calendar".equals(calendarId)) {
+        if (calendarId != null && !calendarId.isEmpty()) {
             onReady.run();
             return;
         }
@@ -343,14 +354,16 @@ public class ImportExportActivity extends AppCompatActivity {
 
                             @Override
                             public void onError(String errorMessage) {
-                                Toast.makeText(ImportExportActivity.this, "Cannot prepare calendar: " + errorMessage, Toast.LENGTH_SHORT).show();
+                                Toast.makeText(ImportExportActivity.this, "Cannot prepare calendar: " + errorMessage,
+                                        Toast.LENGTH_SHORT).show();
                             }
                         });
             }
 
             @Override
             public void onError(String errorMessage) {
-                Toast.makeText(ImportExportActivity.this, "Cannot load calendars: " + errorMessage, Toast.LENGTH_SHORT).show();
+                Toast.makeText(ImportExportActivity.this, "Cannot load calendars: " + errorMessage, Toast.LENGTH_SHORT)
+                        .show();
             }
         });
     }
@@ -481,7 +494,8 @@ public class ImportExportActivity extends AppCompatActivity {
                 continue;
             }
 
-            if (i == 0 && line.toLowerCase(Locale.ROOT).contains("title") && line.toLowerCase(Locale.ROOT).contains("start")) {
+            if (i == 0 && line.toLowerCase(Locale.ROOT).contains("title")
+                    && line.toLowerCase(Locale.ROOT).contains("start")) {
                 continue;
             }
 
@@ -622,7 +636,8 @@ public class ImportExportActivity extends AppCompatActivity {
 
             for (Event event : events) {
                 builder.append("BEGIN:VEVENT\n");
-                String uid = event.getId() == null || event.getId().isEmpty() ? String.valueOf(System.nanoTime()) : event.getId();
+                String uid = event.getId() == null || event.getId().isEmpty() ? String.valueOf(System.nanoTime())
+                        : event.getId();
                 builder.append("UID:").append(uid).append("@timed\n");
                 builder.append("DTSTAMP:").append(icsDateTimeFormat.format(new Date())).append("\n");
 
@@ -631,7 +646,8 @@ public class ImportExportActivity extends AppCompatActivity {
                 long endMillis = event.getEndTime() != null ? event.getEndTime().toDate().getTime() : startMillis;
 
                 if (allDay) {
-                    builder.append("DTSTART;VALUE=DATE:").append(icsDateFormat.format(new Date(startMillis))).append("\n");
+                    builder.append("DTSTART;VALUE=DATE:").append(icsDateFormat.format(new Date(startMillis)))
+                            .append("\n");
                     long endDate = endMillis > startMillis ? endMillis : startMillis + (24 * 60 * 60 * 1000L);
                     builder.append("DTEND;VALUE=DATE:").append(icsDateFormat.format(new Date(endDate))).append("\n");
                 } else {

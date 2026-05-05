@@ -2,6 +2,8 @@ package com.timed.repositories;
 
 import android.util.Log;
 
+import com.google.firebase.auth.EmailAuthProvider;
+import com.google.firebase.auth.FirebaseUser;
 import com.timed.managers.UserManager;
 import com.timed.models.User;
 import com.google.android.gms.tasks.Task;
@@ -47,17 +49,7 @@ public class AuthRepository {
                     User loggedInUser = snapshot.toObject(User.class);
                     String uid = loggedInUser.getUid();
 
-                    Timestamp now = Timestamp.now();
-                    if (loggedInUser.getSecurity() != null) {
-                        loggedInUser.getSecurity().setLastLogin(now);
-                    } else {
-                        User.Security security = new User.Security();
-                        security.setLastLogin(now);
-                        loggedInUser.setSecurity(security);
-                    }
-
                     java.util.Map<String, Object> updates = new java.util.HashMap<>();
-                    updates.put("security.last_login", now);
 
                     if (!loggedInUser.getEmailVerified()) {
                         loggedInUser.setEmailVerified(true);
@@ -66,13 +58,17 @@ public class AuthRepository {
 
                     UserManager.getInstance().setCurrentUser(loggedInUser);
 
-                    return userRepository.updateUser(uid, updates)
-                            .continueWith(updateTask -> {
-                                if (!updateTask.isSuccessful()) {
-                                    Log.e("AuthRepo", "Failed to update last_login", updateTask.getException());
-                                }
-                                return loggedInUser;
-                            });
+                    if (updates.isEmpty()) {
+                        return Tasks.forResult(loggedInUser);
+                    } else {
+                        return userRepository.updateUser(uid, updates)
+                                .continueWith(updateTask -> {
+                                    if (!updateTask.isSuccessful()) {
+                                        Log.e("AuthRepo", "Failed to update last_login", updateTask.getException());
+                                    }
+                                    return loggedInUser;
+                                });
+                    }
                 });
     }
 
@@ -107,11 +103,6 @@ public class AuthRepository {
                     newUser.setSettings(settings);
 
                     Timestamp now = Timestamp.now();
-
-                    User.Security security = new User.Security();
-                    security.setTwoFactorEnabled(false);
-                    security.setLastLogin(now);
-                    newUser.setSecurity(security);
 
                     newUser.setCreatedAt(now);
                     newUser.setUpdatedAt(now);
@@ -175,11 +166,6 @@ public class AuthRepository {
                         settings.setNotifications(notifs);
                         newUser.setSettings(settings);
 
-                        User.Security security = new User.Security();
-                        security.setTwoFactorEnabled(false);
-                        security.setLastLogin(now);
-                        newUser.setSecurity(security);
-
                         return userRepository.createUser(uid, newUser).continueWith(saveTask -> {
                             if (!saveTask.isSuccessful())
                                 throw saveTask.getException();
@@ -188,31 +174,33 @@ public class AuthRepository {
                         });
 
                     } else {
-                        return userRepository.getUser(uid).continueWithTask(dbTask -> {
+                        return userRepository.getUser(uid).continueWith(dbTask -> {
                             if (!dbTask.isSuccessful())
                                 throw dbTask.getException();
+
                             User existingUser = dbTask.getResult().toObject(User.class);
-
-                            Timestamp now = Timestamp.now();
-                            if (existingUser.getSecurity() != null) {
-                                existingUser.getSecurity().setLastLogin(now);
-                            }
-
                             UserManager.getInstance().setCurrentUser(existingUser);
 
-                            java.util.Map<String, Object> updates = new java.util.HashMap<>();
-                            updates.put("security.last_login", now);
-
-                            return userRepository.updateUser(uid, updates)
-                                    .continueWith(updateTask -> {
-                                        if (!updateTask.isSuccessful()) {
-                                            Log.e("AuthRepo", "Failed to update last_login", updateTask.getException());
-                                        }
-                                        return existingUser;
-                                    });
+                            return existingUser;
                         });
                     }
                 });
+    }
+
+    public Task<Void> updatePassword(String currentPassword, String newPassword) {
+        FirebaseUser user = mAuth.getCurrentUser();
+
+        if (user != null && user.getEmail() != null) {
+            AuthCredential credential = EmailAuthProvider.getCredential(user.getEmail(), currentPassword);
+
+            return user.reauthenticate(credential).continueWithTask(task -> {
+                if (!task.isSuccessful()) {
+                    throw task.getException();
+                }
+                return user.updatePassword(newPassword);
+            });
+        }
+        return Tasks.forException(new Exception("No user logged in."));
     }
 
     public Task<Void> sendVerificationEmail() {

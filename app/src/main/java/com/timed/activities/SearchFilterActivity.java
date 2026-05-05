@@ -19,7 +19,9 @@ import com.google.firebase.Timestamp;
 import com.timed.adapters.EventAdapter;
 import com.timed.R;
 import com.timed.managers.EventsManager;
+import com.timed.models.CalendarModel;
 import com.timed.models.Event;
+import com.timed.utils.CalendarIntegrationService;
 import com.timed.utils.FirebaseInitializer;
 
 import java.text.SimpleDateFormat;
@@ -31,12 +33,6 @@ import java.util.Locale;
 
 public class SearchFilterActivity extends AppCompatActivity {
     private static final String TAG = "SearchFilterActivity";
-    private static final String[] CALENDAR_LABELS = new String[] {
-            "All", "Work", "Personal", "Shared", "Study"
-    };
-    private static final String[] CALENDAR_IDS = new String[] {
-            "", "default_calendar", "personal_calendar", "shared_calendar", "study_calendar"
-    };
     private static final String[] STATUS_LABELS = new String[] {
             "Any", "Completed", "Pending"
     };
@@ -45,6 +41,7 @@ public class SearchFilterActivity extends AppCompatActivity {
 
     private EventsManager eventsManager;
     private FirebaseInitializer firebaseInitializer;
+    private CalendarIntegrationService calendarIntegrationService;
 
     private EditText etQuery;
     private EditText etLocation;
@@ -60,6 +57,9 @@ public class SearchFilterActivity extends AppCompatActivity {
     private final List<Event> allEvents = new ArrayList<>();
     private final List<Event> filteredEvents = new ArrayList<>();
     private EventAdapter eventAdapter;
+    private final List<CalendarModel> calendarOptions = new ArrayList<>();
+    private final List<String> calendarIds = new ArrayList<>();
+    private ArrayAdapter<String> calendarAdapter;
 
     private long startDateMillis;
     private long endDateMillis;
@@ -72,6 +72,7 @@ public class SearchFilterActivity extends AppCompatActivity {
         eventsManager = EventsManager.getInstance(this);
         firebaseInitializer = FirebaseInitializer.getInstance();
         firebaseInitializer.initialize(this);
+        calendarIntegrationService = new CalendarIntegrationService();
 
         bindViews();
         setupSpinners();
@@ -82,7 +83,7 @@ public class SearchFilterActivity extends AppCompatActivity {
         eventAdapter = new EventAdapter(filteredEvents, this::openEditEvent);
         rvResults.setAdapter(eventAdapter);
 
-        applyFilters();
+        loadCalendars();
     }
 
     private void bindViews() {
@@ -104,9 +105,10 @@ public class SearchFilterActivity extends AppCompatActivity {
     }
 
     private void setupSpinners() {
-        ArrayAdapter<String> calendarAdapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_dropdown_item, CALENDAR_LABELS);
+        calendarAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_dropdown_item, new ArrayList<>());
         spCalendar.setAdapter(calendarAdapter);
+        rebuildCalendarOptions(null);
 
         ArrayAdapter<String> statusAdapter = new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_dropdown_item, STATUS_LABELS);
@@ -138,6 +140,59 @@ public class SearchFilterActivity extends AppCompatActivity {
             setupDefaultDates();
             applyFilters();
         });
+    }
+
+    private void loadCalendars() {
+        calendarIntegrationService.ensureDefaultCalendar(this,
+                new CalendarIntegrationService.DefaultCalendarListener() {
+                    @Override
+                    public void onReady(String defaultId, List<CalendarModel> calendars) {
+                        calendarOptions.clear();
+                        if (calendars != null) {
+                            calendarOptions.addAll(calendars);
+                        }
+                        rebuildCalendarOptions(defaultId);
+                        applyFilters();
+                    }
+
+                    @Override
+                    public void onError(String errorMessage) {
+                        rebuildCalendarOptions(null);
+                        applyFilters();
+                    }
+                });
+    }
+
+    private void rebuildCalendarOptions(String preferredCalendarId) {
+        calendarIds.clear();
+        List<String> labels = new ArrayList<>();
+
+        labels.add("All");
+        calendarIds.add("");
+
+        for (CalendarModel calendar : calendarOptions) {
+            if (calendar == null || calendar.getId() == null) {
+                continue;
+            }
+            String name = calendar.getName();
+            labels.add(name != null && !name.isEmpty() ? name : "Calendar");
+            calendarIds.add(calendar.getId());
+        }
+
+        calendarAdapter.clear();
+        calendarAdapter.addAll(labels);
+        calendarAdapter.notifyDataSetChanged();
+
+        int selectedIndex = 0;
+        if (preferredCalendarId != null) {
+            for (int i = 1; i < calendarIds.size(); i++) {
+                if (preferredCalendarId.equals(calendarIds.get(i))) {
+                    selectedIndex = i;
+                    break;
+                }
+            }
+        }
+        spCalendar.setSelection(selectedIndex);
     }
 
     private void showDatePicker(boolean isStart) {
@@ -179,17 +234,20 @@ public class SearchFilterActivity extends AppCompatActivity {
 
     private void loadEventsFromSelection() {
         allEvents.clear();
-        String calendarId = CALENDAR_IDS[spCalendar.getSelectedItemPosition()];
-
-        if (calendarId == null || calendarId.isEmpty()) {
-            List<String> ids = new ArrayList<>();
-            for (int i = 1; i < CALENDAR_IDS.length; i++) {
-                ids.add(CALENDAR_IDS[i]);
-            }
-            loadEventsSequential(ids, 0);
-        } else {
-            loadEventsForCalendar(calendarId, () -> applyFiltersToResults());
+        if (calendarIds.isEmpty()) {
+            applyFiltersToResults();
+            return;
         }
+
+        int selectedIndex = spCalendar.getSelectedItemPosition();
+        if (selectedIndex <= 0) {
+            List<String> ids = new ArrayList<>(calendarIds.subList(1, calendarIds.size()));
+            loadEventsSequential(ids, 0);
+            return;
+        }
+
+        String calendarId = calendarIds.get(selectedIndex);
+        loadEventsForCalendar(calendarId, this::applyFiltersToResults);
     }
 
     private void loadEventsSequential(List<String> ids, int index) {
@@ -219,8 +277,11 @@ public class SearchFilterActivity extends AppCompatActivity {
     }
 
     private void applyFiltersToResults() {
-        String query = etQuery.getText() != null ? etQuery.getText().toString().trim().toLowerCase(Locale.getDefault()) : "";
-        String location = etLocation.getText() != null ? etLocation.getText().toString().trim().toLowerCase(Locale.getDefault()) : "";
+        String query = etQuery.getText() != null ? etQuery.getText().toString().trim().toLowerCase(Locale.getDefault())
+                : "";
+        String location = etLocation.getText() != null
+                ? etLocation.getText().toString().trim().toLowerCase(Locale.getDefault())
+                : "";
         String statusFilter = STATUS_LABELS[spStatus.getSelectedItemPosition()];
         String userId = firebaseInitializer.getCurrentUserId();
 
@@ -294,7 +355,11 @@ public class SearchFilterActivity extends AppCompatActivity {
         Intent intent = new Intent(this, CreateEventActivity.class);
         intent.putExtra("mode", "edit");
         intent.putExtra("eventId", event.getId());
-        intent.putExtra("calendarId", event.getCalendarId() != null ? event.getCalendarId() : "default_calendar");
+        String fallbackCalendarId = event.getCalendarId();
+        if (fallbackCalendarId == null || fallbackCalendarId.isEmpty()) {
+            fallbackCalendarId = calendarIntegrationService.getCachedDefaultCalendarId(this);
+        }
+        intent.putExtra("calendarId", fallbackCalendarId);
         intent.putExtra("title", event.getTitle());
         intent.putExtra("description", event.getDescription());
         intent.putExtra("location", event.getLocation());

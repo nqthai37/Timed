@@ -1,10 +1,13 @@
 package com.timed.services;
 
+import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
+import android.widget.Toast;
 
+import com.google.firebase.firestore.FirebaseFirestore;
 import com.timed.managers.EventsNotificationManager;
 import com.timed.repositories.EventsRepository;
 
@@ -17,122 +20,107 @@ public class EventNotificationReceiver extends BroadcastReceiver {
             return;
         }
 
-        String eventId = intent.getStringExtra("event_id");
         String action = intent.getAction();
+        Log.d(TAG, "Received action: " + action);
 
-        Log.d(TAG, "Received action: " + action + ", EventId: " + eventId);
+        EventsNotificationManager notificationManager = new EventsNotificationManager(context);
 
         switch (action) {
+            // --- PHẦN CỦA EVENT (Giữ nguyên của bạn) ---
             case "com.timed.EVENT_REMINDER":
-                handleEventReminder(context, intent);
+                handleEventReminder(context, intent, notificationManager);
                 break;
             case "com.timed.EVENT_ACCEPT":
-                handleEventAccept(context, eventId);
+                handleEventAccept(context, intent.getStringExtra("event_id"), notificationManager);
                 break;
             case "com.timed.EVENT_DECLINE":
-                handleEventDecline(context, eventId);
+                handleEventDecline(context, intent.getStringExtra("event_id"), notificationManager);
+                break;
+
+            // --- PHẦN MỚI THÊM CHO TASK ---
+            case "ACTION_SHOW_TASK_NOTIFICATION":
+                String taskId = intent.getStringExtra("TASK_ID");
+                String title = intent.getStringExtra("TASK_TITLE");
+                String desc = intent.getStringExtra("TASK_DESC");
+                notificationManager.showTaskNotification(taskId, title, desc);
+                break;
+
+            case "ACTION_TASK_DONE":
+                String doneTaskId = intent.getStringExtra("TASK_ID");
+                if (doneTaskId != null) {
+                    // Cập nhật Firebase
+                    FirebaseFirestore.getInstance().collection("tasks").document(doneTaskId)
+                            .update("is_completed", true)
+                            .addOnSuccessListener(aVoid -> Log.d(TAG, "Task marked as done"));
+
+                    // Tắt thông báo
+                    NotificationManager sysManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+                    sysManager.cancel(doneTaskId.hashCode());
+                    Toast.makeText(context, "Đã hoàn thành công việc!", Toast.LENGTH_SHORT).show();
+                }
                 break;
         }
     }
 
-    /**
-     * Handle event reminder - show notification
-     */
-    private void handleEventReminder(Context context, Intent intent) {
+    // CÁC HÀM CŨ GIỮ NGUYÊN BÊN TRONG NÀY...
+    private void handleEventReminder(Context context, Intent intent, EventsNotificationManager manager) {
         String eventId = intent.getStringExtra("event_id");
         String title = intent.getStringExtra("event_title");
         String description = intent.getStringExtra("event_description");
         String location = intent.getStringExtra("event_location");
-        String reminderType = intent.getStringExtra("reminder_type");
-        Long minutesBefore = intent.getLongExtra("reminder_minutes_before", 0);
+        String type = intent.getStringExtra("reminder_type");
+        manager.showEventReminder(eventId, title, description, location, type);
+    }
 
-        Log.d(TAG, "Event reminder triggered for: " + title + 
-                " (reminder_type: " + reminderType + ", minutes_before: " + minutesBefore + ")");
+    private void handleEventAccept(Context context, String eventId, EventsNotificationManager manager) {
+        if (eventId == null) return;
 
-        EventsNotificationManager notificationManager = new EventsNotificationManager(context);
-        
-        if (title != null) {
-            notificationManager.showEventReminder(eventId, title, description, location, reminderType);
+        // Cập nhật trạng thái participant lên Firebase
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        String userId = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser() != null 
+                ? com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser().getUid() 
+                : null;
+
+        if (userId != null) {
+            db.collection("events").document(eventId)
+                    .update("participant_status." + userId, "accepted")
+                    .addOnSuccessListener(aVoid -> {
+                        Log.d(TAG, "Event accepted: " + eventId);
+                        Toast.makeText(context, "Đã chấp nhận sự kiện!", Toast.LENGTH_SHORT).show();
+                    })
+                    .addOnFailureListener(e -> {
+                        Log.e(TAG, "Error accepting event: " + e.getMessage());
+                        Toast.makeText(context, "Lỗi khi chấp nhận sự kiện", Toast.LENGTH_SHORT).show();
+                    });
         }
+
+        // Tắt thông báo
+        manager.cancelNotification(eventId);
     }
 
-    /**
-     * Handle event acceptance
-     */
-    private void handleEventAccept(Context context, String eventId) {
-        Log.d(TAG, "Event accepted: " + eventId);
+    private void handleEventDecline(Context context, String eventId, EventsNotificationManager manager) {
+        if (eventId == null) return;
 
-        EventsRepository repository = new EventsRepository();
-        repository.getEventById(eventId)
-                .addOnSuccessListener(documentSnapshot -> {
-                    if (documentSnapshot.exists()) {
-                        com.timed.models.Event event = documentSnapshot.toObject(com.timed.models.Event.class);
-                        if (event != null) {
-                            // Update participant status to "accepted"
-                            String userId = getUserId(context);
-                            if (userId != null && event.getParticipantStatus() != null) {
-                                event.getParticipantStatus().put(userId, "accepted");
-                                repository.updateEvent(eventId, event)
-                                        .addOnSuccessListener(aVoid -> {
-                                            Log.d(TAG, "Event accepted status updated");
-                                        });
-                            }
-                        }
-                    }
-                })
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "Failed to get event for acceptance: " + e.getMessage());
-                });
+        // Cập nhật trạng thái participant lên Firebase
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        String userId = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser() != null 
+                ? com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser().getUid() 
+                : null;
 
-        EventsNotificationManager notificationManager = new EventsNotificationManager(context);
-        notificationManager.cancelNotification(eventId);
-    }
-
-    /**
-     * Handle event decline
-     */
-    private void handleEventDecline(Context context, String eventId) {
-        Log.d(TAG, "Event declined: " + eventId);
-
-        EventsRepository repository = new EventsRepository();
-        repository.getEventById(eventId)
-                .addOnSuccessListener(documentSnapshot -> {
-                    if (documentSnapshot.exists()) {
-                        com.timed.models.Event event = documentSnapshot.toObject(com.timed.models.Event.class);
-                        if (event != null) {
-                            // Update participant status to "declined"
-                            String userId = getUserId(context);
-                            if (userId != null && event.getParticipantStatus() != null) {
-                                event.getParticipantStatus().put(userId, "declined");
-                                repository.updateEvent(eventId, event)
-                                        .addOnSuccessListener(aVoid -> {
-                                            Log.d(TAG, "Event declined status updated");
-                                        });
-                            }
-                        }
-                    }
-                })
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "Failed to get event for decline: " + e.getMessage());
-                });
-
-        EventsNotificationManager notificationManager = new EventsNotificationManager(context);
-        notificationManager.cancelNotification(eventId);
-    }
-
-    /**
-     * Get current user ID from Firebase Auth or SharedPreferences
-     */
-    private String getUserId(Context context) {
-        try {
-            com.google.firebase.auth.FirebaseAuth auth = com.google.firebase.auth.FirebaseAuth.getInstance();
-            com.google.firebase.auth.FirebaseUser currentUser = auth.getCurrentUser();
-            if (currentUser != null) {
-                return currentUser.getUid();
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error getting user ID: " + e.getMessage());
+        if (userId != null) {
+            db.collection("events").document(eventId)
+                    .update("participant_status." + userId, "declined")
+                    .addOnSuccessListener(aVoid -> {
+                        Log.d(TAG, "Event declined: " + eventId);
+                        Toast.makeText(context, "Đã từ chối sự kiện!", Toast.LENGTH_SHORT).show();
+                    })
+                    .addOnFailureListener(e -> {
+                        Log.e(TAG, "Error declining event: " + e.getMessage());
+                        Toast.makeText(context, "Lỗi khi từ chối sự kiện", Toast.LENGTH_SHORT).show();
+                    });
         }
-        return null;
+
+        // Tắt thông báo
+        manager.cancelNotification(eventId);
     }
 }
