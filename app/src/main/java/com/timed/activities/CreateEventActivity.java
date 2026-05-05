@@ -803,6 +803,9 @@ public class CreateEventActivity extends AppCompatActivity {
 
         Event newEvent = new Event();
         newEvent.setCalendarId(calendarId);
+
+        CalendarModel selectedCalendar = calendarsById.get(calendarId);
+
         if (selectedCalendar != null) {
             newEvent.setCalendarName(selectedCalendar.getName());
             newEvent.setColor(selectedCalendar.getColor());
