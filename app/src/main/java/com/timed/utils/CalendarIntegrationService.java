@@ -4,10 +4,13 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
 
+import com.timed.managers.CalendarColorManager;
 import com.timed.managers.CalendarManager;
+import com.timed.managers.CalendarVisibilityManager;
 import com.timed.models.CalendarModel;
 import com.timed.repositories.RepositoryCallback;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -41,6 +44,35 @@ public class CalendarIntegrationService {
     public CalendarIntegrationService() {
         this.calendarManager = new CalendarManager();
         this.firebaseInitializer = FirebaseInitializer.getInstance();
+    }
+
+    private CalendarVisibilityManager getVisibilityManager(Context context) {
+        return new CalendarVisibilityManager(context);
+    }
+
+    public List<CalendarColorManager.CalendarColor> getPresetColors() {
+        return CalendarColorManager.getPresetColors();
+    }
+
+    public List<String> resolveVisibleCalendarIds(Context context, List<CalendarModel> calendars,
+            String fallbackCalendarId) {
+        return getVisibilityManager(context).resolveVisibleCalendarIds(calendars, fallbackCalendarId);
+    }
+
+    public void saveVisibleCalendarIds(Context context, List<String> visibleCalendarIds) {
+        getVisibilityManager(context).saveVisibleCalendarIds(visibleCalendarIds);
+    }
+
+    public void setCalendarVisibility(Context context, String calendarId, boolean visible) {
+        getVisibilityManager(context).setCalendarVisible(calendarId, visible);
+    }
+
+    public boolean isCalendarVisible(Context context, String calendarId) {
+        return getVisibilityManager(context).isCalendarVisible(calendarId);
+    }
+
+    public List<String> getSavedVisibleCalendarIds(Context context) {
+        return new ArrayList<>(getVisibilityManager(context).getVisibleCalendarIds());
     }
 
     public String getCachedDefaultCalendarId(Context context) {
@@ -291,6 +323,21 @@ public class CalendarIntegrationService {
                     @Override
                     public void onFailure(String errorMessage) {
                         Log.e(TAG, "Error updating calendar: " + errorMessage);
+                        listener.onError(errorMessage);
+                    }
+                });
+    }
+
+    public void updateCalendarVisibility(String calendarId, boolean isVisible, CalendarSaveListener listener) {
+        calendarManager.updateCalendarVisibility(calendarId, isVisible,
+                new RepositoryCallback<Void>() {
+                    @Override
+                    public void onSuccess(Void result) {
+                        listener.onSuccess(calendarId);
+                    }
+
+                    @Override
+                    public void onFailure(String errorMessage) {
                         listener.onError(errorMessage);
                     }
                 });
