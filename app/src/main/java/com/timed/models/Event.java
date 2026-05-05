@@ -56,6 +56,11 @@ public class Event {
     @PropertyName("calendar_id")
     private String calendarId;
 
+    @PropertyName("calendar_name")
+    private String calendarName;
+
+    private String color;
+
     private List<EventAttachment> attachments;
 
     @PropertyName("instance_of")
@@ -149,6 +154,14 @@ public class Event {
     public String getCalendarId() { return calendarId; }
     @PropertyName("calendar_id")
     public void setCalendarId(String calendarId) { this.calendarId = calendarId; }
+
+    @PropertyName("calendar_name")
+    public String getCalendarName() { return calendarName; }
+    @PropertyName("calendar_name")
+    public void setCalendarName(String calendarName) { this.calendarName = calendarName; }
+
+    public String getColor() { return color; }
+    public void setColor(String color) { this.color = color; }
 
     public List<EventAttachment> getAttachments() { return attachments; }
     public void setAttachments(List<EventAttachment> attachments) { this.attachments = attachments; }

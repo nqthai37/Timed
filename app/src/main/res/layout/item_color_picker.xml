@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="48dp"
+    android:layout_height="48dp"
+    android:layout_margin="8dp">
+
+    <View
+        android:id="@+id/vColorOption"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_color_picker_option" />
+
+    <ImageView
+        android:id="@+id/ivCheckmark"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_gravity="center"
+        android:src="@drawable/ic_check"
+        android:visibility="gone" />
+
+</FrameLayout>

@@ -11,6 +11,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.timed.R;
+import com.timed.Setting.Timezone.TimezoneHelper;
 import com.timed.models.Task;
 
 import java.text.SimpleDateFormat;
@@ -21,7 +22,6 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
 
     private final List<Task> tasks;
     private final OnTaskClickListener listener;
-    private final SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
 
     public interface OnTaskClickListener {
         void onTaskClick(Task task);
@@ -47,7 +47,9 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
         Task task = tasks.get(position);
         
         holder.tvTaskTitle.setText(task.getTitle());
-        holder.tvTaskTime.setText(task.getDue_date() != null ? timeFormat.format(task.getDue_date().toDate()) : "");
+        holder.tvTaskTime.setText(task.getDue_date() != null
+                ? TimezoneHelper.formatTime24h(holder.itemView.getContext(), task.getDue_date().toDate())
+                : "");
         
         // Bỏ listener cũ để tránh lỗi vòng lặp khi tái sử dụng view
         holder.cbTaskCompleted.setOnCheckedChangeListener(null);

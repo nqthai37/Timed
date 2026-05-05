@@ -31,6 +31,10 @@ public class CalendarManager {
         calendar.setDescription(description);
         calendar.setOwnerId(ownerId);
         calendar.setColor(color);
+        calendar.setColorName(CalendarColorManager.getNameByColor(color));
+        calendar.setType("personal");
+        calendar.setVisible(true);
+        calendar.setArchived(false);
         calendar.setPublic(isPublic);
 
         // Add owner as member with admin role
@@ -49,6 +53,10 @@ public class CalendarManager {
         calendar.setDescription(description);
         calendar.setOwnerId(ownerId);
         calendar.setColor(color);
+        calendar.setColorName(CalendarColorManager.getNameByColor(color));
+        calendar.setType("personal");
+        calendar.setVisible(true);
+        calendar.setArchived(false);
         calendar.setPublic(isPublic);
 
         // Add owner as member with admin role
@@ -100,6 +108,25 @@ public class CalendarManager {
             @Override
             public void onFailure(String errorMessage) {
                 callback.onFailure("Failed to update calendar: " + errorMessage);
+            }
+        });
+    }
+
+    /**
+     * Update calendar visibility without modifying core metadata.
+     */
+    public void updateCalendarVisibility(String calendarId, boolean isVisible,
+            RepositoryCallback<Void> callback) {
+        calendarRepository.getCalendarById(calendarId, new RepositoryCallback<CalendarModel>() {
+            @Override
+            public void onSuccess(CalendarModel calendar) {
+                calendar.setVisible(isVisible);
+                calendarRepository.updateCalendar(calendarId, calendar, callback);
+            }
+
+            @Override
+            public void onFailure(String errorMessage) {
+                callback.onFailure("Failed to update calendar visibility: " + errorMessage);
             }
         });
     }
@@ -211,6 +238,10 @@ public class CalendarManager {
         calendar.setDescription(description);
         calendar.setOwnerId(ownerId);
         calendar.setColor(color);
+        calendar.setColorName(CalendarColorManager.getNameByColor(color));
+        calendar.setType("project");
+        calendar.setVisible(true);
+        calendar.setArchived(false);
         calendar.setPublic(true);
 
         // Add owner as admin

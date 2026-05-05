@@ -2,12 +2,19 @@ package com.timed.activities;
 
 import android.content.Intent;
 import android.app.AlertDialog;
+import android.graphics.Color;
+import android.text.Spannable;
+import android.text.SpannableString;
+import android.text.TextUtils;
+import android.text.style.ForegroundColorSpan;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.SubMenu;
+import android.view.LayoutInflater;
 import android.util.Patterns;
 import android.os.Bundle;
 import android.view.View;
@@ -30,6 +37,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.timed.R;
 import com.timed.adapters.CalendarAdapter;
+import com.timed.adapters.CalendarDrawerAdapter;
+import com.timed.adapters.ColorPickerAdapter;
 import com.timed.adapters.EventAdapter;
 import com.timed.adapters.HorizontalCalendarAdapter;
 import com.timed.adapters.WeekEventAdapter;
@@ -38,7 +47,6 @@ import com.timed.models.CalendarModel;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.tabs.TabLayout;
-import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.Timestamp;
 import com.timed.activities.CreateEventActivity;
@@ -46,16 +54,25 @@ import com.timed.activities.FeaturesActivity;
 import com.timed.activities.SearchFilterActivity;
 import com.timed.activities.SettingsActivity;
 import com.timed.Auth.LoginActivity;
+import com.timed.managers.CalendarColorManager;
 import com.timed.managers.EventsManager;
+import com.timed.managers.InvitationManager;
 import com.timed.models.Event;
 import com.timed.models.User;
+import com.timed.models.Invitation;
 import com.timed.managers.UserManager;
 import com.timed.repositories.AuthRepository;
 import com.timed.repositories.UserRepository;
+import com.timed.Setting.Timezone.TimezoneHelper;
+import com.timed.repositories.RepositoryCallback;
 import com.timed.utils.CalendarIntegrationService;
 import com.timed.utils.FirebaseAuthManager;
 import com.timed.utils.FirebaseHelper;
 import com.timed.utils.FirebaseInitializer;
+import com.timed.utils.InvitationService;
+import com.timed.dialogs.InvitationsDialog;
+import com.timed.dialogs.ShareCalendarDialog;
+import com.google.firebase.auth.FirebaseAuth;
 import com.bumptech.glide.Glide;
 
 import java.time.LocalDate;
@@ -65,14 +82,18 @@ import java.util.Date;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class MainActivity extends AppCompatActivity implements CalendarAdapter.OnItemListener {
 
     private static final String TAG = "MainActivity";
+    private static final int MENU_ID_ADD_CALENDAR = 0x70001;
     private RecyclerView rvCalendar;
     private RecyclerView rvHorizontalCalendar;
 
@@ -112,8 +133,15 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
     private NavigationView navView;
     private TextView tvDrawerName;
     private final Map<Integer, String> drawerCalendarIdMap = new HashMap<>();
+    private final Map<String, CalendarModel> calendarsById = new HashMap<>();
+    private final Map<String, String> ownerNameCache = new HashMap<>();
+    private CalendarDrawerAdapter calendarDrawerAdapter;
 
     private EventsManager eventsManager;
+    private InvitationManager invitationManager;
+    private InvitationService invitationService;
+    private android.app.Dialog currentInvitationsDialog;
+    private FirebaseAuth firebaseAuth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -126,6 +154,14 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         eventsManager = EventsManager.getInstance(this);
         calendarIntegrationService = new CalendarIntegrationService();
         defaultCalendarId = calendarIntegrationService.getCachedDefaultCalendarId(this);
+        
+        // Khởi tạo Invitation Manager và Service
+        invitationManager = InvitationManager.getInstance(this);
+        invitationService = new InvitationService(this);
+        firebaseAuth = FirebaseAuth.getInstance();
+        
+        // Tải số lượng lời mời khi app mở
+        loadInvitationCount();
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.mainContent), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -157,6 +193,16 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         ImageButton btnSearch = findViewById(R.id.btnSearch);
         if (btnSearch != null) {
             btnSearch.setOnClickListener(v -> startActivity(new Intent(this, SearchFilterActivity.class)));
+        }
+
+        ImageButton btnInvitations = findViewById(R.id.btnInvitations);
+        if (btnInvitations != null) {
+            btnInvitations.setOnClickListener(v -> showPendingInvitations());
+        }
+
+        ImageButton btnShareCalendar = findViewById(R.id.btnShareCalendar);
+        if (btnShareCalendar != null) {
+            btnShareCalendar.setOnClickListener(v -> showShareCalendarDialog());
         }
 
         imgProfile = findViewById(R.id.imgProfile);
@@ -357,10 +403,27 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
     @Override
     protected void onResume() {
         super.onResume();
+        // Invalidate timezone cache so we pick up any changes from TimezoneSettingActivity
+        TimezoneHelper.invalidateCache();
         updateEventsForDate(selectedDate);
 
-        // Don't need to update bottom nav selection on resume
-        // It will maintain its state from before
+        // 2. Cập nhật số lượng lời mời
+        loadInvitationCount();
+
+        // 3. ÉP LỊCH CHÍNH (BÊN TRÊN) TẢI LẠI NGAY LẬP TỨC TỪ BỘ NHỚ OFFLINE
+        TabLayout tabLayout = findViewById(R.id.tabLayout);
+        if (tabLayout != null) {
+            int selectedTab = tabLayout.getSelectedTabPosition();
+            if (selectedTab == 0) {
+                setupHorizontalCalendar(); // Đang ở Tab Ngày
+            } else if (selectedTab == 1) {
+                setup3DaysView();          // Đang ở Tab 3 Ngày
+            } else if (selectedTab == 2) {
+                setupWeekView();           // Đang ở Tab Tuần
+            } else if (selectedTab == 3) {
+                setMonthView();            // Đang ở Tab Tháng
+            }
+        }
     }
 
     private int dpToPx(int dp) {
@@ -445,20 +508,25 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             String title = event.getTitle() != null ? event.getTitle() : "(Untitled)";
             String details = buildEventDetails(event);
             int bgRes = pickEventBackground(colorIndex++);
-            String titleColor = bgRes == R.drawable.bg_day_event_light ? "#741ce9" : "#FFFFFF";
-            String detailsColor = bgRes == R.drawable.bg_day_event_light ? "#64748b" : "#E6FFFFFF";
+            Integer eventTint = resolveEventTintColor(event);
+            boolean useDarkText = eventTint != null && !isDarkColor(eventTint);
+            String titleColor = useDarkText ? "#334155" : "#FFFFFF";
+            String detailsColor = useDarkText ? "#64748b" : "#E6FFFFFF";
 
             addEventCardToTimeline(timelineContainer, hourHeightPx, title, details, parts.startHour,
-                    parts.startMinute, parts.durationMinutes, bgRes, titleColor, detailsColor);
+                    parts.startMinute, parts.durationMinutes, bgRes, titleColor, detailsColor, eventTint);
         }
     }
 
     private void addEventCardToTimeline(android.widget.RelativeLayout container, int hourHeightPx, String title,
             String details, int startHour, int startMinute, int durationMinutes, int backgroundResId,
-            String titleColorHex, String detailsColorHex) {
+            String titleColorHex, String detailsColorHex, Integer tintColor) {
         android.widget.LinearLayout card = new android.widget.LinearLayout(this);
         card.setOrientation(android.widget.LinearLayout.VERTICAL);
         card.setBackgroundResource(backgroundResId);
+        if (tintColor != null && card.getBackground() != null) {
+            card.getBackground().mutate().setTint(tintColor);
+        }
         card.setPadding(dpToPx(12), dpToPx(12), dpToPx(12), dpToPx(12));
         card.setElevation(dpToPx(4));
 
@@ -585,23 +653,28 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                 }
 
                 int bgRes = pickEventBackground(colorIndex++);
-                String titleColor = bgRes == R.drawable.bg_day_event_light ? "#334155" : "#FFFFFF";
-                String detailColor = bgRes == R.drawable.bg_day_event_light ? "#64748b" : "#E6FFFFFF";
+                Integer eventTint = resolveEventTintColor(event);
+                boolean useDarkText = eventTint != null && !isDarkColor(eventTint);
+                String titleColor = useDarkText ? "#334155" : "#FFFFFF";
+                String detailColor = useDarkText ? "#64748b" : "#E6FFFFFF";
 
                 addEventTo3Days(container, hourHeightPx, timeColumnWidth, colWidth, dayIndex,
                         event.getTitle() != null ? event.getTitle() : "(Untitled)",
                         buildEventLocation(event), parts.startHour, parts.startMinute,
-                        parts.durationMinutes, bgRes, titleColor, detailColor);
+                    parts.durationMinutes, bgRes, titleColor, detailColor, eventTint);
             }
         });
     }
 
     private void addEventTo3Days(android.widget.RelativeLayout container, int hourHeightPx, int timeOffset,
             int colWidth, int dayIndex, String title, String details, int startHour, int startMinute, int durationMins,
-            int bgRes, String titleHex, String detailHex) {
+            int bgRes, String titleHex, String detailHex, Integer tintColor) {
         android.widget.LinearLayout card = new android.widget.LinearLayout(this);
         card.setOrientation(android.widget.LinearLayout.VERTICAL);
         card.setBackgroundResource(bgRes);
+        if (tintColor != null && card.getBackground() != null) {
+            card.getBackground().mutate().setTint(tintColor);
+        }
         card.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8));
         card.setElevation(dpToPx(2));
 
@@ -749,28 +822,32 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
 
                 int bgRes = pickEventBackground(colorIndex++);
                 String title = event.getTitle() != null ? event.getTitle() : "(Untitled)";
+                Integer eventTint = resolveEventTintColor(event);
                 addEventToWeekGrid(container, hourHeightPx, timeColumnWidth, colWidth, dayIndex,
-                        title, parts.startHour, parts.startMinute, parts.durationMinutes, bgRes);
+                        title, parts.startHour, parts.startMinute, parts.durationMinutes, bgRes, eventTint);
             }
         });
     }
 
     private void addEventToWeekGrid(android.widget.RelativeLayout container, int hourHeightPx, int timeOffset,
             int colWidth, int dayIndex, String shortTitle, int startHour, int startMinute, int durationMins,
-            int bgRes) {
+            int bgRes, Integer tintColor) {
         android.widget.TextView card = new android.widget.TextView(this);
         card.setBackgroundResource(bgRes);
+        if (tintColor != null && card.getBackground() != null) {
+            card.getBackground().mutate().setTint(tintColor);
+        }
         card.setText(shortTitle);
-        card.setTextColor(android.graphics.Color.WHITE);
+        if (tintColor != null && !isDarkColor(tintColor)) {
+            card.setTextColor(android.graphics.Color.parseColor("#334155"));
+        } else {
+            card.setTextColor(android.graphics.Color.WHITE);
+        }
         card.setTextSize(9f);
         card.setTypeface(null, android.graphics.Typeface.BOLD);
         card.setPadding(dpToPx(4), dpToPx(4), dpToPx(2), dpToPx(2));
         card.setEllipsize(android.text.TextUtils.TruncateAt.END);
         card.setMaxLines(2);
-
-        if (bgRes == R.drawable.bg_day_event_light) {
-            card.setTextColor(android.graphics.Color.parseColor("#741ce9"));
-        }
 
         int topMargin = (startHour * hourHeightPx) + (startMinute * hourHeightPx / 60) + dpToPx(10);
         int cardHeight = (durationMins * hourHeightPx / 60);
@@ -888,6 +965,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
     private void refreshProfileAvatar() {
         User currentUser = UserManager.getInstance().getCurrentUser();
         if (currentUser != null) {
+            cacheOwnerName(currentUser);
             updateDrawerHeader(currentUser);
             if (isValidAvatarUrl(currentUser.getAvatar())) {
                 loadAvatar(currentUser.getAvatar());
@@ -905,10 +983,14 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                     User user = snapshot.toObject(User.class);
                     if (user != null) {
                         UserManager.getInstance().setCurrentUser(user);
+                        cacheOwnerName(user);
                         if (isValidAvatarUrl(user.getAvatar())) {
                             loadAvatar(user.getAvatar());
                         }
                         updateDrawerHeader(user);
+                        if (!calendarsById.isEmpty()) {
+                            updateDrawerCalendars(new ArrayList<>(calendarsById.values()));
+                        }
                     }
                 });
     }
@@ -1199,6 +1281,10 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         if (defaultCalendarId != null && !defaultCalendarId.isEmpty()) {
             return defaultCalendarId;
         }
+        if (!visibleCalendarIds.isEmpty()) {
+            defaultCalendarId = visibleCalendarIds.get(0);
+            return defaultCalendarId;
+        }
         if (calendarIntegrationService != null) {
             defaultCalendarId = calendarIntegrationService.getCachedDefaultCalendarId(this);
         }
@@ -1232,6 +1318,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         if (!visibleCalendarIds.isEmpty()) {
             return new ArrayList<>(visibleCalendarIds);
         }
+
         String calendarId = getActiveCalendarId();
         if (calendarId != null && !calendarId.isEmpty()) {
             List<String> ids = new ArrayList<>();
@@ -1243,8 +1330,23 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
 
     private void updateVisibleCalendarIds(List<CalendarModel> calendars) {
         visibleCalendarIds.clear();
-        if (defaultCalendarId != null && !defaultCalendarId.isEmpty()) {
+
+        List<String> resolvedVisibleIds = calendarIntegrationService.resolveVisibleCalendarIds(this, calendars,
+                defaultCalendarId);
+        if (resolvedVisibleIds != null) {
+            visibleCalendarIds.addAll(resolvedVisibleIds);
+        }
+
+        if (visibleCalendarIds.isEmpty() && defaultCalendarId != null && !defaultCalendarId.isEmpty()) {
             visibleCalendarIds.add(defaultCalendarId);
+        }
+
+        if (!visibleCalendarIds.isEmpty()) {
+            if (defaultCalendarId == null || defaultCalendarId.isEmpty() || !visibleCalendarIds.contains(defaultCalendarId)) {
+                defaultCalendarId = visibleCalendarIds.get(0);
+                calendarIntegrationService.setCachedDefaultCalendarId(this, defaultCalendarId);
+            }
+            calendarIntegrationService.saveVisibleCalendarIds(this, visibleCalendarIds);
         }
     }
 
@@ -1258,6 +1360,39 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         }
         tvDrawerName = header.findViewById(R.id.tvDrawerName);
         updateDrawerHeader(UserManager.getInstance().getCurrentUser());
+        
+        // Set up calendar drawer RecyclerView
+        RecyclerView rvCalendarDrawer = header.findViewById(R.id.rvDrawerCalendars);
+        if (rvCalendarDrawer != null) {
+            rvCalendarDrawer.setLayoutManager(new LinearLayoutManager(this));
+            calendarDrawerAdapter = new CalendarDrawerAdapter(
+                    new ArrayList<>(calendarsById.values()),
+                    visibleCalendarIds,
+                    new CalendarDrawerAdapter.OnCalendarActionListener() {
+                        @Override
+                        public void onCalendarToggle(CalendarModel calendar, boolean isVisible) {
+                            toggleCalendarVisibility(calendar.getId());
+                        }
+                        
+                        @Override
+                        public void onEditCalendar(CalendarModel calendar) {
+                            showEditCalendarDialog(calendar);
+                        }
+                    });
+            rvCalendarDrawer.setAdapter(calendarDrawerAdapter);
+        }
+        
+        // Set up Add Calendar button
+        com.google.android.material.button.MaterialButton btnAddCalendar = header.findViewById(R.id.btnAddCalendar);
+        if (btnAddCalendar != null) {
+            btnAddCalendar.setOnClickListener(v -> {
+                showCreateCalendarDialog();
+                DrawerLayout drawerLayout = findViewById(R.id.drawerLayout);
+                if (drawerLayout != null) {
+                    drawerLayout.closeDrawer(GravityCompat.START);
+                }
+            });
+        }
     }
 
     private void updateDrawerHeader(User user) {
@@ -1271,65 +1406,199 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
     }
 
     private void setupDrawerSelection(DrawerLayout drawerLayout) {
-        if (navView == null) {
-            return;
-        }
-        navView.setNavigationItemSelectedListener(item -> {
-            String calendarId = drawerCalendarIdMap.get(item.getItemId());
-            if (calendarId == null) {
-                return false;
-            }
-            setSelectedCalendar(calendarId);
-            item.setChecked(true);
-            if (drawerLayout != null) {
-                drawerLayout.closeDrawer(GravityCompat.START);
-            }
-            return true;
-        });
+        // This method is now partially handled by the RecyclerView adapter
+        // The adapter manages calendar toggling and editing directly
     }
 
     private void updateDrawerCalendars(List<CalendarModel> calendars) {
-        if (navView == null || calendars == null) {
+        if (calendars == null) {
             return;
         }
-        Menu menu = navView.getMenu();
-        menu.clear();
+
         drawerCalendarIdMap.clear();
+        calendarsById.clear();
 
-        String userId = firebaseInitializer.getCurrentUserId();
-        List<CalendarModel> owned = new ArrayList<>();
-        List<CalendarModel> others = new ArrayList<>();
+        List<CalendarModel> sortedCalendars = new ArrayList<>();
         for (CalendarModel calendar : calendars) {
-            if (calendar == null || calendar.getId() == null) {
-                continue;
-            }
-            if (userId != null && userId.equals(calendar.getOwnerId())) {
-                owned.add(calendar);
-            } else {
-                others.add(calendar);
+            if (calendar != null && calendar.getId() != null && !calendar.getId().isEmpty()) {
+                sortedCalendars.add(calendar);
+                calendarsById.put(calendar.getId(), calendar);
             }
         }
 
-        if (!owned.isEmpty()) {
-            SubMenu myMenu = menu.addSubMenu("MY CALENDARS");
-            addCalendarMenuItems(myMenu, owned);
+        Collections.sort(sortedCalendars, (c1, c2) -> {
+            int byOrder = Integer.compare(c1.getSortOrder(), c2.getSortOrder());
+            if (byOrder != 0) {
+                return byOrder;
+            }
+            String name1 = c1.getName() != null ? c1.getName() : "";
+            String name2 = c2.getName() != null ? c2.getName() : "";
+            return name1.compareToIgnoreCase(name2);
+        });
+
+        // Update the drawer adapter with new calendars
+        if (calendarDrawerAdapter != null) {
+            calendarDrawerAdapter.updateData(sortedCalendars, visibleCalendarIds);
         }
-        if (!others.isEmpty()) {
-            SubMenu otherMenu = menu.addSubMenu("OTHER CALENDARS");
-            addCalendarMenuItems(otherMenu, others);
+
+        loadCalendarOwnerNames(sortedCalendars, () -> {
+            if (calendarDrawerAdapter != null) {
+                calendarDrawerAdapter.updateData(sortedCalendars, visibleCalendarIds);
+            }
+        });
+    }
+
+    private void cacheOwnerName(User user) {
+        if (user == null) {
+            return;
+        }
+        String userId = user.getUid();
+        String name = user.getName();
+        if (userId == null || name == null) {
+            return;
+        }
+        String normalized = name.trim();
+        if (!normalized.isEmpty()) {
+            ownerNameCache.put(userId, normalized);
         }
     }
 
-    private void addCalendarMenuItems(SubMenu menu, List<CalendarModel> calendars) {
+    private void applyOwnerNameToCalendars(List<CalendarModel> calendars, String ownerId, String ownerName) {
+        if (calendars == null || ownerId == null || ownerName == null) {
+            return;
+        }
         for (CalendarModel calendar : calendars) {
-            String name = calendar.getName() != null ? calendar.getName() : "Calendar";
-            int itemId = View.generateViewId();
-            MenuItem item = menu.add(Menu.NONE, itemId, Menu.NONE, name);
-            item.setCheckable(true);
-            if (calendar.getId().equals(defaultCalendarId)) {
-                item.setChecked(true);
+            if (calendar != null && ownerId.equals(calendar.getOwnerId())) {
+                calendar.setOwnerName(ownerName);
             }
-            drawerCalendarIdMap.put(itemId, calendar.getId());
+        }
+    }
+
+    private void loadCalendarOwnerNames(List<CalendarModel> calendars, Runnable onComplete) {
+        if (calendars == null || calendars.isEmpty()) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+
+        cacheOwnerName(UserManager.getInstance().getCurrentUser());
+
+        if (userRepository == null) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+
+        Set<String> ownerIdsToFetch = new HashSet<>();
+        for (CalendarModel calendar : calendars) {
+            if (calendar == null) {
+                continue;
+            }
+            String ownerId = calendar.getOwnerId();
+            if (ownerId == null || ownerId.isEmpty()) {
+                continue;
+            }
+            String cachedName = ownerNameCache.get(ownerId);
+            if (cachedName != null) {
+                calendar.setOwnerName(cachedName);
+            } else {
+                ownerIdsToFetch.add(ownerId);
+            }
+        }
+
+        if (ownerIdsToFetch.isEmpty()) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+
+        AtomicInteger remaining = new AtomicInteger(ownerIdsToFetch.size());
+        for (String ownerId : ownerIdsToFetch) {
+            userRepository.getUser(ownerId)
+                    .addOnSuccessListener(snapshot -> {
+                        User owner = snapshot.toObject(User.class);
+                        String ownerName = owner != null ? owner.getName() : null;
+                        if (ownerName != null) {
+                            ownerName = ownerName.trim();
+                        }
+                        if (ownerName != null && !ownerName.isEmpty()) {
+                            ownerNameCache.put(ownerId, ownerName);
+                            applyOwnerNameToCalendars(calendars, ownerId, ownerName);
+                        }
+                        if (remaining.decrementAndGet() == 0 && onComplete != null) {
+                            onComplete.run();
+                        }
+                    })
+                    .addOnFailureListener(e -> {
+                        if (remaining.decrementAndGet() == 0 && onComplete != null) {
+                            onComplete.run();
+                        }
+                    });
+        }
+    }
+
+    private void toggleCalendarVisibility(String calendarId) {
+        if (calendarId == null || calendarId.isEmpty()) {
+            return;
+        }
+
+        boolean currentlyVisible = visibleCalendarIds.contains(calendarId);
+        if (currentlyVisible && visibleCalendarIds.size() == 1) {
+            Toast.makeText(this, "At least one calendar must remain visible", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (currentlyVisible) {
+            visibleCalendarIds.remove(calendarId);
+        } else {
+            visibleCalendarIds.add(calendarId);
+            defaultCalendarId = calendarId;
+        }
+
+        if (!visibleCalendarIds.isEmpty() && (defaultCalendarId == null || !visibleCalendarIds.contains(defaultCalendarId))) {
+            defaultCalendarId = visibleCalendarIds.get(0);
+        }
+
+        if (defaultCalendarId != null && !defaultCalendarId.isEmpty()) {
+            calendarIntegrationService.setCachedDefaultCalendarId(this, defaultCalendarId);
+        }
+        calendarIntegrationService.saveVisibleCalendarIds(this, visibleCalendarIds);
+
+        boolean newVisibility = !currentlyVisible;
+        calendarIntegrationService.updateCalendarVisibility(calendarId, newVisibility,
+                new CalendarIntegrationService.CalendarSaveListener() {
+                    @Override
+                    public void onSuccess(String ignoredCalendarId) {
+                        Log.d(TAG, "Calendar visibility synced: " + calendarId + " -> " + newVisibility);
+                    }
+
+                    @Override
+                    public void onError(String errorMessage) {
+                        Log.w(TAG, "Failed to sync calendar visibility: " + errorMessage);
+                    }
+                });
+
+        refreshCalendarViewsForVisibilityChange();
+    }
+
+    private void refreshCalendarViewsForVisibilityChange() {
+        setMonthView();
+        updateEventsForDate(selectedDate);
+
+        if (layoutDayView != null && layoutDayView.getVisibility() == View.VISIBLE) {
+            loadDayEvents(selectedDate);
+        }
+        if (layout3DaysView != null && layout3DaysView.getVisibility() == View.VISIBLE) {
+            loadThreeDaysEvents(startDate3Days);
+        }
+        if (layoutWeekView != null && layoutWeekView.getVisibility() == View.VISIBLE) {
+            int currentDayOfWeek = selectedWeekDate.getDayOfWeek().getValue();
+            int daysToSubtract = (currentDayOfWeek == 7) ? 0 : currentDayOfWeek;
+            LocalDate startOfWeek = selectedWeekDate.minusDays(daysToSubtract);
+            loadWeekEvents(startOfWeek);
         }
     }
 
@@ -1339,10 +1608,244 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         }
         defaultCalendarId = calendarId;
         calendarIntegrationService.setCachedDefaultCalendarId(this, calendarId);
-        visibleCalendarIds.clear();
-        visibleCalendarIds.add(calendarId);
+        if (!visibleCalendarIds.contains(calendarId)) {
+            visibleCalendarIds.add(calendarId);
+        }
+        calendarIntegrationService.saveVisibleCalendarIds(this, visibleCalendarIds);
         setMonthView();
         updateEventsForDate(selectedDate);
+    }
+
+    private void showCreateCalendarDialog() {
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+        int padding = dpToPx(20);
+        container.setPadding(padding, dpToPx(8), padding, 0);
+
+        EditText nameInput = new EditText(this);
+        nameInput.setHint("Calendar name");
+        nameInput.setSingleLine(true);
+        container.addView(nameInput);
+
+        EditText descriptionInput = new EditText(this);
+        descriptionInput.setHint("Description (optional)");
+        descriptionInput.setMinLines(2);
+        descriptionInput.setMaxLines(3);
+        container.addView(descriptionInput);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Create Calendar")
+                .setView(container)
+                .setPositiveButton("Next", null)
+                .setNegativeButton("Cancel", null)
+                .create();
+
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String name = nameInput.getText() != null ? nameInput.getText().toString().trim() : "";
+            String description = descriptionInput.getText() != null
+                    ? descriptionInput.getText().toString().trim()
+                    : "";
+
+            if (name.isEmpty()) {
+                nameInput.setError("Calendar name is required");
+                nameInput.requestFocus();
+                return;
+            }
+            if (isDuplicateCalendarName(name)) {
+                nameInput.setError("Calendar name already exists");
+                nameInput.requestFocus();
+                return;
+            }
+
+            dialog.dismiss();
+            showColorPickerForNewCalendar(name, description);
+        }));
+
+        dialog.show();
+    }
+
+    private void showColorPickerForNewCalendar(String name, String description) {
+        List<CalendarColorManager.CalendarColor> colors = calendarIntegrationService.getPresetColors();
+        if (colors == null || colors.isEmpty()) {
+            createCalendarFromDrawer(name, description, "#2B78E4");
+            return;
+        }
+
+        String[] labels = new String[colors.size()];
+        for (int i = 0; i < colors.size(); i++) {
+            CalendarColorManager.CalendarColor color = colors.get(i);
+            labels[i] = "● " + color.getName() + " (" + color.getHex() + ")";
+        }
+
+        final int[] selectedIndex = { 0 };
+
+        new AlertDialog.Builder(this)
+                .setTitle("Choose color")
+                .setSingleChoiceItems(labels, selectedIndex[0], (dialog, which) -> selectedIndex[0] = which)
+                .setPositiveButton("Create", (dialog, which) -> {
+                    CalendarColorManager.CalendarColor selected = colors.get(selectedIndex[0]);
+                    createCalendarFromDrawer(name, description, selected.getHex());
+                })
+                .setNegativeButton("Back", null)
+                .show();
+    }
+
+    private void createCalendarFromDrawer(String name, String description, String colorHex) {
+        calendarIntegrationService.createCalendar(name, description, colorHex, false,
+                new CalendarIntegrationService.CalendarSaveListener() {
+                    @Override
+                    public void onSuccess(String calendarId) {
+                        if (calendarId == null || calendarId.isEmpty()) {
+                            Toast.makeText(MainActivity.this, "Calendar created", Toast.LENGTH_SHORT).show();
+                            ensureDefaultCalendarReady(() -> refreshCalendarViewsForVisibilityChange());
+                            return;
+                        }
+
+                        defaultCalendarId = calendarId;
+                        calendarIntegrationService.setCachedDefaultCalendarId(MainActivity.this, calendarId);
+
+                        if (!visibleCalendarIds.contains(calendarId)) {
+                            visibleCalendarIds.add(calendarId);
+                        }
+                        calendarIntegrationService.saveVisibleCalendarIds(MainActivity.this, visibleCalendarIds);
+
+                        ensureDefaultCalendarReady(() -> {
+                            Toast.makeText(MainActivity.this, "Calendar created", Toast.LENGTH_SHORT).show();
+                            refreshCalendarViewsForVisibilityChange();
+                        });
+                    }
+
+                    @Override
+                    public void onError(String errorMessage) {
+                        Toast.makeText(MainActivity.this,
+                                "Failed to create calendar: " + errorMessage,
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    private boolean isDuplicateCalendarName(String candidateName) {
+        if (candidateName == null || candidateName.trim().isEmpty()) {
+            return false;
+        }
+        String normalized = candidateName.trim();
+        for (CalendarModel calendar : calendarsById.values()) {
+            if (calendar == null || calendar.getName() == null) {
+                continue;
+            }
+            if (normalized.equalsIgnoreCase(calendar.getName().trim())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void showEditCalendarDialog(CalendarModel calendar) {
+        if (calendar == null) {
+            return;
+        }
+
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_edit_calendar, null);
+        EditText etName = dialogView.findViewById(R.id.etCalendarName);
+        EditText etDescription = dialogView.findViewById(R.id.etCalendarDescription);
+        RecyclerView rvColorPicker = dialogView.findViewById(R.id.rvColorPicker);
+
+        etName.setText(calendar.getName());
+        etDescription.setText(calendar.getDescription());
+
+        List<CalendarColorManager.CalendarColor> colors = calendarIntegrationService.getPresetColors();
+        if (colors != null && !colors.isEmpty()) {
+            rvColorPicker.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+            ColorPickerAdapter colorAdapter = new ColorPickerAdapter(
+                    colors,
+                    calendar.getColor(),
+                    colorHex -> {
+                        // Color selection handled internally
+                    });
+            rvColorPicker.setAdapter(colorAdapter);
+        }
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Edit Calendar")
+                .setView(dialogView)
+                .setPositiveButton("Save", null)
+                .setNegativeButton("Cancel", null)
+                .setNeutralButton("Delete", null)
+                .create();
+
+        dialog.setOnShowListener(d -> {
+            // Save button
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                String newName = etName.getText().toString().trim();
+                String newDescription = etDescription.getText().toString().trim();
+
+                if (newName.isEmpty()) {
+                    etName.setError("Calendar name is required");
+                    etName.requestFocus();
+                    return;
+                }
+
+                // Check for duplicate only if name changed
+                if (!newName.equalsIgnoreCase(calendar.getName())) {
+                    if (isDuplicateCalendarName(newName)) {
+                        etName.setError("Calendar name already exists");
+                        etName.requestFocus();
+                        return;
+                    }
+                }
+
+                // Get selected color from adapter (keep current for now)
+                String selectedColor = calendar.getColor();
+
+                // Update in Firestore
+                calendarIntegrationService.updateCalendar(calendar.getId(), newName, newDescription, selectedColor, false, new CalendarIntegrationService.CalendarSaveListener() {
+                    @Override
+                    public void onSuccess(String calendarId) {
+                        Toast.makeText(MainActivity.this, "Calendar updated", Toast.LENGTH_SHORT).show();
+                        updateDrawerCalendars(new ArrayList<>(calendarsById.values()));
+                        dialog.dismiss();
+                    }
+
+                    @Override
+                    public void onError(String errorMessage) {
+                        Toast.makeText(MainActivity.this,
+                                "Failed to update calendar: " + errorMessage,
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
+            });
+
+            // Delete button
+            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> {
+                new AlertDialog.Builder(MainActivity.this)
+                        .setTitle("Delete Calendar")
+                        .setMessage("Are you sure you want to delete this calendar? This cannot be undone.")
+                        .setPositiveButton("Delete", (deleteDialog, which) -> {
+                            calendarIntegrationService.deleteCalendar(calendar.getId(),
+                                    new CalendarIntegrationService.CalendarSaveListener() {
+                                        @Override
+                                        public void onSuccess(String calendarId) {
+                                            Toast.makeText(MainActivity.this, "Calendar deleted", Toast.LENGTH_SHORT).show();
+                                            visibleCalendarIds.remove(calendarId);
+                                            calendarIntegrationService.saveVisibleCalendarIds(MainActivity.this, visibleCalendarIds);
+                                            updateDrawerCalendars(new ArrayList<>(calendarsById.values()));
+                                            dialog.dismiss();
+                                        }
+
+                                        @Override
+                                        public void onError(String errorMessage) {
+                                            Toast.makeText(MainActivity.this,
+                                                    "Failed to delete calendar: " + errorMessage,
+                                                    Toast.LENGTH_SHORT).show();
+                                        }
+                                    });
+                        })
+                        .setNegativeButton("Cancel", null)
+                        .show();
+            });
+        });
+
+        dialog.show();
     }
 
     private void fetchEventsForCalendars(LocalDate startDate, LocalDate endDate, List<String> calendarIds,
@@ -1448,9 +1951,10 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             return;
         }
 
+        java.time.ZoneId userZone = TimezoneHelper.getSelectedZoneId(this);
         Timestamp startTimestamp = toTimestamp(
-                startDate.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
-        long endMillis = endDate.plusDays(1).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+                startDate.atStartOfDay(userZone).toInstant().toEpochMilli());
+        long endMillis = endDate.plusDays(1).atStartOfDay(userZone).toInstant().toEpochMilli()
                 - 1;
         Timestamp endTimestamp = toTimestamp(endMillis);
 
@@ -1470,7 +1974,8 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         if (timestamp == null) {
             return null;
         }
-        return timestamp.toDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+        java.time.ZoneId userZone = TimezoneHelper.getSelectedZoneId(this);
+        return timestamp.toDate().toInstant().atZone(userZone).toLocalDate();
     }
 
     private EventTimeParts toTimeParts(Event event) {
@@ -1481,8 +1986,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         Date start = event.getStartTime().toDate();
         Date end = event.getEndTime() != null ? event.getEndTime().toDate() : start;
 
-        Calendar startCal = Calendar.getInstance();
-        startCal.setTime(start);
+        Calendar startCal = TimezoneHelper.getCalendarInSelectedTz(this, start);
         int startHour = startCal.get(Calendar.HOUR_OF_DAY);
         int startMinute = startCal.get(Calendar.MINUTE);
 
@@ -1523,20 +2027,36 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             return "";
         }
 
-        java.text.SimpleDateFormat formatter = new java.text.SimpleDateFormat("HH:mm", Locale.getDefault());
-        Date start = event.getStartTime().toDate();
-        String startText = formatter.format(start);
-
         if (event.getAllDay() != null && event.getAllDay()) {
             return "All day";
         }
 
+        String startText = TimezoneHelper.formatTime24h(this, event.getStartTime().toDate());
+
         if (event.getEndTime() != null) {
-            String endText = formatter.format(event.getEndTime().toDate());
+            String endText = TimezoneHelper.formatTime24h(this, event.getEndTime().toDate());
             return startText + " - " + endText;
         }
 
         return startText;
+    }
+
+    private Integer resolveEventTintColor(Event event) {
+        if (event == null || event.getColor() == null || event.getColor().trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return android.graphics.Color.parseColor(event.getColor().trim());
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
+    }
+
+    private boolean isDarkColor(int color) {
+        double darkness = 1 - (0.299 * android.graphics.Color.red(color)
+                + 0.587 * android.graphics.Color.green(color)
+                + 0.114 * android.graphics.Color.blue(color)) / 255;
+        return darkness >= 0.5;
     }
 
     private int pickEventBackground(int index) {
@@ -1564,5 +2084,405 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             this.startMinute = startMinute;
             this.durationMinutes = durationMinutes;
         }
+    }
+
+    // ======================== INVITATION FEATURES ========================
+    
+    private MenuItem invitationsMenuItem;
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+        
+        // Thêm menu item cho lời mời
+        invitationsMenuItem = menu.add("Lời mời");
+        invitationsMenuItem.setIcon(android.R.drawable.ic_dialog_email);
+        invitationsMenuItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
+        invitationsMenuItem.setOnMenuItemClickListener(item -> {
+            showPendingInvitations();
+            return true;
+        });
+        
+        MenuItem shareCalendarItem = menu.add("Chia sẻ lịch");
+        shareCalendarItem.setIcon(android.R.drawable.ic_menu_share);
+        shareCalendarItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
+        shareCalendarItem.setOnMenuItemClickListener(item -> {
+            showShareCalendarDialog();
+            return true;
+        });
+        
+        // Load invitation count to show badge
+        loadInvitationCount();
+        
+        return true;
+    }
+
+    private void loadInvitationCount() {
+        if (firebaseAuth.getCurrentUser() == null) return;
+        
+        String currentUserId = firebaseAuth.getCurrentUser().getUid();
+        invitationService.getPendingInvitationCount(currentUserId,
+            new InvitationService.InvitationCountListener() {
+                @Override
+                public void onCountLoaded(int count) {
+                    // Display badge on menu item by updating title
+                    if (invitationsMenuItem != null) {
+                        if (count > 0) {
+                            // Show count indicator in menu item title
+                            invitationsMenuItem.setTitle("Lời mời (" + count + ")");
+                            Log.d(TAG, "Badge set: " + count + " invitations");
+                        } else {
+                            invitationsMenuItem.setTitle("Lời mời");
+                        }
+                    }
+                    Log.d(TAG, "Bạn có " + count + " lời mời");
+                }
+
+                @Override
+                public void onError(String error) {
+                    Log.e(TAG, "Lỗi tải số lời mời: " + error);
+                }
+            });
+    }
+
+    private void showShareCalendarDialog() {
+        if (firebaseAuth.getCurrentUser() == null) {
+            Toast.makeText(this, "Vui lòng đăng nhập", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        ShareCalendarDialog.createShareCalendarDialog(this,
+            new ShareCalendarDialog.OnShareListener() {
+                @Override
+                public void onShare(String email, String role, String message) {
+                    shareCalendarWithUser(email, role, message);
+                }
+
+                @Override
+                public void onCancel() {
+                    Toast.makeText(MainActivity.this, "Đã hủy chia sẻ", 
+                        Toast.LENGTH_SHORT).show();
+                }
+            }).show();
+    }
+
+    private void shareCalendarWithUser(String toUserEmail, String role, String message) {
+        if (firebaseAuth.getCurrentUser() == null) {
+            Toast.makeText(this, "Vui lòng đăng nhập", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String calendarId = defaultCalendarId;
+        String currentUserId = firebaseAuth.getCurrentUser().getUid();
+        String currentUserEmail = firebaseAuth.getCurrentUser().getEmail();
+        String currentUserName = firebaseAuth.getCurrentUser().getDisplayName();
+
+        // Cần convert email sang userId
+        convertEmailToUserId(toUserEmail, userId -> {
+            if (userId == null) {
+                Toast.makeText(MainActivity.this, 
+                    "Không tìm thấy người dùng với email này", 
+                    Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            invitationManager.inviteToCalendar(
+                calendarId, toUserEmail, userId, role, message,
+                currentUserId, currentUserName, currentUserEmail,
+                new RepositoryCallback<String>() {
+                    @Override
+                    public void onSuccess(String result) {
+                        Toast.makeText(MainActivity.this, 
+                            "Lời mời đã được gửi!", 
+                            Toast.LENGTH_SHORT).show();
+                    }
+
+                    @Override
+                    public void onFailure(String errorMessage) {
+                        Toast.makeText(MainActivity.this, 
+                            "Lỗi: " + errorMessage, 
+                            Toast.LENGTH_SHORT).show();
+                    }
+                });
+        });
+    }
+
+    private void showPendingInvitations() {
+        if (firebaseAuth.getCurrentUser() == null) {
+            Toast.makeText(this, "Vui lòng đăng nhập", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String currentUserId = firebaseAuth.getCurrentUser().getUid();
+        
+        invitationService.loadPendingInvitations(currentUserId,
+            new InvitationService.InvitationLoadListener() {
+                @Override
+                public void onInvitationsLoaded(List<Invitation> invitations) {
+                    if (invitations.isEmpty()) {
+                        Toast.makeText(MainActivity.this, "Không có lời mời nào", 
+                            Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    currentInvitationsDialog = InvitationsDialog.createInvitationsListDialog(MainActivity.this, 
+                        invitations,
+                        new InvitationsDialog.OnInvitationActionListener() {
+                            @Override
+                            public void onAccept(Invitation invitation) {
+                                handleAcceptInvitation(invitation);
+                            }
+
+                            @Override
+                            public void onDecline(Invitation invitation) {
+                                handleDeclineInvitation(invitation);
+                            }
+                        });
+                    currentInvitationsDialog.show();
+                }
+
+                @Override
+                public void onError(String error) {
+                    Toast.makeText(MainActivity.this, 
+                        "Lỗi: " + error, 
+                        Toast.LENGTH_SHORT).show();
+                }
+            });
+    }
+
+    private void handleAcceptInvitation(Invitation invitation) {
+        String invitationType = invitation.getInvitationType();
+        
+        if ("calendar".equals(invitationType)) {
+            acceptCalendarInvitation(invitation);
+        } else if ("event".equals(invitationType)) {
+            acceptEventInvitation(invitation);
+        }
+    }
+
+    private void acceptCalendarInvitation(Invitation invitation) {
+        if (firebaseAuth.getCurrentUser() == null) return;
+
+        String currentUserId = firebaseAuth.getCurrentUser().getUid();
+        
+        invitationManager.acceptCalendarInvitation(
+            invitation.getId(), currentUserId,
+            new RepositoryCallback<String>() {
+                @Override
+                public void onSuccess(String result) {
+                    Toast.makeText(MainActivity.this, 
+                        "Đã chấp nhận lời mời!", 
+                        Toast.LENGTH_SHORT).show();
+                    
+                    // Close the invitations dialog
+                    if (currentInvitationsDialog != null && currentInvitationsDialog.isShowing()) {
+                        currentInvitationsDialog.dismiss();
+                    }
+                    
+                    // Refresh calendar list to show the new joined calendar
+                    ensureDefaultCalendarReady(() -> {
+                        Log.d(TAG, "Calendar drawer refreshed after accepting invitation");
+                    });
+                    
+                    // Refresh invitation count
+                    loadInvitationCount();
+                }
+
+                @Override
+                public void onFailure(String errorMessage) {
+                    Toast.makeText(MainActivity.this, 
+                        "Lỗi: " + errorMessage, 
+                        Toast.LENGTH_SHORT).show();
+                }
+            });
+    }
+
+    private void acceptEventInvitation(Invitation invitation) {
+        if (firebaseAuth.getCurrentUser() == null) return;
+
+        String currentUserId = firebaseAuth.getCurrentUser().getUid();
+        
+        invitationManager.respondToEventInvitation(
+            invitation.getId(), currentUserId, "accepted",
+            new RepositoryCallback<String>() {
+                @Override
+                public void onSuccess(String result) {
+                    Toast.makeText(MainActivity.this, 
+                        "Bạn sẽ tham dự sự kiện!", 
+                        Toast.LENGTH_SHORT).show();
+                    
+                    // Close the invitations dialog
+                    if (currentInvitationsDialog != null && currentInvitationsDialog.isShowing()) {
+                        currentInvitationsDialog.dismiss();
+                    }
+                    
+                    // Refresh events to show the accepted event
+                    updateEventsForDate(selectedDate);
+                    
+                    // Refresh invitation count
+                    loadInvitationCount();
+                }
+
+                @Override
+                public void onFailure(String errorMessage) {
+                    Toast.makeText(MainActivity.this, 
+                        "Lỗi: " + errorMessage, 
+                        Toast.LENGTH_SHORT).show();
+                }
+            });
+    }
+
+    private void handleDeclineInvitation(Invitation invitation) {
+        String invitationType = invitation.getInvitationType();
+        
+        if ("calendar".equals(invitationType)) {
+            invitationManager.declineCalendarInvitation(
+                invitation.getId(),
+                new RepositoryCallback<String>() {
+                    @Override
+                    public void onSuccess(String result) {
+                        Toast.makeText(MainActivity.this, 
+                            "Đã từ chối lời mời", 
+                            Toast.LENGTH_SHORT).show();
+                        
+                        // Close the invitations dialog
+                        if (currentInvitationsDialog != null && currentInvitationsDialog.isShowing()) {
+                            currentInvitationsDialog.dismiss();
+                        }
+                        
+                        // Refresh invitation count
+                        loadInvitationCount();
+                    }
+
+                    @Override
+                    public void onFailure(String errorMessage) {
+                        Toast.makeText(MainActivity.this, 
+                            "Lỗi: " + errorMessage, 
+                            Toast.LENGTH_SHORT).show();
+                    }
+                });
+        } else if ("event".equals(invitationType)) {
+            invitationManager.declineEventInvitation(
+                invitation.getId(),
+                new RepositoryCallback<String>() {
+                    @Override
+                    public void onSuccess(String result) {
+                        Toast.makeText(MainActivity.this, 
+                            "Đã từ chối lời mời", 
+                            Toast.LENGTH_SHORT).show();
+                        
+                        // Close the invitations dialog
+                        if (currentInvitationsDialog != null && currentInvitationsDialog.isShowing()) {
+                            currentInvitationsDialog.dismiss();
+                        }
+                        
+                        // Refresh invitation count
+                        loadInvitationCount();
+                    }
+
+                    @Override
+                    public void onFailure(String errorMessage) {
+                        Toast.makeText(MainActivity.this, 
+                            "Lỗi: " + errorMessage, 
+                            Toast.LENGTH_SHORT).show();
+                    }
+                });
+        }
+    }
+
+    private void convertEmailToUserId(String email, EmailToUserIdCallback callback) {
+        if (email == null || email.isEmpty()) {
+            Log.e(TAG, "Email trống");
+            Toast.makeText(this, "Email không được để trống", Toast.LENGTH_SHORT).show();
+            callback.onResult(null);
+            return;
+        }
+        
+        // Normalize email: convert to lowercase and trim whitespace
+        String normalizedEmail = email.toLowerCase().trim();
+        Log.d(TAG, "Tìm kiếm email: " + normalizedEmail);
+        
+        UserRepository userRepository = new UserRepository();
+        
+        userRepository.getUserByEmail(normalizedEmail)
+                .addOnSuccessListener(querySnapshot -> {
+                    Log.d(TAG, "Query success. Số kết quả: " + querySnapshot.size());
+                    
+                    if (querySnapshot.isEmpty()) {
+                        Log.w(TAG, "Không tìm thấy người dùng với email: " + normalizedEmail);
+                        
+                        // Try alternative: search with different case variations
+                        tryAlternativeEmailSearch(normalizedEmail, callback);
+                        return;
+                    }
+                    
+                    String userId = querySnapshot.getDocuments().get(0).getId();
+                    Log.d(TAG, "Tìm thấy userId: " + userId);
+                    callback.onResult(userId);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Lỗi query Firestore: " + e.getMessage(), e);
+                    Toast.makeText(MainActivity.this, "Lỗi tìm kiếm: " + e.getMessage(), 
+                        Toast.LENGTH_SHORT).show();
+                    callback.onResult(null);
+                });
+    }
+    
+    private void tryAlternativeEmailSearch(String email, EmailToUserIdCallback callback) {
+        // If exact match fails, try searching all users and comparing emails
+        Log.d(TAG, "Cố gắng tìm kiếm thay thế...");
+        
+        UserRepository userRepository = new UserRepository();
+        // This is a workaround - get all users and check manually
+        // In production, consider using Cloud Functions for better security
+        
+        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                .collection("users")
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    Log.d(TAG, "Tổng số người dùng: " + querySnapshot.size());
+                    
+                    for (com.google.firebase.firestore.DocumentSnapshot doc : querySnapshot.getDocuments()) {
+                        com.timed.models.User user = doc.toObject(com.timed.models.User.class);
+                        if (user != null && user.getEmail() != null) {
+                            String userEmail = user.getEmail().toLowerCase().trim();
+                            Log.d(TAG, "So sánh: " + userEmail + " với " + email);
+                            if (userEmail.equals(email)) {
+                                Log.d(TAG, "Tìm thấy người dùng: " + doc.getId());
+                                callback.onResult(doc.getId());
+                                return;
+                            }
+                        }
+                    }
+                    
+                    Log.w(TAG, "Không tìm thấy người dùng trong danh sách");
+                    callback.onResult(null);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Lỗi tìm kiếm thay thế: " + e.getMessage(), e);
+                    callback.onResult(null);
+                });
+    }
+
+    /**
+     * Test function để debug email lookup - gọi từ Console hoặc button
+     */
+    public void debugEmailLookup(String email) {
+        Log.d(TAG, "=== DEBUG EMAIL LOOKUP ===");
+        Log.d(TAG, "Email cần tìm: " + email);
+        
+        convertEmailToUserId(email, userId -> {
+            if (userId != null) {
+                Log.d(TAG, "✓ Tìm thấy userId: " + userId);
+                Toast.makeText(this, "✓ Tìm thấy: " + userId, Toast.LENGTH_SHORT).show();
+            } else {
+                Log.d(TAG, "✗ Không tìm thấy userId");
+                Toast.makeText(this, "✗ Không tìm thấy email này", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    interface EmailToUserIdCallback {
+        void onResult(String userId);
     }
 }

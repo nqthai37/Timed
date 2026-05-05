@@ -1,46 +1,59 @@
 package com.timed.Setting.Timezone;
 
+import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
+
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.timed.R;
 
+import java.util.ArrayList;
 import java.util.List;
 
-// Changed class name to match TimezoneAdapter.java
+/**
+ * RecyclerView adapter for displaying timezone items.
+ * Shows the UTC offset, display name, representative cities,
+ * current local time in that timezone, and highlights the selected timezone.
+ */
 public class TimezoneAdapter extends RecyclerView.Adapter<TimezoneAdapter.ViewHolder> {
 
-    private List<SettingItemModel> itemList;
-    private OnItemClickListener listener;
+    private List<TimezoneItem> itemList;
+    private String selectedTimezoneId;
+    private final OnTimezoneSelectedListener listener;
 
-    public interface OnItemClickListener {
-        void onItemClick(SettingItemModel item);
+    public interface OnTimezoneSelectedListener {
+        void onTimezoneSelected(TimezoneItem item);
     }
 
-    public static class SettingItemModel {
-        private String title;
-        private String subtitle;
-        private String id;
-
-        public SettingItemModel(String title, String subtitle, String id) {
-            this.title = title;
-            this.subtitle = subtitle;
-            this.id = id;
-        }
-
-        public String getTitle() { return title; }
-        public String getSubtitle() { return subtitle; }
-        public String getId() { return id; }
-    }
-
-    // Updated constructor name
-    public TimezoneAdapter(List<SettingItemModel> itemList, OnItemClickListener listener) {
-        this.itemList = itemList;
+    public TimezoneAdapter(List<TimezoneItem> itemList, String selectedTimezoneId,
+                           OnTimezoneSelectedListener listener) {
+        this.itemList = new ArrayList<>(itemList);
+        this.selectedTimezoneId = selectedTimezoneId;
         this.listener = listener;
+    }
+
+    public void updateList(List<TimezoneItem> newList) {
+        this.itemList = new ArrayList<>(newList);
+        notifyDataSetChanged();
+    }
+
+    public void setSelectedTimezoneId(String timezoneId) {
+        String oldId = this.selectedTimezoneId;
+        this.selectedTimezoneId = timezoneId;
+
+        // Find and update old and new positions for efficient UI refresh
+        for (int i = 0; i < itemList.size(); i++) {
+            String id = itemList.get(i).getTimezoneId();
+            if (id.equals(oldId) || id.equals(timezoneId)) {
+                notifyItemChanged(i);
+            }
+        }
     }
 
     @NonNull
@@ -53,13 +66,52 @@ public class TimezoneAdapter extends RecyclerView.Adapter<TimezoneAdapter.ViewHo
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        SettingItemModel item = itemList.get(position);
-        holder.tvTitle.setText(item.getTitle());
-        holder.tvSubtitle.setText(item.getSubtitle());
+        TimezoneItem item = itemList.get(position);
+        boolean isSelected = item.getTimezoneId().equals(selectedTimezoneId);
+
+        // Set UTC offset label
+        holder.tvTitle.setText(item.getUtcOffset());
+
+        // Set display name and cities as subtitle
+        String subtitle = item.getDisplayName();
+        if (item.getCities() != null && !item.getCities().isEmpty()) {
+            subtitle += "\n" + item.getCities();
+        }
+        holder.tvSubtitle.setText(subtitle);
+
+        // Set current time in this timezone
+        holder.tvTime.setText(item.getCurrentTime());
+
+        // Set icon tint based on offset (negative offsets = blue tones, positive = warm tones)
+        int rawOffset = item.getRawOffset();
+        int iconTintColor;
+        if (rawOffset < 0) {
+            iconTintColor = Color.parseColor("#3B82F6"); // Blue for negative offsets
+        } else if (rawOffset == 0) {
+            iconTintColor = Color.parseColor("#10B981"); // Green for UTC
+        } else {
+            iconTintColor = Color.parseColor("#F59E0B"); // Amber for positive offsets
+        }
+
+        // Highlight selected item
+        if (isSelected) {
+            holder.itemView.setBackgroundTintList(
+                    ContextCompat.getColorStateList(holder.itemView.getContext(), R.color.blue_50));
+            holder.ivIcon.setImageResource(R.drawable.ic_check_blue);
+            holder.tvTitle.setTextColor(ContextCompat.getColor(
+                    holder.itemView.getContext(), R.color.primary));
+        } else {
+            holder.itemView.setBackgroundTintList(
+                    android.content.res.ColorStateList.valueOf(Color.WHITE));
+            holder.ivIcon.setImageResource(R.drawable.ic_globe);
+            holder.ivIcon.setColorFilter(iconTintColor);
+            holder.tvTitle.setTextColor(Color.parseColor("#0F172A"));
+        }
 
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) {
-                listener.onItemClick(item);
+                setSelectedTimezoneId(item.getTimezoneId());
+                listener.onTimezoneSelected(item);
             }
         });
     }
@@ -70,13 +122,17 @@ public class TimezoneAdapter extends RecyclerView.Adapter<TimezoneAdapter.ViewHo
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
+        ImageView ivIcon;
         TextView tvTitle;
         TextView tvSubtitle;
+        TextView tvTime;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
+            ivIcon = itemView.findViewById(R.id.iv_tz_icon);
             tvTitle = itemView.findViewById(R.id.tv_tz_title);
             tvSubtitle = itemView.findViewById(R.id.tv_tz_subtitle);
+            tvTime = itemView.findViewById(R.id.tv_tz_time);
         }
     }
 }
