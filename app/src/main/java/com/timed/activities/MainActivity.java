@@ -386,12 +386,26 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
     @Override
     protected void onResume() {
         super.onResume();
+        // 1. Cập nhật danh sách sự kiện bên dưới
         updateEventsForDate(selectedDate);
-        // Refresh invitation count badge when returning to activity
+
+        // 2. Cập nhật số lượng lời mời
         loadInvitationCount();
 
-        // Don't need to update bottom nav selection on resume
-        // It will maintain its state from before
+        // 3. ÉP LỊCH CHÍNH (BÊN TRÊN) TẢI LẠI NGAY LẬP TỨC TỪ BỘ NHỚ OFFLINE
+        TabLayout tabLayout = findViewById(R.id.tabLayout);
+        if (tabLayout != null) {
+            int selectedTab = tabLayout.getSelectedTabPosition();
+            if (selectedTab == 0) {
+                setupHorizontalCalendar(); // Đang ở Tab Ngày
+            } else if (selectedTab == 1) {
+                setup3DaysView();          // Đang ở Tab 3 Ngày
+            } else if (selectedTab == 2) {
+                setupWeekView();           // Đang ở Tab Tuần
+            } else if (selectedTab == 3) {
+                setMonthView();            // Đang ở Tab Tháng
+            }
+        }
     }
 
     private int dpToPx(int dp) {

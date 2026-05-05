@@ -65,32 +65,30 @@ public class ReminderActivity extends AppCompatActivity {
 
         String title = etTitle.getText().toString().trim();
         String desc = etDesc.getText().toString().trim();
-        String userId = auth.getCurrentUser().getUid();
 
         if (title.isEmpty()) {
-            Toast.makeText(this, "Vui lòng nhập tiêu đề!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Vui lòng nhập tiêu đề", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // 1. Khởi tạo đối tượng Task
-        Timestamp deadline = new Timestamp(new Date(selectedTimeInMillis));
-        Task newTask = new Task(title, desc, deadline, "high", userId);
+        if (auth.getCurrentUser() == null) return;
+        String userId = auth.getCurrentUser().getUid();
 
-        // 2. Lưu lên Firestore vào collection "tasks"
-        db.collection("tasks")
-                .add(newTask)
-                .addOnSuccessListener(documentReference -> {
-                    String taskId = documentReference.getId();
+        // 1. Sinh ID ảo ngay lập tức (Offline hoàn hảo)
+        String taskId = db.collection("tasks").document().getId();
 
-                    // 3. Đặt báo thức (AlarmManager)
-                    scheduleTaskAlarm(taskId, title, desc, selectedTimeInMillis);
+        Task newTask = new Task(title, desc, new Timestamp(new Date(selectedTimeInMillis)), false, "Medium", userId, "default_list", null);
+        newTask.setId(taskId);
 
-                    Toast.makeText(this, "Đã lưu công việc!", Toast.LENGTH_SHORT).show();
-                    finish(); // Trở về màn hình trước
-                })
-                .addOnFailureListener(e -> {
-                    Toast.makeText(this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
+        // 2. Lưu Fire-and-Forget (Tự động lưu vào cache máy, có mạng Firebase tự up lên)
+        db.collection("tasks").document(taskId).set(newTask);
+
+        // 3. Đặt báo thức (AlarmManager) của Android (Chạy 100% offline không cần mạng)
+        scheduleTaskAlarm(taskId, title, desc, selectedTimeInMillis);
+
+        // 4. Đóng màn hình cái rụp
+        Toast.makeText(this, "Đã lưu công việc!", Toast.LENGTH_SHORT).show();
+        finish();
     }
 
     private void scheduleTaskAlarm(String taskId, String title, String desc, long triggerTime) {
