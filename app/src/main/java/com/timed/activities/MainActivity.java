@@ -37,7 +37,9 @@ import androidx.recyclerview.widget.RecyclerView;
 
 
 import com.timed.CalendarView.DayView;
+import com.timed.CalendarView.MonthView;
 import com.timed.CalendarView.ThreeDaysView;
+import com.timed.CalendarView.WeekView;
 import com.timed.R;
 import com.timed.adapters.CalendarAdapter;
 import com.timed.adapters.CalendarDrawerAdapter;
@@ -97,12 +99,10 @@ import java.util.HashMap;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class MainActivity extends AppCompatActivity implements CalendarAdapter.OnItemListener {
+public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";
     private static final int MENU_ID_ADD_CALENDAR = 0x70001;
-    private RecyclerView rvCalendar;
-    private RecyclerView rvHorizontalCalendar;
 
     private EventSyncManager eventSyncManager;
 
@@ -111,23 +111,10 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
     private LocalDate selectedWeekDate;
 
     private TextView tvTopTitle;
-    private TextView tvCurrentMonth;
-    private TextView tvUpcomingTitle;
-    private TextView tvCurrentDayFull;
 
-    private EventAdapter eventAdapter;
-    private List<Event> currentEvents;
-
-    private View layoutMonthView;
-    private View layoutDayView;
-    private View layout3DaysView;
-    private View layoutWeekView;
     private View layoutFabMenuOverlay;
     private View fabOptionEvent, fabOptionTask, fabOptionReminder;
     private boolean isFabMenuOpen = false;
-
-    private HorizontalCalendarAdapter horizontalAdapter;
-    private List<LocalDate> horizontalDateList;
 
     // Firebase instances
     private FirebaseInitializer firebaseInitializer;
@@ -191,13 +178,6 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         ensureDefaultCalendarReady(() -> {
         });
 
-        layoutMonthView = findViewById(R.id.layoutMonthView);
-        layoutDayView = findViewById(R.id.layoutDayView);
-        layout3DaysView = findViewById(R.id.layout3DaysView);
-        layoutWeekView = findViewById(R.id.layoutWeekView);
-
-        tvCurrentDayFull = findViewById(R.id.tvCurrentDayFull);
-        rvHorizontalCalendar = findViewById(R.id.rvHorizontalCalendar);
         tvTopTitle = findViewById(R.id.tvTopTitle);
 
         ImageButton btnSearch = findViewById(R.id.btnSearch);
@@ -226,49 +206,6 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         startDate3Days = LocalDate.now();
         selectedWeekDate = LocalDate.now();
 
-        ImageButton btnPrevWeek = findViewById(R.id.btnPrevWeek);
-        ImageButton btnNextWeek = findViewById(R.id.btnNextWeek);
-        if (btnPrevWeek != null)
-            btnPrevWeek.setOnClickListener(v -> {
-                selectedDate = selectedDate.minusWeeks(1);
-                getSupportFragmentManager().beginTransaction().replace(R.id.fragment_container, new DayView(selectedDate, getVisibleCalendarIds())).commit();
-            });
-        if (btnNextWeek != null)
-            btnNextWeek.setOnClickListener(v -> {
-                selectedDate = selectedDate.plusWeeks(1);
-                getSupportFragmentManager().beginTransaction().replace(R.id.fragment_container, new DayView(selectedDate, getVisibleCalendarIds())).commit();
-            });
-
-        ImageButton btnPrev3Days = findViewById(R.id.btnPrev3Days);
-        ImageButton btnNext3Days = findViewById(R.id.btnNext3Days);
-        if (btnPrev3Days != null)
-            btnPrev3Days.setOnClickListener(v -> {
-                startDate3Days = startDate3Days.minusDays(3);
-                getSupportFragmentManager().beginTransaction()
-                        .replace(R.id.fragment_container, new ThreeDaysView(startDate3Days, getVisibleCalendarIds()))
-                        .commit();
-            });
-        if (btnNext3Days != null)
-            btnNext3Days.setOnClickListener(v -> {
-                startDate3Days = startDate3Days.plusDays(3);
-                getSupportFragmentManager().beginTransaction()
-                        .replace(R.id.fragment_container, new ThreeDaysView(startDate3Days, getVisibleCalendarIds()))
-                        .commit();
-            });
-
-        ImageButton btnPrevWeekView = findViewById(R.id.btnPrevWeekView);
-        ImageButton btnNextWeekView = findViewById(R.id.btnNextWeekView);
-        if (btnPrevWeekView != null)
-            btnPrevWeekView.setOnClickListener(v -> {
-                selectedWeekDate = selectedWeekDate.minusWeeks(1);
-                setupWeekView();
-            });
-        if (btnNextWeekView != null)
-            btnNextWeekView.setOnClickListener(v -> {
-                selectedWeekDate = selectedWeekDate.plusWeeks(1);
-                setupWeekView();
-            });
-
         TabLayout tabLayout = findViewById(R.id.tabLayout);
         if (tabLayout != null) {
             TabLayout.Tab monthTab = tabLayout.getTabAt(3);
@@ -278,9 +215,6 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
                 @Override
                 public void onTabSelected(TabLayout.Tab tab) {
-                    layoutMonthView.setVisibility(View.GONE);
-                    layout3DaysView.setVisibility(View.GONE);
-                    layoutWeekView.setVisibility(View.GONE);
 
                     if (tab.getPosition() == 0) {
                         getSupportFragmentManager().beginTransaction()
@@ -291,11 +225,13 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                                 .replace(R.id.fragment_container, new ThreeDaysView(startDate3Days, getVisibleCalendarIds()))
                                 .commit();
                     } else if (tab.getPosition() == 2) {
-                        layoutWeekView.setVisibility(View.VISIBLE);
-                        setupWeekView();
+                        getSupportFragmentManager().beginTransaction()
+                                .replace(R.id.fragment_container, new WeekView(selectedWeekDate, getVisibleCalendarIds()))
+                                .commit();
                     } else if (tab.getPosition() == 3) {
-                        layoutMonthView.setVisibility(View.VISIBLE);
-                        setMonthView();
+                        getSupportFragmentManager().beginTransaction()
+                                .replace(R.id.fragment_container, new MonthView(selectedDate, getVisibleCalendarIds()))
+                                .commit();
                     }
                 }
 
@@ -355,38 +291,6 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                 AccountActionManager.showCreateReminderDialog(this, title -> createQuickReminder(title));
             });
         }
-
-        rvCalendar = findViewById(R.id.rvCalendar);
-        tvCurrentMonth = findViewById(R.id.tvCurrentMonth);
-        ImageButton btnPrevMonth = findViewById(R.id.btnPrevMonth);
-        ImageButton btnNextMonth = findViewById(R.id.btnNextMonth);
-
-        rvCalendar.setLayoutManager(new GridLayoutManager(this, 7));
-
-        updateMonthYearText();
-        setMonthView();
-
-        if (btnPrevMonth != null)
-            btnPrevMonth.setOnClickListener(v -> {
-                selectedDate = selectedDate.minusMonths(1);
-                updateMonthYearText();
-                setMonthView();
-            });
-        if (btnNextMonth != null)
-            btnNextMonth.setOnClickListener(v -> {
-                selectedDate = selectedDate.plusMonths(1);
-                updateMonthYearText();
-                setMonthView();
-            });
-
-        RecyclerView rvEvents = findViewById(R.id.rvEvents);
-        tvUpcomingTitle = findViewById(R.id.tvUpcomingTitle);
-        rvEvents.setLayoutManager(new LinearLayoutManager(this));
-        currentEvents = new ArrayList<>();
-        eventAdapter = new EventAdapter(currentEvents, this::openEditEvent);
-        rvEvents.setAdapter(eventAdapter);
-        setupBottomNavigation();
-        updateEventsForDate(selectedDate);
     }
 
     private void setupBottomNavigation() {
@@ -420,7 +324,6 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         super.onResume();
         // Invalidate timezone cache so we pick up any changes from TimezoneSettingActivity
         TimezoneHelper.invalidateCache();
-        updateEventsForDate(selectedDate);
 
         // 2. Cập nhật số lượng lời mời
         loadInvitationCount();
@@ -438,175 +341,15 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                         .replace(R.id.fragment_container, new ThreeDaysView(startDate3Days, getVisibleCalendarIds()))
                         .commit();         // Đang ở Tab 3 Ngày
             } else if (selectedTab == 2) {
-                setupWeekView();           // Đang ở Tab Tuần
+                getSupportFragmentManager().beginTransaction()
+                        .replace(R.id.fragment_container, new WeekView(selectedWeekDate, getVisibleCalendarIds()))
+                        .commit();           // Đang ở Tab Tuần
             } else if (selectedTab == 3) {
-                setMonthView();            // Đang ở Tab Tháng
+                getSupportFragmentManager().beginTransaction()
+                        .replace(R.id.fragment_container, new MonthView(selectedDate, getVisibleCalendarIds()))
+                        .commit();            // Đang ở Tab Tháng
             }
         }
-    }
-
-    private void setupWeekView() {
-        if (tvTopTitle != null) {
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ENGLISH);
-            tvTopTitle.setText(selectedWeekDate.format(formatter));
-        }
-
-        int currentDayOfWeek = selectedWeekDate.getDayOfWeek().getValue();
-        int daysToSubtract = (currentDayOfWeek == 7) ? 0 : currentDayOfWeek;
-        LocalDate startOfWeek = selectedWeekDate.minusDays(daysToSubtract);
-
-        android.widget.LinearLayout headerContainer = findViewById(R.id.layoutWeekDaysHeader);
-        if (headerContainer != null) {
-            headerContainer.removeAllViews();
-            DateTimeFormatter dowFormatter = DateTimeFormatter.ofPattern("E", Locale.ENGLISH);
-
-            for (int i = 0; i < 7; i++) {
-                LocalDate day = startOfWeek.plusDays(i);
-
-                android.widget.LinearLayout dayCol = new android.widget.LinearLayout(this);
-                dayCol.setOrientation(android.widget.LinearLayout.VERTICAL);
-                dayCol.setGravity(android.view.Gravity.CENTER);
-                dayCol.setLayoutParams(new android.widget.LinearLayout.LayoutParams(0,
-                        android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-                dayCol.setPadding(0, TimelineRenderer.dpToPx(this, 8), 0, TimelineRenderer.dpToPx(this, 8));
-
-                TextView tvDow = new TextView(this);
-                tvDow.setText(day.format(dowFormatter).toUpperCase().substring(0, 1));
-                tvDow.setTextSize(10f);
-                tvDow.setTextColor(android.graphics.Color.parseColor("#94a3b8"));
-
-                TextView tvDate = new TextView(this);
-                tvDate.setText(String.valueOf(day.getDayOfMonth()));
-                tvDate.setTextSize(14f);
-                tvDate.setTypeface(null, android.graphics.Typeface.BOLD);
-
-                if (day.equals(LocalDate.now())) {
-                    tvDate.setTextColor(android.graphics.Color.parseColor("#741ce9"));
-                    tvDow.setTextColor(android.graphics.Color.parseColor("#741ce9"));
-                } else {
-                    tvDate.setTextColor(android.graphics.Color.parseColor("#0f172a"));
-                }
-
-                dayCol.addView(tvDow);
-                dayCol.addView(tvDate);
-                headerContainer.addView(dayCol);
-            }
-        }
-
-        loadWeekEvents(startOfWeek);
-    }
-
-    private void renderWeekGridTimeline(LocalDate startOfWeek, List<Event> events) {
-        android.widget.RelativeLayout container = findViewById(R.id.timelineWeekContainer);
-        if (container == null)
-            return;
-
-        container.post(() -> {
-            container.removeAllViews();
-            int hourHeightPx = TimelineRenderer.dpToPx(this, 60);
-            container.setMinimumHeight(hourHeightPx * 24);
-
-            int timeColumnWidth = TimelineRenderer.dpToPx(this, 40);
-            int totalGridWidth = container.getWidth() - timeColumnWidth;
-            int colWidth = totalGridWidth / 7;
-
-            for (int i = 0; i < 24; i++) {
-                TextView tvTime = new TextView(this);
-                tvTime.setId(View.generateViewId());
-                tvTime.setText(String.format(Locale.getDefault(), "%02d", i));
-                tvTime.setTextColor(android.graphics.Color.parseColor("#94a3b8"));
-                tvTime.setTextSize(10f);
-                tvTime.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
-
-                android.widget.RelativeLayout.LayoutParams timeParams = new android.widget.RelativeLayout.LayoutParams(
-                        timeColumnWidth, android.widget.RelativeLayout.LayoutParams.WRAP_CONTENT);
-                timeParams.topMargin = i * hourHeightPx + TimelineRenderer.dpToPx(this, 4);
-                container.addView(tvTime, timeParams);
-
-                View line = new View(this);
-                line.setBackgroundColor(android.graphics.Color.parseColor("#0D741CE9"));
-                android.widget.RelativeLayout.LayoutParams lineParams = new android.widget.RelativeLayout.LayoutParams(
-                        android.widget.RelativeLayout.LayoutParams.MATCH_PARENT, TimelineRenderer.dpToPx(this, 1));
-                lineParams.leftMargin = timeColumnWidth;
-                lineParams.topMargin = i * hourHeightPx + TimelineRenderer.dpToPx(this, 10);
-                container.addView(line, lineParams);
-            }
-
-            for (int i = 1; i < 7; i++) {
-                View verticalLine = new View(this);
-                verticalLine.setBackgroundColor(android.graphics.Color.parseColor("#0D741CE9"));
-                android.widget.RelativeLayout.LayoutParams vParams = new android.widget.RelativeLayout.LayoutParams(
-                        TimelineRenderer.dpToPx(this, 1), android.widget.RelativeLayout.LayoutParams.MATCH_PARENT);
-                vParams.leftMargin = timeColumnWidth + (i * colWidth);
-                container.addView(verticalLine, vParams);
-            }
-
-            if (events == null || events.isEmpty()) {
-                return;
-            }
-
-            int colorIndex = 0;
-            for (Event event : events) {
-                LocalDate eventDate = toLocalDate(event.getStartTime());
-                if (eventDate == null) {
-                    continue;
-                }
-                int dayIndex = (int) java.time.temporal.ChronoUnit.DAYS.between(startOfWeek, eventDate);
-                if (dayIndex < 0 || dayIndex > 6) {
-                    continue;
-                }
-
-                EventTimeParts parts = toTimeParts(event);
-                if (parts == null) {
-                    continue;
-                }
-
-                int bgRes = pickEventBackground(colorIndex++);
-                String title = event.getTitle() != null ? event.getTitle() : "(Untitled)";
-                Integer eventTint = resolveEventTintColor(event);
-                TimelineRenderer.addEventToWeekGrid(this, container, hourHeightPx, timeColumnWidth, colWidth, dayIndex,
-                        title, parts.startHour, parts.startMinute, parts.durationMinutes, bgRes, eventTint);
-            }
-        });
-    }
-
-    private void setMonthView() {
-        List<CalendarDay> daysInMonth = daysInMonthArray(selectedDate);
-        CalendarAdapter adapter = new CalendarAdapter(daysInMonth, this);
-        rvCalendar.setAdapter(adapter);
-        loadMonthEventIndicators(selectedDate, daysInMonth, adapter);
-    }
-
-    private void loadMonthEventIndicators(LocalDate month, List<CalendarDay> days, CalendarAdapter adapter) {
-        List<String> calendarIds = getVisibleCalendarIds();
-        if (calendarIds.isEmpty()) {
-            ensureDefaultCalendarReady(() -> loadMonthEventIndicators(month, days, adapter));
-            return;
-        }
-
-        LocalDate startOfMonth = month.withDayOfMonth(1);
-        LocalDate endOfMonth = month.withDayOfMonth(month.lengthOfMonth());
-
-        eventSyncManager.fetchEventsForCalendars(startOfMonth, endOfMonth, calendarIds, events -> {
-            Map<LocalDate, Integer> counts = new HashMap<>();
-            for (Event event : events) {
-                if (event == null || event.getStartTime() == null) {
-                    continue;
-                }
-                LocalDate eventDate = toLocalDate(event.getStartTime());
-                if (eventDate == null) {
-                    continue;
-                }
-                counts.put(eventDate, counts.getOrDefault(eventDate, 0) + 1);
-            }
-
-            for (CalendarDay day : days) {
-                if (day != null && day.date != null) {
-                    day.eventCount = counts.getOrDefault(day.date, 0);
-                }
-            }
-            adapter.notifyDataSetChanged();
-        });
     }
 
     private void showProfileMenu(View anchor) {
@@ -661,7 +404,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         if (currentUser != null) {
             cacheOwnerName(currentUser);
             updateDrawerHeader(currentUser);
-            if (isValidAvatarUrl(currentUser.getAvatar())) {
+            if (currentUser.getAvatar() != null && Patterns.WEB_URL.matcher(currentUser.getAvatar()).matches()) {
                 loadAvatar(currentUser.getAvatar());
                 return;
             }
@@ -678,7 +421,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                     if (user != null) {
                         UserManager.getInstance().setCurrentUser(user);
                         cacheOwnerName(user);
-                        if (isValidAvatarUrl(user.getAvatar())) {
+                        if (user.getAvatar() != null && Patterns.WEB_URL.matcher(user.getAvatar()).matches()) {
                             loadAvatar(user.getAvatar());
                         }
                         updateDrawerHeader(user);
@@ -747,93 +490,6 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                 .addOnFailureListener(e -> {
                     Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
-    }
-
-    private List<CalendarDay> daysInMonthArray(LocalDate date) {
-        List<CalendarDay> daysInMonthArray = new ArrayList<>();
-        YearMonth yearMonth = YearMonth.from(date);
-        int daysInMonth = yearMonth.lengthOfMonth();
-        LocalDate firstOfMonth = date.withDayOfMonth(1);
-        int dayOfWeek = firstOfMonth.getDayOfWeek().getValue();
-        int offset = (dayOfWeek == 7) ? 0 : dayOfWeek;
-
-        for (int i = 1; i <= 42; i++) {
-            if (i <= offset) {
-                LocalDate prevMonthDate = firstOfMonth.minusDays(offset - i + 1);
-                daysInMonthArray.add(new CalendarDay(prevMonthDate, false));
-            } else if (i > daysInMonth + offset) {
-                LocalDate nextMonthDate = firstOfMonth.plusDays(i - offset - 1);
-                daysInMonthArray.add(new CalendarDay(nextMonthDate, false));
-            } else {
-                LocalDate currentMonthDate = firstOfMonth.plusDays(i - offset - 1);
-                CalendarDay day = new CalendarDay(currentMonthDate, true);
-                if (currentMonthDate != null) {
-                    if (selectedDate != null && currentMonthDate.equals(selectedDate))
-                        day.isSelected = true;
-                    if (currentMonthDate.equals(LocalDate.now()))
-                        day.isToday = true;
-                }
-                daysInMonthArray.add(day);
-            }
-        }
-        return daysInMonthArray;
-    }
-
-    private void updateMonthYearText() {
-        if (tvCurrentMonth != null) {
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMMM yyyy");
-            tvCurrentMonth.setText(selectedDate.format(formatter));
-        }
-        if (tvTopTitle != null) {
-            DateTimeFormatter titleFormatter = DateTimeFormatter.ofPattern("MMMM yyyy");
-            tvTopTitle.setText(selectedDate.format(titleFormatter));
-        }
-    }
-
-    @Override
-    public void onItemClick(int position, LocalDate date) {
-        if (date != null) {
-            selectedDate = date;
-            setMonthView();
-            updateEventsForDate(date);
-        }
-    }
-
-    private void updateEventsForDate(LocalDate date) {
-        if (tvUpcomingTitle == null || eventAdapter == null)
-            return;
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMM d");
-        String formattedDate = date.format(formatter).toUpperCase();
-        tvUpcomingTitle.setText("UPCOMING FOR " + formattedDate);
-
-        List<String> calendarIds = getVisibleCalendarIds();
-        if (calendarIds.isEmpty()) {
-            ensureDefaultCalendarReady(() -> updateEventsForDate(date));
-            return;
-        }
-        eventSyncManager.fetchEventsForCalendars(date, date, calendarIds, events -> {
-            currentEvents.clear();
-            currentEvents.addAll(events);
-            eventAdapter.notifyDataSetChanged();
-        });
-    }
-
-    private void openEditEvent(Event event) {
-        Intent intent = new Intent(this, CreateEventActivity.class);
-        intent.putExtra("mode", "edit");
-        intent.putExtra("eventId", event.getId());
-        String fallbackCalendarId = event.getCalendarId();
-        if (fallbackCalendarId == null || fallbackCalendarId.isEmpty()) {
-            fallbackCalendarId = getActiveCalendarId();
-        }
-        intent.putExtra("calendarId", fallbackCalendarId);
-        intent.putExtra("title", event.getTitle());
-        intent.putExtra("description", event.getDescription());
-        intent.putExtra("location", event.getLocation());
-        intent.putExtra("startTime", event.getStartTime() != null ? event.getStartTime().toDate().getTime() : 0L);
-        intent.putExtra("endTime", event.getEndTime() != null ? event.getEndTime().toDate().getTime() : 0L);
-        intent.putExtra("allDay", event.getAllDay() != null && event.getAllDay());
-        startActivity(intent);
     }
 
     private void toggleFabMenu() {
@@ -1246,20 +902,27 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
     }
 
     private void refreshCalendarViewsForVisibilityChange() {
-        setMonthView();
-        updateEventsForDate(selectedDate);
+        TabLayout tabLayout = findViewById(R.id.tabLayout);
+        if (tabLayout != null) {
+            int selectedTab = tabLayout.getSelectedTabPosition();
 
-        if (layoutDayView != null && layoutDayView.getVisibility() == View.VISIBLE) {
-            getSupportFragmentManager().beginTransaction().replace(R.id.fragment_container, new DayView(selectedDate, getVisibleCalendarIds())).commit();
-        }
-        if (layout3DaysView != null && layout3DaysView.getVisibility() == View.VISIBLE) {
-            loadThreeDaysEvents(startDate3Days);
-        }
-        if (layoutWeekView != null && layoutWeekView.getVisibility() == View.VISIBLE) {
-            int currentDayOfWeek = selectedWeekDate.getDayOfWeek().getValue();
-            int daysToSubtract = (currentDayOfWeek == 7) ? 0 : currentDayOfWeek;
-            LocalDate startOfWeek = selectedWeekDate.minusDays(daysToSubtract);
-            loadWeekEvents(startOfWeek);
+            if (selectedTab == 0) {
+                getSupportFragmentManager().beginTransaction()
+                        .replace(R.id.fragment_container, new DayView(selectedDate, getVisibleCalendarIds()))
+                        .commit();
+            } else if (selectedTab == 1) {
+                getSupportFragmentManager().beginTransaction()
+                        .replace(R.id.fragment_container, new ThreeDaysView(startDate3Days, getVisibleCalendarIds()))
+                        .commit();
+            } else if (selectedTab == 2) {
+                getSupportFragmentManager().beginTransaction()
+                        .replace(R.id.fragment_container, new WeekView(selectedWeekDate, getVisibleCalendarIds()))
+                        .commit();
+            } else if (selectedTab == 3) {
+                getSupportFragmentManager().beginTransaction()
+                        .replace(R.id.fragment_container, new MonthView(selectedDate, getVisibleCalendarIds()))
+                        .commit();
+            }
         }
     }
 
@@ -1273,8 +936,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             visibleCalendarIds.add(calendarId);
         }
         calendarIntegrationService.saveVisibleCalendarIds(this, visibleCalendarIds);
-        setMonthView();
-        updateEventsForDate(selectedDate);
+        refreshCalendarViewsForVisibilityChange();
     }
 
     private void showCreateCalendarDialog() {
@@ -1470,16 +1132,6 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         });
 
         dialog.show();
-    }
-
-    private void loadWeekEvents(LocalDate startOfWeek) {
-        List<String> calendarIds = getVisibleCalendarIds();
-        if (calendarIds.isEmpty()) {
-            ensureDefaultCalendarReady(() -> loadWeekEvents(startOfWeek));
-            return;
-        }
-        eventSyncManager.fetchEventsForCalendars(startOfWeek, startOfWeek.plusDays(6), calendarIds,
-                events -> renderWeekGridTimeline(startOfWeek, events));
     }
 
     private LocalDate toLocalDate(Timestamp timestamp) {
@@ -1721,7 +1373,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                     }
                     
                     // Refresh events to show the accepted event
-                    updateEventsForDate(selectedDate);
+                    refreshCalendarViewsForVisibilityChange();
                     
                     // Refresh invitation count
                     loadInvitationCount();
