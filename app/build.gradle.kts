@@ -27,6 +27,8 @@ android {
         val properties =  Properties()
         properties.load(project.rootProject.file("local.properties").inputStream())
         buildConfigField("String", "GEMINI_API_KEY", "\"${properties.getProperty("GEMINI_API_KEY")}\"")
+        buildConfigField("String", "CLOUDINARY_CLOUD_NAME", "\"${properties.getProperty("CLOUDINARY_CLOUD_NAME", "")}\"")
+        buildConfigField("String", "CLOUDINARY_UPLOAD_PRESET", "\"${properties.getProperty("CLOUDINARY_UPLOAD_PRESET", "")}\"")
     }
 
     buildTypes {

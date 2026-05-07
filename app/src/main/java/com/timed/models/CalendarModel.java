@@ -269,6 +269,9 @@ public class CalendarModel implements Serializable {
     }
 
     public String getMemberRole(String uid) {
+        if (roles == null) {
+            return "viewer";
+        }
         return roles.getOrDefault(uid, "viewer");
     }
 }

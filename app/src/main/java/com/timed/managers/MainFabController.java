@@ -3,18 +3,11 @@ package com.timed.managers;
 import android.app.Activity;
 import android.content.Intent;
 import android.view.View;
-import android.widget.Toast;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.firebase.Timestamp;
-import com.google.firebase.auth.FirebaseAuth;
 import com.timed.R;
 import com.timed.activities.CreateEventActivity;
 import com.timed.activities.CreateTaskActivity;
-import com.timed.models.Task;
-
-import java.util.ArrayList;
-import java.util.Calendar;
 
 public class MainFabController {
     public interface CalendarIdProvider {
@@ -26,7 +19,6 @@ public class MainFabController {
     private View overlay;
     private View optionEvent;
     private View optionTask;
-    private View optionReminder;
     private boolean menuOpen;
 
     public MainFabController(Activity activity, CalendarIdProvider calendarIdProvider) {
@@ -38,7 +30,6 @@ public class MainFabController {
         overlay = activity.findViewById(R.id.layoutFabMenuOverlay);
         optionEvent = activity.findViewById(R.id.fabOptionEvent);
         optionTask = activity.findViewById(R.id.fabOptionTask);
-        optionReminder = activity.findViewById(R.id.fabOptionReminder);
 
         FloatingActionButton fabMain = activity.findViewById(R.id.fabAddEvent);
         FloatingActionButton fabClose = activity.findViewById(R.id.fabCloseMenu);
@@ -77,17 +68,10 @@ public class MainFabController {
             });
         }
 
-        View btnFabReminder = activity.findViewById(R.id.btnFabReminder);
-        if (btnFabReminder != null) {
-            btnFabReminder.setOnClickListener(v -> {
-                toggleMenu();
-                AccountActionManager.showCreateReminderDialog(activity, this::createQuickReminder);
-            });
-        }
     }
 
     private void toggleMenu() {
-        if (overlay == null || optionEvent == null || optionTask == null || optionReminder == null) {
+        if (overlay == null || optionEvent == null || optionTask == null) {
             return;
         }
 
@@ -99,17 +83,14 @@ public class MainFabController {
 
             showOption(optionEvent, 0);
             showOption(optionTask, 50);
-            showOption(optionReminder, 100);
         } else {
-            hideOption(optionReminder, 0);
-            hideOption(optionTask, 50);
-            hideOption(optionEvent, 100);
+            hideOption(optionTask, 0);
+            hideOption(optionEvent, 50);
 
-            overlay.animate().alpha(0f).setDuration(200).setStartDelay(150).withEndAction(() -> {
+            overlay.animate().alpha(0f).setDuration(200).setStartDelay(100).withEndAction(() -> {
                 overlay.setVisibility(View.GONE);
                 optionEvent.setVisibility(View.INVISIBLE);
                 optionTask.setVisibility(View.INVISIBLE);
-                optionReminder.setVisibility(View.INVISIBLE);
             }).start();
         }
     }
@@ -125,26 +106,4 @@ public class MainFabController {
         option.animate().translationY(100f).alpha(0f).setDuration(150).setStartDelay(delay).start();
     }
 
-    private void createQuickReminder(String title) {
-        FirebaseAuth auth = FirebaseAuth.getInstance();
-        if (auth.getCurrentUser() == null) {
-            Toast.makeText(activity, "Not logged in", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        String userId = auth.getCurrentUser().getUid();
-        Calendar calendar = Calendar.getInstance();
-        calendar.add(Calendar.HOUR, 1);
-
-        ArrayList<Task.TaskReminder> taskReminders = new ArrayList<>();
-        taskReminders.add(new Task.TaskReminder("popup", 0));
-
-        Task task = new Task(title, "", new Timestamp(calendar.getTime()), false, "High",
-                userId, "default_list", taskReminders);
-
-        TasksManager.getInstance(activity)
-                .createTask(task)
-                .addOnSuccessListener(docRef -> Toast.makeText(activity, "Reminder created!", Toast.LENGTH_SHORT).show())
-                .addOnFailureListener(e -> Toast.makeText(activity, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-    }
 }

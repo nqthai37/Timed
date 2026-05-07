@@ -17,6 +17,7 @@ import com.timed.Setting.Timezone.TimezoneHelper;
 import com.timed.managers.EventSyncManager;
 import com.timed.models.Event;
 import com.timed.utils.CalendarViewHelper;
+import com.timed.utils.ThemeManager;
 import com.timed.utils.TimelineRenderer;
 
 import java.time.LocalDate;
@@ -59,8 +60,9 @@ public class ThreeDaysView extends Fragment {
                 dowTvs[i].setText(day.format(dowFormatter).toUpperCase());
                 dateTvs[i].setText(String.valueOf(day.getDayOfMonth()));
 
+                int primaryColor = resolveThemePrimaryColor();
                 if (day.equals(LocalDate.now())) {
-                    dateTvs[i].setTextColor(android.graphics.Color.parseColor("#741ce9"));
+                    dateTvs[i].setTextColor(primaryColor);
                 } else {
                     dateTvs[i].setTextColor(android.graphics.Color.parseColor("#0f172a"));
                 }
@@ -154,5 +156,16 @@ public class ThreeDaysView extends Fragment {
         if (timestamp == null) return null;
         ZoneId userZone = TimezoneHelper.getSelectedZoneId(requireContext());
         return timestamp.toDate().toInstant().atZone(userZone).toLocalDate();
+    }
+
+    private int resolveThemePrimaryColor() {
+        String palette = ThemeManager.getPalette(requireContext());
+        if (ThemeManager.PALETTE_EMERALD.equals(palette)) {
+            return android.graphics.Color.parseColor("#10B981");
+        }
+        if (ThemeManager.PALETTE_SUNSET.equals(palette)) {
+            return android.graphics.Color.parseColor("#F97316");
+        }
+        return android.graphics.Color.parseColor("#2563EB");
     }
 }

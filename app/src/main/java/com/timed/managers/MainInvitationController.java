@@ -5,6 +5,8 @@ import android.app.Dialog;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.firebase.auth.FirebaseAuth;
@@ -39,6 +41,7 @@ public class MainInvitationController {
 
     private Dialog currentInvitationsDialog;
     private MenuItem invitationsMenuItem;
+    private TextView invitationCountView;
 
     public MainInvitationController(Activity activity, FirebaseAuth firebaseAuth,
             InvitationManager invitationManager, InvitationService invitationService,
@@ -71,6 +74,11 @@ public class MainInvitationController {
         loadInvitationCount();
     }
 
+    public void attachCountView(TextView countView) {
+        invitationCountView = countView;
+        loadInvitationCount();
+    }
+
     public void loadInvitationCount() {
         if (firebaseAuth.getCurrentUser() == null) {
             return;
@@ -85,6 +93,10 @@ public class MainInvitationController {
                             invitationsMenuItem.setTitle(count > 0
                                     ? "Invitations (" + count + ")"
                                     : "Invitations");
+                        }
+                        if (invitationCountView != null) {
+                            invitationCountView.setVisibility(count > 0 ? View.VISIBLE : View.GONE);
+                            invitationCountView.setText(count > 99 ? "99+" : String.valueOf(count));
                         }
                         Log.d(TAG, "Pending invitation count: " + count);
                     }

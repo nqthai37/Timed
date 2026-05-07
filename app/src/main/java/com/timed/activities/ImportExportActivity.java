@@ -11,6 +11,7 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -27,6 +28,7 @@ import com.google.firebase.Timestamp;
 import com.timed.managers.EventsManager;
 import com.timed.models.Event;
 import com.timed.utils.CalendarIntegrationService;
+import com.timed.utils.CalendarPermissionUtils;
 import com.timed.utils.FirebaseInitializer;
 
 import java.io.BufferedReader;
@@ -58,6 +60,8 @@ public class ImportExportActivity extends AppCompatActivity {
     private CheckBox cbExportPersonal;
     private CheckBox cbExportWork;
     private CheckBox cbExportShared;
+    private LinearLayout layoutExportCalendars;
+    private final Map<CheckBox, CalendarModel> exportCalendarOptions = new HashMap<>();
 
     private String calendarId;
 
@@ -88,6 +92,7 @@ public class ImportExportActivity extends AppCompatActivity {
         cbExportPersonal = findViewById(R.id.cbExportPersonal);
         cbExportWork = findViewById(R.id.cbExportWork);
         cbExportShared = findViewById(R.id.cbExportShared);
+        layoutExportCalendars = findViewById(R.id.layoutExportCalendars);
 
         openDocumentLauncher = registerForActivityResult(new ActivityResultContracts.OpenDocument(),
                 this::onFileSelected);
@@ -104,6 +109,7 @@ public class ImportExportActivity extends AppCompatActivity {
         btnSyncFromUrl.setOnClickListener(v -> promptSyncUrl());
         btnExportSelected.setOnClickListener(v -> exportCalendars(false));
         btnExportAll.setOnClickListener(v -> exportCalendars(true));
+        loadExportCalendarOptions();
     }
 
     private void setupInsets() {
@@ -250,6 +256,15 @@ public class ImportExportActivity extends AppCompatActivity {
             return result;
         }
 
+        if (!exportCalendarOptions.isEmpty()) {
+            for (Map.Entry<CheckBox, CalendarModel> entry : exportCalendarOptions.entrySet()) {
+                if (entry.getKey().isChecked()) {
+                    result.add(entry.getValue());
+                }
+            }
+            return result;
+        }
+
         for (CalendarModel calendar : calendars) {
             String name = calendar.getName() == null ? "" : calendar.getName().toLowerCase(Locale.ROOT);
             if (cbExportPersonal.isChecked() && name.contains("personal")) {
@@ -328,7 +343,24 @@ public class ImportExportActivity extends AppCompatActivity {
 
     private void ensureCalendarReady(Runnable onReady) {
         if (calendarId != null && !calendarId.isEmpty()) {
-            onReady.run();
+            calendarIntegrationService.getCalendar(calendarId,
+                    new CalendarIntegrationService.CalendarLoadDetailListener() {
+                        @Override
+                        public void onCalendarLoaded(CalendarModel calendar) {
+                            if (CalendarPermissionUtils.canWrite(calendar, firebaseInitializer.getCurrentUserId())) {
+                                onReady.run();
+                            } else {
+                                calendarId = null;
+                                ensureCalendarReady(onReady);
+                            }
+                        }
+
+                        @Override
+                        public void onError(String errorMessage) {
+                            calendarId = null;
+                            ensureCalendarReady(onReady);
+                        }
+                    });
             return;
         }
 
@@ -336,9 +368,18 @@ public class ImportExportActivity extends AppCompatActivity {
             @Override
             public void onCalendarsLoaded(List<CalendarModel> calendars) {
                 if (calendars != null && !calendars.isEmpty()) {
-                    CalendarModel first = calendars.get(0);
-                    if (first.getId() != null && !first.getId().isEmpty()) {
-                        calendarId = first.getId();
+                    String userId = firebaseInitializer.getCurrentUserId();
+                    for (CalendarModel calendar : calendars) {
+                        if (CalendarPermissionUtils.canWrite(calendar, userId)
+                                && calendar.getId() != null && !calendar.getId().isEmpty()) {
+                            calendarId = calendar.getId();
+                            break;
+                        }
+                    }
+                    if (calendarId == null || calendarId.isEmpty()) {
+                        Toast.makeText(ImportExportActivity.this, "No editable calendars available",
+                                Toast.LENGTH_SHORT).show();
+                        return;
                     }
                     onReady.run();
                     return;
@@ -726,6 +767,44 @@ public class ImportExportActivity extends AppCompatActivity {
     private String csvValue(String value) {
         String safe = value == null ? "" : value;
         return "\"" + safe.replace("\"", "\"\"") + "\"";
+    }
+
+    private void loadExportCalendarOptions() {
+        calendarIntegrationService.getUserCalendars(new CalendarIntegrationService.CalendarLoadListener() {
+            @Override
+            public void onCalendarsLoaded(List<CalendarModel> calendars) {
+                renderExportCalendarOptions(calendars);
+            }
+
+            @Override
+            public void onError(String errorMessage) {
+            }
+        });
+    }
+
+    private void renderExportCalendarOptions(List<CalendarModel> calendars) {
+        if (layoutExportCalendars == null || calendars == null || calendars.isEmpty()) {
+            return;
+        }
+        exportCalendarOptions.clear();
+        layoutExportCalendars.removeAllViews();
+        layoutExportCalendars.setVisibility(View.VISIBLE);
+        cbExportPersonal.setVisibility(View.GONE);
+        cbExportWork.setVisibility(View.GONE);
+        cbExportShared.setVisibility(View.GONE);
+
+        for (CalendarModel calendar : calendars) {
+            if (calendar == null || calendar.getId() == null || calendar.getId().isEmpty()) {
+                continue;
+            }
+            CheckBox checkBox = new CheckBox(this);
+            checkBox.setText(calendar.getName() == null || calendar.getName().trim().isEmpty()
+                    ? "Calendar" : calendar.getName().trim());
+            checkBox.setTextColor(getColor(R.color.slate_900));
+            checkBox.setChecked(true);
+            layoutExportCalendars.addView(checkBox);
+            exportCalendarOptions.put(checkBox, calendar);
+        }
     }
 
     private static class ParsedTime {

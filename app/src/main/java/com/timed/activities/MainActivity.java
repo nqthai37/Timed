@@ -7,6 +7,7 @@ import android.view.Menu;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import androidx.core.graphics.Insets;
 import androidx.core.view.GravityCompat;
@@ -157,6 +158,10 @@ public class MainActivity extends BaseBottomNavActivity {
         ImageButton btnInvitations = findViewById(R.id.btnInvitations);
         if (btnInvitations != null) {
             btnInvitations.setOnClickListener(v -> invitationController.showPendingInvitations());
+        }
+        TextView tvInvitationCount = findViewById(R.id.tvInvitationCount);
+        if (tvInvitationCount != null) {
+            invitationController.attachCountView(tvInvitationCount);
         }
 
         ImageButton btnShareCalendar = findViewById(R.id.btnShareCalendar);

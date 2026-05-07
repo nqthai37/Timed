@@ -159,40 +159,6 @@
                     app:tint="@color/primary" />
             </LinearLayout>
 
-            <LinearLayout
-                android:id="@+id/fabOptionReminder"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:visibility="invisible"
-                app:layout_constraintBottom_toTopOf="@id/fabOptionTask"
-                app:layout_constraintEnd_toEndOf="@id/fabOptionTask">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="12dp"
-                    android:background="@color/white"
-                    android:paddingHorizontal="12dp"
-                    android:paddingVertical="6dp"
-                    android:text="Reminder"
-                    android:textColor="@color/slate_900"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
-
-                <com.google.android.material.floatingactionbutton.FloatingActionButton
-                    android:id="@+id/btnFabReminder"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:backgroundTint="@android:color/white"
-                    android:src="@drawable/ic_notifications"
-                    app:elevation="6dp"
-                    app:fabSize="mini"
-                    app:tint="@color/primary" />
-            </LinearLayout>
-
         </androidx.constraintlayout.widget.ConstraintLayout>
 
         <com.google.android.material.bottomnavigation.BottomNavigationView

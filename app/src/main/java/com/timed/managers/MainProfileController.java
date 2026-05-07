@@ -2,14 +2,20 @@ package com.timed.managers;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.net.Uri;
 import android.util.Patterns;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.PopupMenu;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.AppCompatActivity;
+
 import com.bumptech.glide.Glide;
 import com.timed.Auth.LoginActivity;
+import com.timed.BuildConfig;
 import com.timed.R;
 import com.timed.models.User;
 import com.timed.repositories.AuthRepository;
@@ -18,6 +24,17 @@ import com.timed.repositories.UserRepository;
 
 import java.util.HashMap;
 import java.util.Map;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
+
+import org.json.JSONObject;
 
 public class MainProfileController {
     public interface Listener {
@@ -29,6 +46,10 @@ public class MainProfileController {
     private final UserRepository userRepository;
     private final CalendarOwnerRepository calendarOwnerRepository;
     private final Listener listener;
+    private ActivityResultLauncher<String> avatarPickerLauncher;
+    private final OkHttpClient httpClient = new OkHttpClient();
+    private static final String DEFAULT_AVATAR =
+            "https://res.cloudinary.com/dpsqhztqa/image/upload/v1774512640/default_person_drlyqj.webp";
 
     public MainProfileController(Activity activity, ImageView profileImage, UserRepository userRepository,
             CalendarOwnerRepository calendarOwnerRepository, Listener listener) {
@@ -40,6 +61,10 @@ public class MainProfileController {
     }
 
     public void setup() {
+        if (activity instanceof AppCompatActivity) {
+            avatarPickerLauncher = ((AppCompatActivity) activity).registerForActivityResult(
+                    new ActivityResultContracts.GetContent(), this::uploadSelectedAvatar);
+        }
         if (profileImage != null) {
             profileImage.setOnClickListener(this::showProfileMenu);
         }
@@ -77,16 +102,21 @@ public class MainProfileController {
 
     private void showProfileMenu(View anchor) {
         PopupMenu menu = new PopupMenu(activity, anchor);
-        menu.getMenu().add("Change avatar");
+        menu.getMenu().add("Choose avatar");
+        menu.getMenu().add("Use default avatar");
         menu.getMenu().add("Sign out");
         menu.setOnMenuItemClickListener(item -> {
             String title = String.valueOf(item.getTitle());
-            if ("Change avatar".equals(title)) {
-                User currentUser = UserManager.getInstance().getCurrentUser();
-                String currentUrl = currentUser != null && currentUser.getAvatar() != null
-                        ? currentUser.getAvatar()
-                        : "";
-                AccountActionManager.showChangeAvatarDialog(activity, currentUrl, this::updateAvatarUrl);
+            if ("Choose avatar".equals(title)) {
+                if (avatarPickerLauncher != null) {
+                    avatarPickerLauncher.launch("image/*");
+                } else {
+                    Toast.makeText(activity, "Image picker unavailable", Toast.LENGTH_SHORT).show();
+                }
+                return true;
+            }
+            if ("Use default avatar".equals(title)) {
+                updateAvatarUrl(DEFAULT_AVATAR);
                 return true;
             }
             if ("Sign out".equals(title)) {
@@ -96,6 +126,73 @@ public class MainProfileController {
             return false;
         });
         menu.show();
+    }
+
+    private void uploadSelectedAvatar(Uri uri) {
+        if (uri == null) {
+            return;
+        }
+        if (BuildConfig.CLOUDINARY_CLOUD_NAME.isEmpty() || BuildConfig.CLOUDINARY_UPLOAD_PRESET.isEmpty()) {
+            Toast.makeText(activity, "Cloudinary is not configured", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        try {
+            byte[] bytes = readUriBytes(uri);
+            RequestBody fileBody = RequestBody.create(bytes, MediaType.parse("image/*"));
+            RequestBody requestBody = new MultipartBody.Builder()
+                    .setType(MultipartBody.FORM)
+                    .addFormDataPart("file", "avatar.jpg", fileBody)
+                    .addFormDataPart("upload_preset", BuildConfig.CLOUDINARY_UPLOAD_PRESET)
+                    .build();
+            String url = "https://api.cloudinary.com/v1_1/" + BuildConfig.CLOUDINARY_CLOUD_NAME + "/image/upload";
+            Request request = new Request.Builder().url(url).post(requestBody).build();
+
+            httpClient.newCall(request).enqueue(new Callback() {
+                @Override
+                public void onFailure(Call call, java.io.IOException e) {
+                    activity.runOnUiThread(() -> Toast.makeText(activity,
+                            "Failed to upload avatar", Toast.LENGTH_SHORT).show());
+                }
+
+                @Override
+                public void onResponse(Call call, Response response) throws java.io.IOException {
+                    String body = response.body() != null ? response.body().string() : "";
+                    if (!response.isSuccessful()) {
+                        activity.runOnUiThread(() -> Toast.makeText(activity,
+                                "Failed to upload avatar", Toast.LENGTH_SHORT).show());
+                        return;
+                    }
+                    try {
+                        String uploadedUrl = new JSONObject(body).optString("secure_url");
+                        activity.runOnUiThread(() -> updateAvatarUrl(uploadedUrl));
+                    } catch (Exception e) {
+                        activity.runOnUiThread(() -> Toast.makeText(activity,
+                                "Invalid upload response", Toast.LENGTH_SHORT).show());
+                    }
+                }
+            });
+        } catch (Exception e) {
+            Toast.makeText(activity, "Cannot read selected image", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private byte[] readUriBytes(Uri uri) throws java.io.IOException {
+        java.io.InputStream input = activity.getContentResolver().openInputStream(uri);
+        if (input == null) {
+            throw new java.io.IOException("Cannot open image");
+        }
+        try {
+            java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream();
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = input.read(buffer)) != -1) {
+                output.write(buffer, 0, read);
+            }
+            return output.toByteArray();
+        } finally {
+            input.close();
+        }
     }
 
     private void updateAvatarUrl(String url) {

@@ -38,6 +38,7 @@ import com.timed.repositories.UserRepository;
 import com.timed.services.EventNotificationReceiver;
 import com.timed.repositories.EventsRepository;
 import com.timed.utils.CalendarIntegrationService;
+import com.timed.utils.CalendarPermissionUtils;
 import com.timed.utils.FirebaseInitializer;
 import com.timed.dialogs.ReminderPickerDialog;
 import com.timed.dialogs.RecurrenceRuleBottomSheet;
@@ -370,7 +371,7 @@ public class CreateEventActivity extends AppCompatActivity {
 
     private void showCalendarLabelPicker() {
         if (calendarOptions.isEmpty()) {
-            Toast.makeText(this, "No calendars available", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "No editable calendars available", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -454,19 +455,22 @@ public class CreateEventActivity extends AppCompatActivity {
                     public void onReady(String defaultId, List<CalendarModel> calendars) {
                         calendarOptions.clear();
                         calendarsById.clear();
+                        String userId = firebaseInitializer.getCurrentUserId();
                         if (calendars != null) {
-                            calendarOptions.addAll(calendars);
                             for (CalendarModel calendar : calendars) {
                                 if (calendar != null && calendar.getId() != null) {
                                     calendarsById.put(calendar.getId(), calendar);
+                                    if (CalendarPermissionUtils.canWrite(calendar, userId)) {
+                                        calendarOptions.add(calendar);
+                                    }
                                 }
                             }
                         }
 
                         if (calendarId == null || calendarId.isEmpty()) {
-                            calendarId = defaultId;
+                            calendarId = firstWritableCalendarId(defaultId);
                         } else if (!containsCalendar(calendarId)) {
-                            calendarId = defaultId;
+                            calendarId = firstWritableCalendarId(defaultId);
                         }
 
                         if (calendarId != null && !calendarId.isEmpty()) {
@@ -586,6 +590,13 @@ public class CreateEventActivity extends AppCompatActivity {
             }
         }
         return false;
+    }
+
+    private String firstWritableCalendarId(String preferredId) {
+        if (containsCalendar(preferredId)) {
+            return preferredId;
+        }
+        return calendarOptions.isEmpty() ? null : calendarOptions.get(0).getId();
     }
 
     private void updateAllDayState() {
@@ -921,6 +932,10 @@ public class CreateEventActivity extends AppCompatActivity {
             calendarId = calendarIntegrationService.getCachedDefaultCalendarId(this);
         }
         if (calendarId != null && !calendarId.isEmpty()) {
+            if (!containsCalendar(calendarId)) {
+                Toast.makeText(this, "Choose an editable calendar", Toast.LENGTH_SHORT).show();
+                return;
+            }
             saveEventWithCalendar(title, description, location, isAllDay, calendarId);
             return;
         }
@@ -929,8 +944,14 @@ public class CreateEventActivity extends AppCompatActivity {
                 new CalendarIntegrationService.DefaultCalendarListener() {
                     @Override
                     public void onReady(String calendarId, List<CalendarModel> calendars) {
-                        CreateEventActivity.this.calendarId = calendarId;
-                        saveEventWithCalendar(title, description, location, isAllDay, calendarId);
+                        CreateEventActivity.this.calendarId = firstWritableCalendarId(calendarId);
+                        if (CreateEventActivity.this.calendarId == null) {
+                            Toast.makeText(CreateEventActivity.this, "No editable calendars available",
+                                    Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        saveEventWithCalendar(title, description, location, isAllDay,
+                                CreateEventActivity.this.calendarId);
                     }
 
                     @Override
@@ -944,6 +965,10 @@ public class CreateEventActivity extends AppCompatActivity {
     // Lưu Offline + Đặt Alarm Manager
     private void saveEventWithCalendar(String title, String description, String location, boolean isAllDay,
             String calendarId) {
+        if (!containsCalendar(calendarId)) {
+            Toast.makeText(this, "Choose an editable calendar", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         // 1. Khởi tạo và sinh ID tĩnh (Đồng bộ giữa Database và Alarm)
         String generatedEventId = FirebaseFirestore.getInstance().collection("events").document().getId();
@@ -989,7 +1014,6 @@ public class CreateEventActivity extends AppCompatActivity {
         }
 
         // Tắt màn hình ngay lập tức
-        Toast.makeText(this, "✅ Đã lưu sự kiện!", Toast.LENGTH_SHORT).show();
         finish();
     }
 
@@ -1019,6 +1043,10 @@ public class CreateEventActivity extends AppCompatActivity {
                                     "Calendar is not ready: " + errorMessage, Toast.LENGTH_SHORT).show();
                         }
                     });
+            return;
+        }
+        if (!containsCalendar(calendarId)) {
+            Toast.makeText(this, "Choose an editable calendar", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -1054,7 +1082,6 @@ public class CreateEventActivity extends AppCompatActivity {
             scheduleEventAlarm(eventId, title, startTime, mins.intValue());
         }
 
-        Toast.makeText(this, "✅ Event updated!", Toast.LENGTH_SHORT).show();
         finish();
     }
 
@@ -1101,7 +1128,6 @@ public class CreateEventActivity extends AppCompatActivity {
         }
 
         eventsManager.deleteEvent(eventId);
-        Toast.makeText(this, "✅ Event deleted!", Toast.LENGTH_SHORT).show();
         finish();
     }
 

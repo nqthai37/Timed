@@ -76,6 +76,9 @@ public class CalendarRepository {
                 .addOnSuccessListener(documentSnapshot -> {
                     if (documentSnapshot.exists()) {
                         CalendarModel calendar = documentSnapshot.toObject(CalendarModel.class);
+                        if (calendar != null && calendar.getId() == null) {
+                            calendar.setId(documentSnapshot.getId());
+                        }
                         callback.onSuccess(calendar);
                     } else {
                         callback.onFailure("Calendar not found");
@@ -105,6 +108,9 @@ public class CalendarRepository {
                     for (int i = 0; i < memberQuerySnapshot.getDocuments().size(); i++) {
                         CalendarModel calendar = memberQuerySnapshot.getDocuments().get(i).toObject(CalendarModel.class);
                         if (calendar != null) {
+                            if (calendar.getId() == null) {
+                                calendar.setId(memberQuerySnapshot.getDocuments().get(i).getId());
+                            }
                             calendars.add(calendar);
                         }
                     }
@@ -117,7 +123,10 @@ public class CalendarRepository {
                                 // Add owned calendars that aren't already in the list
                                 for (int i = 0; i < ownedQuerySnapshot.getDocuments().size(); i++) {
                                     CalendarModel calendar = ownedQuerySnapshot.getDocuments().get(i).toObject(CalendarModel.class);
-                                    if (calendar != null && calendar.getId() != null) {
+                                    if (calendar != null) {
+                                        if (calendar.getId() == null) {
+                                            calendar.setId(ownedQuerySnapshot.getDocuments().get(i).getId());
+                                        }
                                         // Check if this calendar is already in our list
                                         boolean exists = false;
                                         for (CalendarModel existing : calendars) {
@@ -159,6 +168,9 @@ public class CalendarRepository {
                     List<CalendarModel> calendars = new ArrayList<>();
                     for (int i = 0; i < querySnapshot.getDocuments().size(); i++) {
                         CalendarModel calendar = querySnapshot.getDocuments().get(i).toObject(CalendarModel.class);
+                        if (calendar != null && calendar.getId() == null) {
+                            calendar.setId(querySnapshot.getDocuments().get(i).getId());
+                        }
                         calendars.add(calendar);
                     }
                     callback.onSuccess(calendars);

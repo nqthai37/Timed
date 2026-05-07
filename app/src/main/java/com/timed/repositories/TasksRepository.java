@@ -2,6 +2,7 @@ package com.timed.repositories;
 
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QuerySnapshot;
 
@@ -22,6 +23,10 @@ public class TasksRepository {
 
     public Task<Void> deleteTask(String taskId) {
         return db.collection(COLLECTION_NAME).document(taskId).delete();
+    }
+
+    public Task<DocumentSnapshot> getTaskById(String taskId) {
+        return db.collection(COLLECTION_NAME).document(taskId).get();
     }
 
     // Lấy tất cả Task chưa hoàn thành của một user

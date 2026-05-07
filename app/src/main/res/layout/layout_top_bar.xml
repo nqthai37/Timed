@@ -40,19 +40,37 @@
         android:contentDescription="Search events"
         android:src="@drawable/ic_search"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/btnInvitations"
+        app:layout_constraintEnd_toStartOf="@+id/invitationButtonFrame"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <ImageButton
-        android:id="@+id/btnInvitations"
+    <FrameLayout
+        android:id="@+id/invitationButtonFrame"
         android:layout_width="40dp"
         android:layout_height="40dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="View invitations"
-        android:src="@drawable/ic_mail_outline"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/btnShareCalendar"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent">
+
+        <ImageButton
+            android:id="@+id/btnInvitations"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="View invitations"
+            android:src="@drawable/ic_mail_outline" />
+
+        <TextView
+            android:id="@+id/tvInvitationCount"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_gravity="top|end"
+            android:background="@drawable/bg_invite_count"
+            android:gravity="center"
+            android:textColor="@android:color/white"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+    </FrameLayout>
 
     <ImageButton
         android:id="@+id/btnShareCalendar"

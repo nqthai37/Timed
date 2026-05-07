@@ -246,7 +246,12 @@ public class TasksActivity extends BaseBottomNavActivity {
             tvCategory.setTextColor(getColor(R.color.primary));
         }
 
-        taskView.setOnClickListener(v -> startActivity(new Intent(this, CreateTaskActivity.class)));
+        taskView.setOnClickListener(v -> {
+            Intent intent = new Intent(this, CreateTaskActivity.class);
+            intent.putExtra("mode", "edit");
+            intent.putExtra("taskId", task.getId());
+            startActivity(intent);
+        });
         checkbox.setOnClickListener(v -> markDone(task));
         tasksContainer.addView(taskView);
     }

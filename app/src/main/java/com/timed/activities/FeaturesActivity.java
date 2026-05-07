@@ -11,8 +11,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.timed.Features.AI.AiSchedulingActivity;
-import com.timed.Features.Analytics.AnalyticsActivity;
-import com.timed.Features.ConflictResolver.ConflictResolverActivity;
 import com.timed.Features.FocusMode.FocusModeActivity;
 import com.timed.Features.FreeSlotFinder.FreeSlotFinderActivity;
 import com.timed.Features.HabitTracker.HabitTrackerActivity;
@@ -71,8 +69,6 @@ public class FeaturesActivity extends BaseBottomNavActivity {
         // NHÓM 1: Tối ưu hóa (Hiện tiêu đề ở item đầu tiên)
         features.add(new Feature("AI Scheduling", "...", R.drawable.ic_ai_schedule, AiSchedulingActivity.class,
                 "Optimizing Schedule"));
-        features.add(new Feature("Conflict Resolver", "...", R.drawable.ic_conflict_resolver,
-                ConflictResolverActivity.class, null));
         features.add(new Feature("Free Slot Finder", "...", R.drawable.ic_free_slot_finder,
                 FreeSlotFinderActivity.class, null));
 

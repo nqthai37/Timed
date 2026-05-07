@@ -8,6 +8,7 @@ import android.util.Log;
 
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.timed.repositories.TasksRepository;
 import com.timed.services.EventNotificationReceiver;
@@ -46,6 +47,10 @@ public class TasksManager {
     }
 
     // ĐÁNH DẤU HOÀN THÀNH
+    public Task<DocumentSnapshot> getTaskById(String taskId) {
+        return tasksRepository.getTaskById(taskId);
+    }
+
     public Task<Void> markTaskAsDone(String taskId) {
         cancelTaskAlarm(taskId); // Hủy báo thức
         // Update only the is_completed field without creating full Task object

@@ -37,7 +37,7 @@ public class ShareCalendarDialog {
 
         // Role spinner
         Spinner roleSpinner = new Spinner(context);
-        String[] roles = {"Admin", "Editor", "Viewer"};
+        String[] roles = {"Editor", "Viewer"};
         ArrayAdapter<String> roleAdapter = new ArrayAdapter<>(context,
                 android.R.layout.simple_spinner_item, roles);
         roleAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
