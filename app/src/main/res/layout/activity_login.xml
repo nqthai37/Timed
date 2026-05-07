@@ -11,24 +11,15 @@
 
     <ImageView
         android:id="@+id/ivLogo"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:src="@drawable/ic_login_icon"
+        android:layout_width="220dp"
+        android:layout_height="180dp"
+        android:adjustViewBounds="true"
+        android:contentDescription="@string/app_name"
+        android:scaleType="fitCenter"
+        android:src="@drawable/app_authentication_logo"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
-
-    <TextView
-        android:id="@+id/tvAppTitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Timed"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        android:textColor="@color/slate_900"
-        android:layout_marginStart="12dp"
-        app:layout_constraintStart_toEndOf="@+id/ivLogo"
-        app:layout_constraintTop_toTopOf="parent"
-        android:layout_marginTop="8dp"/>
 
     <TextView
         android:id="@+id/tvWelcome"
@@ -38,7 +29,6 @@
         android:textSize="28sp"
         android:textStyle="bold"
         android:textColor="@color/slate_900"
-        android:layout_marginTop="32dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/ivLogo" />
 
