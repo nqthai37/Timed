@@ -52,6 +52,7 @@ public class TasksActivity extends BaseBottomNavActivity {
         setupTopBar();
         setupBottomNavigation();
         setupActions();
+        anchorFabAboveBottomNavigation(R.id.fabAddTask);
         loadTasks();
     }
 

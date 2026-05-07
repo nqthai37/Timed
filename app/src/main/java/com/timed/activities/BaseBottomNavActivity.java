@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.view.View;
+import android.view.ViewGroup;
 
 import androidx.annotation.IdRes;
 import androidx.appcompat.app.AppCompatActivity;
@@ -83,6 +84,54 @@ public abstract class BaseBottomNavActivity extends AppCompatActivity {
             v.setPadding(baseLeft + bars.left, baseTop, baseRight + bars.right, baseBottom + bars.bottom);
             return insets;
         });
+    }
+
+    protected void anchorFabAboveBottomNavigation(@IdRes int... fabIds) {
+        BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
+        if (bottomNav == null || fabIds == null) {
+            return;
+        }
+
+        for (int fabId : fabIds) {
+            View fab = findViewById(fabId);
+            if (fab != null) {
+                anchorFabAboveBottomNavigation(bottomNav, fab);
+            }
+        }
+    }
+
+    private void anchorFabAboveBottomNavigation(BottomNavigationView bottomNav, View fab) {
+        ViewGroup.LayoutParams layoutParams = fab.getLayoutParams();
+        if (!(layoutParams instanceof ViewGroup.MarginLayoutParams)) {
+            return;
+        }
+
+        ViewGroup.MarginLayoutParams marginParams = (ViewGroup.MarginLayoutParams) layoutParams;
+        final int baseLeft = marginParams.leftMargin;
+        final int baseTop = marginParams.topMargin;
+        final int baseRight = marginParams.rightMargin;
+        final int spacing = bottomNavDpToPx(16);
+
+        Runnable updateMargin = () -> {
+            ViewGroup.LayoutParams currentParams = fab.getLayoutParams();
+            if (!(currentParams instanceof ViewGroup.MarginLayoutParams)) {
+                return;
+            }
+            ViewGroup.MarginLayoutParams updated = (ViewGroup.MarginLayoutParams) currentParams;
+            updated.leftMargin = baseLeft;
+            updated.topMargin = baseTop;
+            updated.rightMargin = baseRight;
+            updated.bottomMargin = bottomNav.getHeight() + spacing;
+            fab.setLayoutParams(updated);
+        };
+
+        bottomNav.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) ->
+                updateMargin.run());
+        bottomNav.post(updateMargin);
+    }
+
+    private int bottomNavDpToPx(int dp) {
+        return Math.round(dp * getResources().getDisplayMetrics().density);
     }
 
     private Class<? extends Activity> getTargetActivity(@IdRes int itemId) {

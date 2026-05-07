@@ -89,6 +89,7 @@ public class MainActivity extends BaseBottomNavActivity {
         setupCalendarTabs();
         setupFabMenu();
         setupBottomNavigation();
+        anchorFabAboveBottomNavigation(R.id.fabAddEvent, R.id.fabCloseMenu);
 
         invitationController.loadInvitationCount();
     }
