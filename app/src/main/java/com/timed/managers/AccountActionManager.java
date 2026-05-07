@@ -50,4 +50,23 @@ public class AccountActionManager {
                 .setNegativeButton("Cancel", null)
                 .show();
     }
+
+    public static void showCreateReminderDialog(Context context, OnReminderAction callback) {
+        EditText etReminderTitle = new EditText(context);
+        etReminderTitle.setHint("Reminder title");
+
+        new AlertDialog.Builder(context)
+                .setTitle("Create Reminder")
+                .setView(etReminderTitle)
+                .setPositiveButton("Create", (dialog, which) -> {
+                    String title = etReminderTitle.getText().toString().trim();
+                    if (!title.isEmpty()) {
+                        callback.onCreate(title);
+                    } else {
+                        Toast.makeText(context, "Please enter a title", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
 }

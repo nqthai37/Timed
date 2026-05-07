@@ -1,5 +1,6 @@
 package com.timed.activities;
 
+import android.accounts.Account;
 import android.content.Intent;
 import android.app.AlertDialog;
 import android.graphics.Color;
@@ -35,6 +36,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 
+import com.timed.CalendarView.DayView;
+import com.timed.CalendarView.ThreeDaysView;
 import com.timed.R;
 import com.timed.adapters.CalendarAdapter;
 import com.timed.adapters.CalendarDrawerAdapter;
@@ -42,6 +45,7 @@ import com.timed.adapters.ColorPickerAdapter;
 import com.timed.adapters.EventAdapter;
 import com.timed.adapters.HorizontalCalendarAdapter;
 import com.timed.adapters.WeekEventAdapter;
+import com.timed.managers.AccountActionManager;
 import com.timed.managers.CalendarDialogManager;
 import com.timed.managers.EventSyncManager;
 import com.timed.models.CalendarDay;
@@ -227,12 +231,12 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         if (btnPrevWeek != null)
             btnPrevWeek.setOnClickListener(v -> {
                 selectedDate = selectedDate.minusWeeks(1);
-                setupHorizontalCalendar();
+                getSupportFragmentManager().beginTransaction().replace(R.id.fragment_container, new DayView(selectedDate, getVisibleCalendarIds())).commit();
             });
         if (btnNextWeek != null)
             btnNextWeek.setOnClickListener(v -> {
                 selectedDate = selectedDate.plusWeeks(1);
-                setupHorizontalCalendar();
+                getSupportFragmentManager().beginTransaction().replace(R.id.fragment_container, new DayView(selectedDate, getVisibleCalendarIds())).commit();
             });
 
         ImageButton btnPrev3Days = findViewById(R.id.btnPrev3Days);
@@ -240,12 +244,16 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         if (btnPrev3Days != null)
             btnPrev3Days.setOnClickListener(v -> {
                 startDate3Days = startDate3Days.minusDays(3);
-                setup3DaysView();
+                getSupportFragmentManager().beginTransaction()
+                        .replace(R.id.fragment_container, new ThreeDaysView(startDate3Days, getVisibleCalendarIds()))
+                        .commit();
             });
         if (btnNext3Days != null)
             btnNext3Days.setOnClickListener(v -> {
                 startDate3Days = startDate3Days.plusDays(3);
-                setup3DaysView();
+                getSupportFragmentManager().beginTransaction()
+                        .replace(R.id.fragment_container, new ThreeDaysView(startDate3Days, getVisibleCalendarIds()))
+                        .commit();
             });
 
         ImageButton btnPrevWeekView = findViewById(R.id.btnPrevWeekView);
@@ -271,16 +279,17 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                 @Override
                 public void onTabSelected(TabLayout.Tab tab) {
                     layoutMonthView.setVisibility(View.GONE);
-                    layoutDayView.setVisibility(View.GONE);
                     layout3DaysView.setVisibility(View.GONE);
                     layoutWeekView.setVisibility(View.GONE);
 
                     if (tab.getPosition() == 0) {
-                        layoutDayView.setVisibility(View.VISIBLE);
-                        setupHorizontalCalendar();
+                        getSupportFragmentManager().beginTransaction()
+                                .replace(R.id.fragment_container, new DayView(selectedDate, getVisibleCalendarIds()))
+                                .commit();
                     } else if (tab.getPosition() == 1) {
-                        layout3DaysView.setVisibility(View.VISIBLE);
-                        setup3DaysView();
+                        getSupportFragmentManager().beginTransaction()
+                                .replace(R.id.fragment_container, new ThreeDaysView(startDate3Days, getVisibleCalendarIds()))
+                                .commit();
                     } else if (tab.getPosition() == 2) {
                         layoutWeekView.setVisibility(View.VISIBLE);
                         setupWeekView();
@@ -343,7 +352,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
 
             findViewById(R.id.btnFabReminder).setOnClickListener(v -> {
                 toggleFabMenu();
-                showCreateReminderDialog();
+                AccountActionManager.showCreateReminderDialog(this, title -> createQuickReminder(title));
             });
         }
 
@@ -421,214 +430,19 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         if (tabLayout != null) {
             int selectedTab = tabLayout.getSelectedTabPosition();
             if (selectedTab == 0) {
-                setupHorizontalCalendar(); // Đang ở Tab Ngày
+                getSupportFragmentManager().beginTransaction()
+                        .replace(R.id.fragment_container, new DayView(selectedDate, getVisibleCalendarIds()))
+                        .commit();
             } else if (selectedTab == 1) {
-                setup3DaysView();          // Đang ở Tab 3 Ngày
+                getSupportFragmentManager().beginTransaction()
+                        .replace(R.id.fragment_container, new ThreeDaysView(startDate3Days, getVisibleCalendarIds()))
+                        .commit();         // Đang ở Tab 3 Ngày
             } else if (selectedTab == 2) {
                 setupWeekView();           // Đang ở Tab Tuần
             } else if (selectedTab == 3) {
                 setMonthView();            // Đang ở Tab Tháng
             }
         }
-    }
-
-    private void setupHorizontalCalendar() {
-        if (rvHorizontalCalendar.getLayoutManager() == null) {
-            rvHorizontalCalendar.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
-        }
-
-        horizontalDateList = new ArrayList<>();
-        int currentDayOfWeek = selectedDate.getDayOfWeek().getValue();
-        int daysToSubtract = (currentDayOfWeek == 7) ? 0 : currentDayOfWeek;
-        LocalDate startOfWeek = selectedDate.minusDays(daysToSubtract);
-
-        for (int i = 0; i < 7; i++) {
-            horizontalDateList.add(startOfWeek.plusDays(i));
-        }
-
-        horizontalAdapter = new HorizontalCalendarAdapter(horizontalDateList, selectedDate, (date, position) -> {
-            selectedDate = date;
-            if (tvCurrentDayFull != null) {
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEEE, MMMM d", Locale.ENGLISH);
-                tvCurrentDayFull.setText(selectedDate.format(formatter));
-            }
-            loadDayEvents(date);
-        });
-
-        rvHorizontalCalendar.setAdapter(horizontalAdapter);
-        if (tvCurrentDayFull != null) {
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEEE, MMMM d", Locale.ENGLISH);
-            tvCurrentDayFull.setText(selectedDate.format(formatter));
-        }
-        loadDayEvents(selectedDate);
-    }
-
-    private void renderDayViewTimeline(LocalDate date, List<Event> events) {
-        android.widget.RelativeLayout timelineContainer = findViewById(R.id.timelineContainer);
-        if (timelineContainer == null)
-            return;
-
-        timelineContainer.removeAllViews();
-        int hourHeightDp = 80;
-        int hourHeightPx = TimelineRenderer.dpToPx(this, hourHeightDp);
-        timelineContainer.setMinimumHeight(hourHeightPx * 24);
-
-        for (int i = 0; i < 24; i++) {
-            TextView tvTime = new TextView(this);
-            tvTime.setId(View.generateViewId());
-            tvTime.setText(String.format(Locale.getDefault(), "%02d:00", i));
-            tvTime.setTextColor(android.graphics.Color.parseColor("#99741CE9"));
-            tvTime.setTextSize(12f);
-            tvTime.setTypeface(null, android.graphics.Typeface.BOLD);
-
-            android.widget.RelativeLayout.LayoutParams timeParams = new android.widget.RelativeLayout.LayoutParams(
-                    TimelineRenderer.dpToPx(this, 56), android.widget.RelativeLayout.LayoutParams.WRAP_CONTENT);
-            timeParams.topMargin = i * hourHeightPx;
-            timelineContainer.addView(tvTime, timeParams);
-
-            View line = new View(this);
-            line.setBackgroundColor(android.graphics.Color.parseColor("#1A741CE9"));
-            android.widget.RelativeLayout.LayoutParams lineParams = new android.widget.RelativeLayout.LayoutParams(
-                    android.widget.RelativeLayout.LayoutParams.MATCH_PARENT, TimelineRenderer.dpToPx(this, 1));
-            lineParams.addRule(android.widget.RelativeLayout.RIGHT_OF, tvTime.getId());
-            lineParams.topMargin = i * hourHeightPx + TimelineRenderer.dpToPx(this, 8);
-            timelineContainer.addView(line, lineParams);
-        }
-
-        if (events == null || events.isEmpty()) {
-            return;
-        }
-
-        int colorIndex = 0;
-        for (Event event : events) {
-            EventTimeParts parts = toTimeParts(event);
-            if (parts == null) {
-                continue;
-            }
-
-            String title = event.getTitle() != null ? event.getTitle() : "(Untitled)";
-            String details = buildEventDetails(event);
-            int bgRes = pickEventBackground(colorIndex++);
-            Integer eventTint = resolveEventTintColor(event);
-            boolean useDarkText = eventTint != null && !TimelineRenderer.isDarkColor(eventTint);
-            String titleColor = useDarkText ? "#334155" : "#FFFFFF";
-            String detailsColor = useDarkText ? "#64748b" : "#E6FFFFFF";
-
-            TimelineRenderer.addEventCardToTimeline(this, timelineContainer, hourHeightPx, title, details, parts.startHour,
-                    parts.startMinute, parts.durationMinutes, bgRes, titleColor, detailsColor, eventTint);
-        }
-    }
-
-
-
-    private void setup3DaysView() {
-        DateTimeFormatter dowFormatter = DateTimeFormatter.ofPattern("EEE", Locale.ENGLISH);
-
-        TextView[] dowTvs = { findViewById(R.id.tv3DaysDow1), findViewById(R.id.tv3DaysDow2),
-                findViewById(R.id.tv3DaysDow3) };
-        TextView[] dateTvs = { findViewById(R.id.tv3DaysDate1), findViewById(R.id.tv3DaysDate2),
-                findViewById(R.id.tv3DaysDate3) };
-
-        for (int i = 0; i < 3; i++) {
-            LocalDate day = startDate3Days.plusDays(i);
-            if (dowTvs[i] != null && dateTvs[i] != null) {
-                dowTvs[i].setText(day.format(dowFormatter).toUpperCase());
-                dateTvs[i].setText(String.valueOf(day.getDayOfMonth()));
-
-                if (day.equals(LocalDate.now())) {
-                    dateTvs[i].setTextColor(android.graphics.Color.parseColor("#741ce9"));
-                } else {
-                    dateTvs[i].setTextColor(android.graphics.Color.parseColor("#0f172a"));
-                }
-            }
-        }
-
-        if (tvTopTitle != null) {
-            DateTimeFormatter titleFormatter = DateTimeFormatter.ofPattern("MMM d", Locale.ENGLISH);
-            tvTopTitle.setText(
-                    startDate3Days.format(titleFormatter) + " - " + startDate3Days.plusDays(2).getDayOfMonth());
-        }
-
-        loadThreeDaysEvents(startDate3Days);
-    }
-
-    private void render3DaysTimeline(LocalDate startDate, List<Event> events) {
-        android.widget.RelativeLayout container = findViewById(R.id.timeline3DaysContainer);
-        if (container == null)
-            return;
-
-        container.post(() -> {
-            container.removeAllViews();
-            int hourHeightPx = TimelineRenderer.dpToPx(this, 80);
-            container.setMinimumHeight(hourHeightPx * 24);
-
-            int timeColumnWidth = TimelineRenderer.dpToPx(this, 50);
-            int totalGridWidth = container.getWidth() - timeColumnWidth;
-            int colWidth = totalGridWidth / 3;
-
-            for (int i = 0; i < 24; i++) {
-                TextView tvTime = new TextView(this);
-                tvTime.setId(View.generateViewId());
-                tvTime.setText(String.format(Locale.getDefault(), "%02d:00", i));
-                tvTime.setTextColor(android.graphics.Color.parseColor("#94a3b8"));
-                tvTime.setTextSize(10f);
-                tvTime.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
-
-                android.widget.RelativeLayout.LayoutParams timeParams = new android.widget.RelativeLayout.LayoutParams(
-                        timeColumnWidth, android.widget.RelativeLayout.LayoutParams.WRAP_CONTENT);
-                timeParams.topMargin = i * hourHeightPx + TimelineRenderer.dpToPx(this, 8);
-                container.addView(tvTime, timeParams);
-
-                View line = new View(this);
-                line.setBackgroundColor(android.graphics.Color.parseColor("#0D741CE9"));
-                android.widget.RelativeLayout.LayoutParams lineParams = new android.widget.RelativeLayout.LayoutParams(
-                        android.widget.RelativeLayout.LayoutParams.MATCH_PARENT, TimelineRenderer.dpToPx(this, 1));
-                lineParams.leftMargin = timeColumnWidth;
-                lineParams.topMargin = i * hourHeightPx + TimelineRenderer.dpToPx(this, 16);
-                container.addView(line, lineParams);
-            }
-
-            for (int i = 1; i < 3; i++) {
-                View verticalLine = new View(this);
-                verticalLine.setBackgroundColor(android.graphics.Color.parseColor("#0D741CE9"));
-                android.widget.RelativeLayout.LayoutParams vParams = new android.widget.RelativeLayout.LayoutParams(
-                        TimelineRenderer.dpToPx(this, 1), android.widget.RelativeLayout.LayoutParams.MATCH_PARENT);
-                vParams.leftMargin = timeColumnWidth + (i * colWidth);
-                container.addView(verticalLine, vParams);
-            }
-
-            if (events == null || events.isEmpty()) {
-                return;
-            }
-
-            int colorIndex = 0;
-            for (Event event : events) {
-                LocalDate eventDate = toLocalDate(event.getStartTime());
-                if (eventDate == null) {
-                    continue;
-                }
-                int dayIndex = (int) java.time.temporal.ChronoUnit.DAYS.between(startDate, eventDate);
-                if (dayIndex < 0 || dayIndex > 2) {
-                    continue;
-                }
-
-                EventTimeParts parts = toTimeParts(event);
-                if (parts == null) {
-                    continue;
-                }
-
-                int bgRes = pickEventBackground(colorIndex++);
-                Integer eventTint = resolveEventTintColor(event);
-                boolean useDarkText = eventTint != null && !TimelineRenderer.isDarkColor(eventTint);
-                String titleColor = useDarkText ? "#334155" : "#FFFFFF";
-                String detailColor = useDarkText ? "#64748b" : "#E6FFFFFF";
-
-                TimelineRenderer.addEventTo3Days(this, container, hourHeightPx, timeColumnWidth, colWidth, dayIndex,
-                        event.getTitle() != null ? event.getTitle() : "(Untitled)",
-                        buildEventLocation(event), parts.startHour, parts.startMinute,
-                    parts.durationMinutes, bgRes, titleColor, detailColor, eventTint);
-            }
-        });
     }
 
     private void setupWeekView() {
@@ -802,11 +616,18 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         menu.setOnMenuItemClickListener(item -> {
             String title = String.valueOf(item.getTitle());
             if ("Change avatar".equals(title)) {
-                showChangeAvatarDialog();
+                String currentUrl = "";
+                User currentUser = UserManager.getInstance().getCurrentUser();
+
+                if (currentUser != null && currentUser.getAvatar() != null) {
+                    currentUrl = currentUser.getAvatar();
+                }
+
+                AccountActionManager.showChangeAvatarDialog(this, currentUrl, url -> updateAvatarUrl(url));
                 return true;
             }
             if ("Sign out".equals(title)) {
-                showSignOutDialog();
+                AccountActionManager.showSignOutDialog(this, () -> handleSignOut());
                 return true;
             }
             return false;
@@ -879,10 +700,6 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                 .into(imgProfile);
     }
 
-    private boolean isValidAvatarUrl(String url) {
-        return url != null && !url.isEmpty() && Patterns.WEB_URL.matcher(url).matches();
-    }
-
     private void handleSignOut() {
         new AuthRepository().logout();
         getSharedPreferences("TimedAppPrefs", MODE_PRIVATE)
@@ -894,25 +711,6 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
         finish();
-    }
-
-    private void showCreateReminderDialog() {
-        EditText etReminderTitle = new EditText(this);
-        etReminderTitle.setHint("Reminder title");
-
-        new AlertDialog.Builder(this)
-                .setTitle("Create Reminder")
-                .setView(etReminderTitle)
-                .setPositiveButton("Create", (dialog, which) -> {
-                    String title = etReminderTitle.getText().toString().trim();
-                    if (!title.isEmpty()) {
-                        createQuickReminder(title);
-                    } else {
-                        Toast.makeText(this, "Please enter a title", Toast.LENGTH_SHORT).show();
-                    }
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
     }
 
     private void createQuickReminder(String title) {
@@ -1017,7 +815,6 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             currentEvents.clear();
             currentEvents.addAll(events);
             eventAdapter.notifyDataSetChanged();
-            renderDayViewTimeline(date, events);
         });
     }
 
@@ -1453,7 +1250,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         updateEventsForDate(selectedDate);
 
         if (layoutDayView != null && layoutDayView.getVisibility() == View.VISIBLE) {
-            loadDayEvents(selectedDate);
+            getSupportFragmentManager().beginTransaction().replace(R.id.fragment_container, new DayView(selectedDate, getVisibleCalendarIds())).commit();
         }
         if (layout3DaysView != null && layout3DaysView.getVisibility() == View.VISIBLE) {
             loadThreeDaysEvents(startDate3Days);
@@ -1675,25 +1472,6 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         dialog.show();
     }
 
-    private void loadDayEvents(LocalDate date) {
-        List<String> calendarIds = getVisibleCalendarIds();
-        if (calendarIds.isEmpty()) {
-            ensureDefaultCalendarReady(() -> loadDayEvents(date));
-            return;
-        }
-        eventSyncManager.fetchEventsForCalendars(date, date, calendarIds, events -> renderDayViewTimeline(date, events));
-    }
-
-    private void loadThreeDaysEvents(LocalDate startDate) {
-        List<String> calendarIds = getVisibleCalendarIds();
-        if (calendarIds.isEmpty()) {
-            ensureDefaultCalendarReady(() -> loadThreeDaysEvents(startDate));
-            return;
-        }
-        eventSyncManager.fetchEventsForCalendars(startDate, startDate.plusDays(2), calendarIds,
-                events -> render3DaysTimeline(startDate, events));
-    }
-
     private void loadWeekEvents(LocalDate startOfWeek) {
         List<String> calendarIds = getVisibleCalendarIds();
         if (calendarIds.isEmpty()) {
@@ -1710,103 +1488,6 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         }
         java.time.ZoneId userZone = TimezoneHelper.getSelectedZoneId(this);
         return timestamp.toDate().toInstant().atZone(userZone).toLocalDate();
-    }
-
-    private EventTimeParts toTimeParts(Event event) {
-        if (event == null || event.getStartTime() == null) {
-            return null;
-        }
-
-        Date start = event.getStartTime().toDate();
-        Date end = event.getEndTime() != null ? event.getEndTime().toDate() : start;
-
-        Calendar startCal = TimezoneHelper.getCalendarInSelectedTz(this, start);
-        int startHour = startCal.get(Calendar.HOUR_OF_DAY);
-        int startMinute = startCal.get(Calendar.MINUTE);
-
-        long durationMillis = Math.max(30 * 60 * 1000L, end.getTime() - start.getTime());
-        int durationMinutes = (int) Math.max(15, durationMillis / 60000L);
-
-        if (event.getAllDay() != null && event.getAllDay()) {
-            startHour = 0;
-            startMinute = 0;
-            durationMinutes = 60;
-        }
-
-        return new EventTimeParts(startHour, startMinute, durationMinutes);
-    }
-
-    private String buildEventDetails(Event event) {
-        String timeRange = buildTimeRange(event);
-        String location = buildEventLocation(event);
-
-        if (!timeRange.isEmpty() && !location.isEmpty()) {
-            return timeRange + " • " + location;
-        }
-        if (!timeRange.isEmpty()) {
-            return timeRange;
-        }
-        return location;
-    }
-
-    private String buildEventLocation(Event event) {
-        if (event == null || event.getLocation() == null) {
-            return "";
-        }
-        return event.getLocation().trim();
-    }
-
-    private String buildTimeRange(Event event) {
-        if (event == null || event.getStartTime() == null) {
-            return "";
-        }
-
-        if (event.getAllDay() != null && event.getAllDay()) {
-            return "All day";
-        }
-
-        String startText = TimezoneHelper.formatTime24h(this, event.getStartTime().toDate());
-
-        if (event.getEndTime() != null) {
-            String endText = TimezoneHelper.formatTime24h(this, event.getEndTime().toDate());
-            return startText + " - " + endText;
-        }
-
-        return startText;
-    }
-
-    private Integer resolveEventTintColor(Event event) {
-        if (event == null || event.getColor() == null || event.getColor().trim().isEmpty()) {
-            return null;
-        }
-        try {
-            return android.graphics.Color.parseColor(event.getColor().trim());
-        } catch (IllegalArgumentException ignored) {
-            return null;
-        }
-    }
-
-    private int pickEventBackground(int index) {
-        int mod = index % 3;
-        if (mod == 1) {
-            return R.drawable.bg_day_event_emerald;
-        }
-        if (mod == 2) {
-            return R.drawable.bg_day_event_light;
-        }
-        return R.drawable.bg_day_event_primary;
-    }
-
-    private static class EventTimeParts {
-        final int startHour;
-        final int startMinute;
-        final int durationMinutes;
-
-        EventTimeParts(int startHour, int startMinute, int durationMinutes) {
-            this.startHour = startHour;
-            this.startMinute = startMinute;
-            this.durationMinutes = durationMinutes;
-        }
     }
 
     // ======================== INVITATION FEATURES ========================
