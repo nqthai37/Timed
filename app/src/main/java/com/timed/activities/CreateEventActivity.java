@@ -1,14 +1,10 @@
 package com.timed.activities;
 
-import android.app.DatePickerDialog;
-import android.app.TimePickerDialog;
-import android.app.AlertDialog;
-import android.app.AlarmManager;
-import android.app.PendingIntent;
-import android.content.Context;
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -20,58 +16,35 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SwitchCompat;
+import androidx.core.app.ActivityCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.lifecycle.ViewModelProvider;
 
-import com.timed.Features.ConflictResolver.ConflictEvent;
 import com.timed.R;
-import com.google.firebase.Timestamp;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.timed.managers.EventsManager;
-import com.timed.managers.UserManager;
-import com.timed.models.CalendarModel;
-import com.timed.models.Event;
-import com.timed.models.User;
-import com.timed.repositories.UserRepository;
-import com.timed.services.EventNotificationReceiver;
-import com.timed.repositories.EventsRepository;
-import com.timed.utils.CalendarIntegrationService;
-import com.timed.utils.FirebaseInitializer;
 import com.timed.dialogs.ReminderPickerDialog;
 import com.timed.dialogs.RecurrenceRuleBottomSheet;
+import com.timed.models.Event;
+import com.timed.utils.AlarmHelper;
+import com.timed.utils.DateTimePickerHelper;
 import com.timed.utils.RecurrenceConfig;
-import com.timed.utils.RecurrenceTextFormatter;
-import com.timed.utils.RecurrenceUtils;
+import com.timed.viewmodels.CreateEventViewModel;
 
 import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.Calendar;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
-import android.Manifest;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-import android.content.pm.PackageManager;
-import android.os.Build;
 
 /**
- * Activity để tạo hoặc chỉnh sửa sự kiện
+ * Activity để tạo hoặc chỉnh sửa sự kiện.
+ * Chỉ chứa logic liên kết UI (View Binding) và lắng nghe sự kiện từ ViewModel.
  */
 public class CreateEventActivity extends AppCompatActivity {
-    private static final String TAG = "CreateEvent";
-    private static final long DEFAULT_EVENT_DURATION_MS = 60 * 60 * 1000L;
-    private static final long AUTO_FIX_END_DURATION_MS = 24 * 60 * 60 * 1000L;
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("EEE, MMM d, yyyy", Locale.ENGLISH);
     private static final SimpleDateFormat TIME_FORMAT = new SimpleDateFormat("HH:mm", Locale.ENGLISH);
 
+    // --- Views ---
     private EditText etTitle, etDescription, etLocation;
     private SwitchCompat cbAllDay;
     private Button btnStartDate, btnStartTime, btnEndDate, btnEndTime;
@@ -81,26 +54,11 @@ public class CreateEventActivity extends AppCompatActivity {
     private View layoutRepeatRow;
     private TextView tvRepeatValue;
 
-    private long startTime = 0;
-    private long endTime = 0;
-    private EventsManager eventsManager;
-    private FirebaseInitializer firebaseInitializer;
-    private CalendarIntegrationService calendarIntegrationService;
+    // --- ViewModel ---
+    private CreateEventViewModel viewModel;
+
+    // --- Activity Result Launcher ---
     private ActivityResultLauncher<Intent> conflictResolverLauncher;
-    private EventsRepository eventsRepository;
-    private String mode = "create";
-    private String eventId;
-    private String calendarId;
-    private final List<CalendarModel> calendarOptions = new ArrayList<>();
-    private final Map<String, CalendarModel> calendarsById = new HashMap<>();
-    private final Map<String, String> ownerNameCache = new HashMap<>();
-    private UserRepository userRepository;
-    private Event editingEvent;
-
-    // 🔔 REMINDERS: Track user-selected reminders
-    private List<Long> selectedReminderMinutes = new ArrayList<>();
-
-    private RecurrenceConfig recurrenceConfig = RecurrenceConfig.disabled();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -110,56 +68,36 @@ public class CreateEventActivity extends AppCompatActivity {
 
         initializeViews();
         setupInsets();
-        initializeServices();
+
+        // Khởi tạo ViewModel
+        viewModel = new ViewModelProvider(this).get(CreateEventViewModel.class);
+        viewModel.initialize(this);
+
         readIntentData();
         setupListeners();
+        setupConflictResolver();
+        observeViewModel();
 
-        //  Initialize default reminders (10 & 30 minutes)
-        selectedReminderMinutes.add(10L);
-        selectedReminderMinutes.add(30L);
-        updateReminderDisplay();
-        updateRepeatSummary();
+        // Request permissions nếu cần
+        requestNotificationPermissions();
 
-        // 🔍 DEBUG: Check notification permissions & settings
-        debugNotificationSetup();
-
-        if (startTime <= 0 || endTime <= 0) {
+        // Khởi tạo thời gian mặc định nếu chưa có
+        if (viewModel.getStartTimeValue() <= 0 || viewModel.getEndTimeValue() <= 0) {
             Calendar calendar = Calendar.getInstance();
-            startTime = calendar.getTimeInMillis();
+            viewModel.setStartTime(calendar.getTimeInMillis());
             calendar.add(Calendar.HOUR, 1);
-            endTime = calendar.getTimeInMillis();
+            viewModel.setEndTime(calendar.getTimeInMillis());
         }
 
-        ensureValidTimeRange();
-
-        updateStartDateButton();
-        updateStartTimeButton();
-        updateEndDateButton();
-        updateEndTimeButton();
-
-        eventsRepository = new EventsRepository();
-        conflictResolverLauncher = registerForActivityResult(
-                new ActivityResultContracts.StartActivityForResult(),
-                result -> {
-                    if (result.getResultCode() == RESULT_OK) {
-                        Intent data = result.getData();
-                        if (data != null) {
-                            long newStart = data.getLongExtra("RESOLVED_START", -1);
-                            long newEnd = data.getLongExtra("RESOLVED_END", -1);
-                            if (newStart != -1 && newEnd != -1) {
-                                startTime = newStart;
-                                endTime = newEnd;
-                                refreshDateTimeButtons();
-                            }
-                        }
-                        proceedToSaveEvent();
-                    }
-                }
-        );
-
+        viewModel.ensureValidTimeRange();
         configureModeUI();
-        loadCalendars();
+        viewModel.loadCalendars(this);
+
+        // 🔍 DEBUG
+        AlarmHelper.debugNotificationSetup(this, viewModel.getStartTimeValue());
     }
+
+    // ======================= Khởi tạo Views =======================
 
     /**
      * Khởi tạo views
@@ -182,120 +120,6 @@ public class CreateEventActivity extends AppCompatActivity {
         layoutCalendarSelector = findViewById(R.id.layoutCalendarSelector);
         layoutRepeatRow = findViewById(R.id.layoutRepeatRow);
         tvRepeatValue = findViewById(R.id.tvRepeatValue);
-    }
-
-    /**
-     * Khởi tạo services
-     */
-    private void initializeServices() {
-        firebaseInitializer = FirebaseInitializer.getInstance();
-        firebaseInitializer.initialize(this);
-        eventsManager = EventsManager.getInstance(this);
-        calendarIntegrationService = new CalendarIntegrationService();
-        userRepository = new UserRepository();
-        cacheOwnerName(UserManager.getInstance().getCurrentUser());
-    }
-
-    private void readIntentData() {
-        mode = getIntent().getStringExtra("mode");
-        if (mode == null || mode.isEmpty()) {
-            mode = "create";
-        }
-
-        eventId = getIntent().getStringExtra("eventId");
-        String incomingCalendarId = getIntent().getStringExtra("calendarId");
-        if (incomingCalendarId != null && !incomingCalendarId.isEmpty()) {
-            calendarId = incomingCalendarId;
-        }
-
-        String incomingTitle = getIntent().getStringExtra("title");
-        String incomingDescription = getIntent().getStringExtra("description");
-        String incomingLocation = getIntent().getStringExtra("location");
-        startTime = getIntent().getLongExtra("startTime", 0L);
-        endTime = getIntent().getLongExtra("endTime", 0L);
-        boolean incomingAllDay = getIntent().getBooleanExtra("allDay", false);
-
-        if (incomingTitle != null)
-            etTitle.setText(incomingTitle);
-        if (incomingDescription != null)
-            etDescription.setText(incomingDescription);
-        if (incomingLocation != null)
-            etLocation.setText(incomingLocation);
-        cbAllDay.setChecked(incomingAllDay);
-
-        if (isEditMode() && eventId != null && !eventId.isEmpty()) {
-            eventsManager.getEventById(eventId)
-                    .addOnSuccessListener(event -> {
-                        editingEvent = event;
-                        if (event == null) {
-                            return;
-                        }
-                        if (etTitle.getText().toString().trim().isEmpty())
-                            etTitle.setText(event.getTitle());
-                        if (etDescription.getText().toString().trim().isEmpty())
-                            etDescription.setText(event.getDescription());
-                        if (etLocation.getText().toString().trim().isEmpty())
-                            etLocation.setText(event.getLocation());
-                        if (event.getCalendarId() != null && !event.getCalendarId().isEmpty()) {
-                            calendarId = event.getCalendarId();
-                        }
-                        if (startTime <= 0 && event.getStartTime() != null)
-                            startTime = event.getStartTime().toDate().getTime();
-                        if (endTime <= 0 && event.getEndTime() != null)
-                            endTime = event.getEndTime().toDate().getTime();
-                        cbAllDay.setChecked(event.getAllDay() != null && event.getAllDay());
-                        ensureValidTimeRange();
-                        updateStartDateButton();
-                        updateStartTimeButton();
-                        updateEndDateButton();
-                        updateEndTimeButton();
-                        updateCalendarLabel();
-                        applyRecurrenceFromEvent(event);
-                    })
-                    .addOnFailureListener(e -> Log.w(TAG, "Cannot load event detail for edit: " + e.getMessage()));
-        }
-    }
-
-    private void configureModeUI() {
-        if (tvScreenTitle != null) {
-            tvScreenTitle.setText(isEditMode() ? "Edit Event" : "New Event");
-        }
-        if (btnSave != null) {
-            btnSave.setText("Save");
-        }
-        if (tvDeleteEvent != null) {
-            tvDeleteEvent.setVisibility(isEditMode() ? android.view.View.VISIBLE : android.view.View.GONE);
-        }
-
-        if (tvCalendarValue != null) {
-            updateCalendarLabel();
-        }
-
-        if (tvAlertValue != null) {
-            tvAlertValue.setText("30 minutes before");
-        }
-
-        if (etLocation != null && !isEditMode() && etLocation.getText().toString().trim().isEmpty()) {
-            etLocation.setHint("Add location");
-        }
-
-        if (etDescription != null && !isEditMode() && etDescription.getText().toString().trim().isEmpty()) {
-            etDescription.setHint("Add notes or event details...");
-        }
-
-        if (etTitle != null) {
-            if (isEditMode()) {
-                etTitle.setBackground(null);
-                etTitle.setTextSize(38f);
-                etTitle.setPadding(0, dpToPx(8), 0, dpToPx(8));
-            } else {
-                etTitle.setTextSize(14f);
-                etTitle.setBackgroundResource(R.drawable.bg_event_soft_field);
-                etTitle.setPadding(dpToPx(14), 0, dpToPx(14), 0);
-            }
-        }
-
-        updateAllDayState();
     }
 
     private void setupInsets() {
@@ -324,255 +148,273 @@ public class CreateEventActivity extends AppCompatActivity {
         });
     }
 
-    private boolean isEditMode() {
-        return "edit".equalsIgnoreCase(mode);
+    // ======================= Đọc Intent =======================
+
+    private void readIntentData() {
+        String mode = getIntent().getStringExtra("mode");
+        viewModel.setMode(mode);
+
+        String eventId = getIntent().getStringExtra("eventId");
+        viewModel.setEventId(eventId);
+
+        String incomingCalendarId = getIntent().getStringExtra("calendarId");
+        if (incomingCalendarId != null && !incomingCalendarId.isEmpty()) {
+            viewModel.setCalendarId(incomingCalendarId);
+        }
+
+        String incomingTitle = getIntent().getStringExtra("title");
+        String incomingDescription = getIntent().getStringExtra("description");
+        String incomingLocation = getIntent().getStringExtra("location");
+        long startTime = getIntent().getLongExtra("startTime", 0L);
+        long endTime = getIntent().getLongExtra("endTime", 0L);
+        boolean incomingAllDay = getIntent().getBooleanExtra("allDay", false);
+
+        if (incomingTitle != null) etTitle.setText(incomingTitle);
+        if (incomingDescription != null) etDescription.setText(incomingDescription);
+        if (incomingLocation != null) etLocation.setText(incomingLocation);
+        cbAllDay.setChecked(incomingAllDay);
+
+        if (startTime > 0) viewModel.setStartTime(startTime);
+        if (endTime > 0) viewModel.setEndTime(endTime);
+
+        // Nếu đang edit, load dữ liệu sự kiện
+        if (viewModel.isEditMode() && eventId != null && !eventId.isEmpty()) {
+            viewModel.loadEventForEdit(event -> {
+                if (event == null) return;
+                if (etTitle.getText().toString().trim().isEmpty())
+                    etTitle.setText(event.getTitle());
+                if (etDescription.getText().toString().trim().isEmpty())
+                    etDescription.setText(event.getDescription());
+                if (etLocation.getText().toString().trim().isEmpty())
+                    etLocation.setText(event.getLocation());
+                cbAllDay.setChecked(event.getAllDay() != null && event.getAllDay());
+            });
+        }
     }
 
+    // ======================= Setup Listeners =======================
+
     /**
-     * Setup button listeners
+     * Setup button listeners — dùng DateTimePickerHelper thay vì tự tạo dialog
      */
     private void setupListeners() {
         if (btnStartDate != null) {
-            btnStartDate.setOnClickListener(v -> showStartDatePicker());
+            btnStartDate.setOnClickListener(v ->
+                    DateTimePickerHelper.showDatePicker(this, viewModel.getStartTimeValue(), newTime -> {
+                        viewModel.setStartTime(newTime);
+                    }));
         }
         if (btnStartTime != null) {
-            btnStartTime.setOnClickListener(v -> showStartTimePicker());
+            btnStartTime.setOnClickListener(v ->
+                    DateTimePickerHelper.showTimePicker(this, viewModel.getStartTimeValue(), newTime -> {
+                        viewModel.setStartTime(newTime);
+                    }));
         }
         if (btnEndDate != null) {
-            btnEndDate.setOnClickListener(v -> showEndDatePicker());
+            btnEndDate.setOnClickListener(v ->
+                    DateTimePickerHelper.showDatePicker(this, viewModel.getEndTimeValue(), newTime -> {
+                        viewModel.setEndTime(newTime);
+                    }));
         }
         if (btnEndTime != null) {
-            btnEndTime.setOnClickListener(v -> showEndTimePicker());
+            btnEndTime.setOnClickListener(v ->
+                    DateTimePickerHelper.showTimePicker(this, viewModel.getEndTimeValue(), newTime -> {
+                        viewModel.setEndTime(newTime);
+                    }));
         }
         if (btnSave != null) {
-            btnSave.setOnClickListener(v -> saveEvent());
+            btnSave.setOnClickListener(v -> onSaveClicked());
         }
         if (btnCancel != null) {
             btnCancel.setOnClickListener(v -> finish());
         }
         if (tvDeleteEvent != null) {
-            tvDeleteEvent.setOnClickListener(v -> deleteEvent());
+            tvDeleteEvent.setOnClickListener(v -> {
+                viewModel.deleteEvent();
+            });
         }
         if (layoutCalendarSelector != null) {
-            layoutCalendarSelector.setOnClickListener(v -> showCalendarLabelPicker());
+            layoutCalendarSelector.setOnClickListener(v ->
+                    viewModel.getCalendarSelectorHelper().showCalendarPicker(
+                            this,
+                            viewModel.getCalendarOptions(),
+                            viewModel.getCalendarIdValue(),
+                            calendarId -> viewModel.setCalendarId(calendarId)
+                    ));
         }
         if (layoutRepeatRow != null) {
             layoutRepeatRow.setOnClickListener(v -> showRepeatPicker());
         }
-        // 🔔 ADD REMINDER PICKER LISTENER
+        // 🔔 Reminder picker
         if (tvAlertValue != null) {
-            tvAlertValue.setOnClickListener(v -> showReminderPicker());
+            tvAlertValue.setOnClickListener(v ->
+                    ReminderPickerDialog.show(this, viewModel.getSelectedReminderMinutesValue(), selectedMinutes -> {
+                        viewModel.setSelectedReminderMinutes(selectedMinutes);
+                    }));
         }
         if (cbAllDay != null) {
             cbAllDay.setOnCheckedChangeListener((buttonView, isChecked) -> updateAllDayState());
         }
     }
 
-    private void showCalendarLabelPicker() {
-        if (calendarOptions.isEmpty()) {
-            Toast.makeText(this, "No calendars available", Toast.LENGTH_SHORT).show();
+    private void setupConflictResolver() {
+        conflictResolverLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == RESULT_OK) {
+                        Intent data = result.getData();
+                        if (data != null) {
+                            long newStart = data.getLongExtra("RESOLVED_START", -1);
+                            long newEnd = data.getLongExtra("RESOLVED_END", -1);
+                            if (newStart != -1 && newEnd != -1) {
+                                viewModel.setStartTime(newStart);
+                                viewModel.setEndTime(newEnd);
+                            }
+                        }
+                        String title = etTitle != null ? etTitle.getText().toString().trim() : "";
+                        String description = etDescription != null ? etDescription.getText().toString().trim() : "";
+                        String location = etLocation != null ? etLocation.getText().toString().trim() : "";
+                        boolean isAllDay = cbAllDay != null && cbAllDay.isChecked();
+                        viewModel.proceedToSave(title, description, location, isAllDay);
+                    }
+                }
+        );
+    }
+
+    // ======================= Observe ViewModel =======================
+
+    /**
+     * Lắng nghe các thay đổi từ ViewModel để cập nhật UI
+     */
+    private void observeViewModel() {
+        viewModel.getStartTime().observe(this, time -> {
+            if (btnStartDate != null) btnStartDate.setText(DATE_FORMAT.format(time));
+            if (btnStartTime != null) btnStartTime.setText(TIME_FORMAT.format(time));
+        });
+
+        viewModel.getEndTime().observe(this, time -> {
+            if (btnEndDate != null) btnEndDate.setText(DATE_FORMAT.format(time));
+            if (btnEndTime != null) btnEndTime.setText(TIME_FORMAT.format(time));
+        });
+
+        viewModel.getCalendarLabel().observe(this, label -> {
+            if (tvCalendarValue != null) tvCalendarValue.setText(label);
+        });
+
+        viewModel.getReminderDisplayText().observe(this, text -> {
+            if (tvAlertValue != null) tvAlertValue.setText(text);
+        });
+
+        viewModel.getRepeatSummary().observe(this, summary -> {
+            if (tvRepeatValue != null) tvRepeatValue.setText(summary);
+        });
+
+        viewModel.getSaveResult().observe(this, result -> {
+            if (result == null) return;
+            Toast.makeText(this, result.message, Toast.LENGTH_SHORT).show();
+            if (result.success) {
+                finish();
+            } else {
+                if (btnSave != null) {
+                    btnSave.setEnabled(true);
+                    btnSave.setText("Save");
+                }
+            }
+        });
+
+        viewModel.getConflictResult().observe(this, result -> {
+            if (result == null) return;
+            if (btnSave != null) {
+                btnSave.setEnabled(true);
+                btnSave.setText("Save");
+            }
+            Intent intent = new Intent(this, com.timed.Features.ConflictResolver.ConflictResolverActivity.class);
+            intent.putExtra("NEW_EVENT_START", result.startTime);
+            intent.putExtra("NEW_EVENT_END", result.endTime);
+            intent.putExtra("NEW_EVENT_TITLE", result.title);
+            conflictResolverLauncher.launch(intent);
+        });
+    }
+
+    // ======================= UI Actions =======================
+
+    private void onSaveClicked() {
+        String title = etTitle != null ? etTitle.getText().toString().trim() : "";
+
+        if (title.isEmpty()) {
+            if (etTitle != null) {
+                etTitle.setError("Vui lòng nhập tiêu đề sự kiện");
+                etTitle.requestFocus();
+            }
             return;
         }
 
-        String[] labels = new String[calendarOptions.size()];
-        int selectedIndex = 0;
-        for (int i = 0; i < calendarOptions.size(); i++) {
-            CalendarModel calendar = calendarOptions.get(i);
-            labels[i] = formatCalendarLabel(calendar);
-            if (calendar != null && calendarId != null && calendarId.equals(calendar.getId())) {
-                selectedIndex = i;
-            }
+        if (btnSave != null) {
+            btnSave.setEnabled(false);
+            btnSave.setText("Checking...");
         }
 
-        new AlertDialog.Builder(this)
-                .setTitle("Choose Calendar")
-                .setSingleChoiceItems(labels, selectedIndex, (dialog, which) -> {
-                    CalendarModel selected = calendarOptions.get(which);
-                    if (selected != null) {
-                        calendarId = selected.getId();
-                        calendarIntegrationService.setCachedDefaultCalendarId(this, calendarId);
+        String description = etDescription != null ? etDescription.getText().toString().trim() : "";
+        String location = etLocation != null ? etLocation.getText().toString().trim() : "";
+        boolean isAllDay = cbAllDay != null && cbAllDay.isChecked();
+
+        viewModel.saveEvent(title, description, location, isAllDay);
+    }
+
+    private void showRepeatPicker() {
+        String[] options = new String[]{"Hàng ngày", "Hàng tuần", "Hàng tháng", "Hàng năm", "Tùy chỉnh"};
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("Lặp lại")
+                .setItems(options, (dialog, which) -> {
+                    if (which == 4) {
+                        showRecurrenceSheet();
+                        return;
                     }
-                    updateCalendarLabel();
-                    dialog.dismiss();
+                    viewModel.applyQuickRecurrence(which);
                 })
-                .setNegativeButton("Cancel", null)
                 .show();
     }
 
-    private void updateCalendarLabel() {
-        if (tvCalendarValue == null) {
-            return;
-        }
-        String label = "Calendar";
-        for (CalendarModel calendar : calendarOptions) {
-            if (calendar != null && calendarId != null && calendarId.equals(calendar.getId())) {
-                label = formatCalendarLabel(calendar);
-                break;
-            }
-        }
-        tvCalendarValue.setText(label);
+    private void showRecurrenceSheet() {
+        RecurrenceRuleBottomSheet sheet = RecurrenceRuleBottomSheet.newInstance(
+                viewModel.getRecurrenceConfigValue(), viewModel.getStartTimeValue());
+        sheet.setOnConfirmedListener(config -> viewModel.setRecurrenceConfig(config));
+        sheet.show(getSupportFragmentManager(), "recurrence_rule");
     }
 
-    private String formatCalendarLabel(CalendarModel calendar) {
-        if (calendar == null) {
-            return "Calendar";
-        }
-        String name = calendar.getName();
-        if (name == null || name.trim().isEmpty()) {
-            name = "Calendar";
-        } else {
-            name = name.trim();
-        }
+    private void configureModeUI() {
+        boolean editMode = viewModel.isEditMode();
 
-        String ownerName = calendar.getOwnerName();
-        if (ownerName != null) {
-            ownerName = ownerName.trim();
+        if (tvScreenTitle != null) {
+            tvScreenTitle.setText(editMode ? "Edit Event" : "New Event");
         }
-        if (ownerName != null && !ownerName.isEmpty()) {
-            return name + " - " + ownerName;
+        if (btnSave != null) {
+            btnSave.setText("Save");
         }
-        return name;
-    }
-
-    private void loadCalendars() {
-        calendarIntegrationService.ensureDefaultCalendar(this,
-                new CalendarIntegrationService.DefaultCalendarListener() {
-                    @Override
-                    public void onReady(String defaultId, List<CalendarModel> calendars) {
-                        calendarOptions.clear();
-                        calendarsById.clear();
-                        if (calendars != null) {
-                            calendarOptions.addAll(calendars);
-                            for (CalendarModel calendar : calendars) {
-                                if (calendar != null && calendar.getId() != null) {
-                                    calendarsById.put(calendar.getId(), calendar);
-                                }
-                            }
-                        }
-
-                        if (calendarId == null || calendarId.isEmpty()) {
-                            calendarId = defaultId;
-                        } else if (!containsCalendar(calendarId)) {
-                            calendarId = defaultId;
-                        }
-
-                        if (calendarId != null && !calendarId.isEmpty()) {
-                            calendarIntegrationService.setCachedDefaultCalendarId(CreateEventActivity.this, calendarId);
-                        }
-
-                        updateCalendarLabel();
-                        loadCalendarOwnerNames(calendarOptions, CreateEventActivity.this::updateCalendarLabel);
-                    }
-
-                    @Override
-                    public void onError(String errorMessage) {
-                        Log.e(TAG, "Failed to load calendars: " + errorMessage);
-                    }
-                });
-    }
-
-    private void cacheOwnerName(User user) {
-        if (user == null) {
-            return;
-        }
-        String userId = user.getUid();
-        String name = user.getName();
-        if (userId == null || name == null) {
-            return;
-        }
-        String normalized = name.trim();
-        if (!normalized.isEmpty()) {
-            ownerNameCache.put(userId, normalized);
-        }
-    }
-
-    private void applyOwnerNameToCalendars(List<CalendarModel> calendars, String ownerId, String ownerName) {
-        if (calendars == null || ownerId == null || ownerName == null) {
-            return;
-        }
-        for (CalendarModel calendar : calendars) {
-            if (calendar != null && ownerId.equals(calendar.getOwnerId())) {
-                calendar.setOwnerName(ownerName);
-            }
-        }
-    }
-
-    private void loadCalendarOwnerNames(List<CalendarModel> calendars, Runnable onComplete) {
-        if (calendars == null || calendars.isEmpty()) {
-            if (onComplete != null) {
-                onComplete.run();
-            }
-            return;
+        if (tvDeleteEvent != null) {
+            tvDeleteEvent.setVisibility(editMode ? View.VISIBLE : View.GONE);
         }
 
-        cacheOwnerName(UserManager.getInstance().getCurrentUser());
-
-        if (userRepository == null) {
-            if (onComplete != null) {
-                onComplete.run();
-            }
-            return;
+        if (etLocation != null && !editMode && etLocation.getText().toString().trim().isEmpty()) {
+            etLocation.setHint("Add location");
+        }
+        if (etDescription != null && !editMode && etDescription.getText().toString().trim().isEmpty()) {
+            etDescription.setHint("Add notes or event details...");
         }
 
-        Set<String> ownerIdsToFetch = new HashSet<>();
-        for (CalendarModel calendar : calendars) {
-            if (calendar == null) {
-                continue;
-            }
-            String ownerId = calendar.getOwnerId();
-            if (ownerId == null || ownerId.isEmpty()) {
-                continue;
-            }
-            String cachedName = ownerNameCache.get(ownerId);
-            if (cachedName != null) {
-                calendar.setOwnerName(cachedName);
+        if (etTitle != null) {
+            if (editMode) {
+                etTitle.setBackground(null);
+                etTitle.setTextSize(38f);
+                etTitle.setPadding(0, dpToPx(8), 0, dpToPx(8));
             } else {
-                ownerIdsToFetch.add(ownerId);
+                etTitle.setTextSize(14f);
+                etTitle.setBackgroundResource(R.drawable.bg_event_soft_field);
+                etTitle.setPadding(dpToPx(14), 0, dpToPx(14), 0);
             }
         }
 
-        if (ownerIdsToFetch.isEmpty()) {
-            if (onComplete != null) {
-                onComplete.run();
-            }
-            return;
-        }
-
-        AtomicInteger remaining = new AtomicInteger(ownerIdsToFetch.size());
-        for (String ownerId : ownerIdsToFetch) {
-            userRepository.getUser(ownerId)
-                    .addOnSuccessListener(snapshot -> {
-                        User owner = snapshot.toObject(User.class);
-                        String ownerName = owner != null ? owner.getName() : null;
-                        if (ownerName != null) {
-                            ownerName = ownerName.trim();
-                        }
-                        if (ownerName != null && !ownerName.isEmpty()) {
-                            ownerNameCache.put(ownerId, ownerName);
-                            applyOwnerNameToCalendars(calendars, ownerId, ownerName);
-                        }
-                        if (remaining.decrementAndGet() == 0 && onComplete != null) {
-                            onComplete.run();
-                        }
-                    })
-                    .addOnFailureListener(e -> {
-                        if (remaining.decrementAndGet() == 0 && onComplete != null) {
-                            onComplete.run();
-                        }
-                    });
-        }
-    }
-
-    private boolean containsCalendar(String id) {
-        if (id == null) {
-            return false;
-        }
-        for (CalendarModel calendar : calendarOptions) {
-            if (calendar != null && id.equals(calendar.getId())) {
-                return true;
-            }
-        }
-        return false;
+        updateAllDayState();
     }
 
     private void updateAllDayState() {
@@ -587,600 +429,24 @@ public class CreateEventActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Đảm bảo khoảng thời gian hợp lệ (end luôn sau start)
-     */
-    private void ensureValidTimeRange() {
-        if (startTime <= 0) {
-            startTime = System.currentTimeMillis();
-        }
+    // ======================= Permissions =======================
 
-        if (endTime < startTime) {
-            endTime = startTime + AUTO_FIX_END_DURATION_MS;
-        }
-    }
-
-    private void refreshDateTimeButtons() {
-        updateStartDateButton();
-        updateStartTimeButton();
-        updateEndDateButton();
-        updateEndTimeButton();
-    }
-
-    /**
-     * Hiển thị date picker cho start date
-     */
-    private void showStartDatePicker() {
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTimeInMillis(startTime);
-
-        DatePickerDialog datePickerDialog = new DatePickerDialog(this,
-                (view, year, monthOfYear, dayOfMonth) -> {
-                    calendar.set(year, monthOfYear, dayOfMonth);
-                    startTime = calendar.getTimeInMillis();
-                    ensureValidTimeRange();
-                    refreshDateTimeButtons();
-                },
-                calendar.get(Calendar.YEAR),
-                calendar.get(Calendar.MONTH),
-                calendar.get(Calendar.DAY_OF_MONTH));
-
-        datePickerDialog.show();
-    }
-
-    /**
-     * Hiển thị time picker cho start time
-     */
-    private void showStartTimePicker() {
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTimeInMillis(startTime);
-
-        TimePickerDialog timePickerDialog = new TimePickerDialog(this,
-                (view, hourOfDay, minute) -> {
-                    calendar.set(Calendar.HOUR_OF_DAY, hourOfDay);
-                    calendar.set(Calendar.MINUTE, minute);
-                    startTime = calendar.getTimeInMillis();
-                    ensureValidTimeRange();
-                    refreshDateTimeButtons();
-                },
-                calendar.get(Calendar.HOUR_OF_DAY),
-                calendar.get(Calendar.MINUTE),
-                true);
-
-        timePickerDialog.show();
-    }
-
-    /**
-     * Hiển thị date picker cho end date
-     */
-    private void showEndDatePicker() {
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTimeInMillis(endTime);
-
-        DatePickerDialog datePickerDialog = new DatePickerDialog(this,
-                (view, year, monthOfYear, dayOfMonth) -> {
-                    calendar.set(year, monthOfYear, dayOfMonth);
-                    endTime = calendar.getTimeInMillis();
-                    ensureValidTimeRange();
-                    refreshDateTimeButtons();
-                },
-                calendar.get(Calendar.YEAR),
-                calendar.get(Calendar.MONTH),
-                calendar.get(Calendar.DAY_OF_MONTH));
-
-        datePickerDialog.show();
-    }
-
-    /**
-     * Hiển thị time picker cho end time
-     */
-    private void showEndTimePicker() {
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTimeInMillis(endTime);
-
-        TimePickerDialog timePickerDialog = new TimePickerDialog(this,
-                (view, hourOfDay, minute) -> {
-                    calendar.set(Calendar.HOUR_OF_DAY, hourOfDay);
-                    calendar.set(Calendar.MINUTE, minute);
-                    endTime = calendar.getTimeInMillis();
-                    ensureValidTimeRange();
-                    refreshDateTimeButtons();
-                },
-                calendar.get(Calendar.HOUR_OF_DAY),
-                calendar.get(Calendar.MINUTE),
-                true);
-
-        timePickerDialog.show();
-    }
-
-    /**
-     * Cập nhật text của start date button
-     */
-    private void updateStartDateButton() {
-        if (btnStartDate != null) {
-            btnStartDate.setText(DATE_FORMAT.format(startTime));
-        }
-    }
-
-    /**
-     * Cập nhật text của start time button
-     */
-    private void updateStartTimeButton() {
-        if (btnStartTime != null) {
-            btnStartTime.setText(TIME_FORMAT.format(startTime));
-        }
-    }
-
-    /**
-     * Cập nhật text của end date button
-     */
-    private void updateEndDateButton() {
-        if (btnEndDate != null) {
-            btnEndDate.setText(DATE_FORMAT.format(endTime));
-        }
-    }
-
-    /**
-     * Cập nhật text của end time button
-     */
-    private void updateEndTimeButton() {
-        if (btnEndTime != null) {
-            btnEndTime.setText(TIME_FORMAT.format(endTime));
-        }
-    }
-
-    /**
-     * 🔔 Show reminder picker dialog
-     */
-    private void showReminderPicker() {
-        ReminderPickerDialog.show(this, selectedReminderMinutes, selectedMinutes -> {
-            selectedReminderMinutes = selectedMinutes;
-            updateReminderDisplay();
-        });
-    }
-
-    /**
-     * 🔔 Update reminder display text
-     */
-    private void updateReminderDisplay() {
-        if (tvAlertValue == null) {
-            return;
-        }
-
-        if (selectedReminderMinutes.isEmpty()) {
-            tvAlertValue.setText("No reminders");
-            return;
-        }
-
-        // Sort reminders
-        List<Long> sorted = new ArrayList<>(selectedReminderMinutes);
-        sorted.sort(Long::compareTo);
-
-        // Format display text
-        StringBuilder text = new StringBuilder();
-        for (int i = 0; i < sorted.size(); i++) {
-            long mins = sorted.get(i);
-            if (i > 0) text.append(", ");
-
-            if (mins < 60) {
-                text.append(mins).append(" min");
-            } else if (mins == 60) {
-                text.append("1 hour");
-            } else if (mins == 120) {
-                text.append("2 hours");
-            } else if (mins == 1440) {
-                text.append("1 day");
-            } else {
-                text.append(mins / 60).append(" hours");
-            }
-        }
-
-        tvAlertValue.setText(text.toString());
-        Log.d(TAG, "📌 Reminders: " + text);
-    }
-
-    private void showRepeatPicker() {
-        String[] options = new String[]{"Hàng ngày", "Hàng tuần", "Hàng tháng", "Hàng năm", "Tùy chỉnh"};
-        new AlertDialog.Builder(this)
-                .setTitle("Lặp lại")
-                .setItems(options, (dialog, which) -> {
-                    if (which == 4) {
-                        showRecurrenceSheet();
-                        return;
-                    }
-                    applyQuickRecurrence(which);
-                })
-                .show();
-    }
-
-    private void showRecurrenceSheet() {
-        RecurrenceRuleBottomSheet sheet = RecurrenceRuleBottomSheet.newInstance(recurrenceConfig, startTime);
-        sheet.setOnConfirmedListener(config -> {
-            recurrenceConfig = config;
-            updateRepeatSummary();
-        });
-        sheet.show(getSupportFragmentManager(), "recurrence_rule");
-    }
-
-    private void applyQuickRecurrence(int index) {
-        RecurrenceConfig config = new RecurrenceConfig();
-        config.enabled = true;
-        config.interval = 1;
-        config.endType = RecurrenceConfig.EndType.NEVER;
-        config.exceptions = new ArrayList<>();
-
-        if (index == 0) {
-            config.frequency = RecurrenceUtils.FREQ_DAILY;
-        } else if (index == 1) {
-            config.frequency = RecurrenceUtils.FREQ_WEEKLY;
-        } else if (index == 2) {
-            config.frequency = RecurrenceUtils.FREQ_MONTHLY;
-        } else {
-            config.frequency = RecurrenceUtils.FREQ_YEARLY;
-        }
-
-        config.applyStartDefaults(startTime);
-        recurrenceConfig = config;
-        updateRepeatSummary();
-    }
-
-    private void updateRepeatSummary() {
-        if (tvRepeatValue == null) {
-            return;
-        }
-        String summary = RecurrenceTextFormatter.formatSummary(recurrenceConfig, startTime, false);
-        tvRepeatValue.setText(summary);
-    }
-
-    /**
-     * Lưu sự kiện
-     */
-    private void saveEvent() {
-        String title = etTitle != null ? etTitle.getText().toString().trim() : "";
-
-        if (title.isEmpty()) {
-            if (etTitle != null) {
-                etTitle.setError("Vui lòng nhập tiêu đề sự kiện");
-                etTitle.requestFocus();
-            }
-            return;
-        }
-
-        ensureValidTimeRange();
-
-        if (startTime > endTime) {
-            return;
-        }
-
-        if (btnSave != null) {
-            btnSave.setEnabled(false);
-            btnSave.setText("Checking...");
-        }
-
-        // SILENT BACKGROUND CHECK
-        eventsRepository.checkConflictsOnDay(startTime, endTime, title, new EventsRepository.OnConflictCheckListener() {
-            @Override
-            public void onConflictsFound(List<ConflictEvent> conflicts) {
-                if (btnSave != null) {
-                    btnSave.setEnabled(true);
-                    btnSave.setText("Save");
-                }
-
-                if (conflicts.isEmpty()) {
-                    proceedToSaveEvent();
-                } else {
-                    Intent intent = new Intent(CreateEventActivity.this, com.timed.Features.ConflictResolver.ConflictResolverActivity.class);
-                    intent.putExtra("NEW_EVENT_START", startTime);
-                    intent.putExtra("NEW_EVENT_END", endTime);
-                    intent.putExtra("NEW_EVENT_TITLE", title);
-                    conflictResolverLauncher.launch(intent);
-                }
-            }
-
-            @Override
-            public void onError(Exception e) {
-                if (btnSave != null) {
-                    btnSave.setEnabled(true);
-                    btnSave.setText("Save");
-                }
-                Log.e(TAG, "Error checking conflicts: " + e.getMessage());
-                proceedToSaveEvent();
-            }
-        });
-    }
-
-    private void proceedToSaveEvent() {
-        String title = etTitle != null ? etTitle.getText().toString().trim() : "";
-        String description = etDescription != null ? etDescription.getText().toString().trim() : "";
-        String location = etLocation != null ? etLocation.getText().toString().trim() : "";
-        boolean isAllDay = cbAllDay != null && cbAllDay.isChecked();
-
-        if (isEditMode()) {
-            updateExistingEvent(title, description, location, isAllDay);
-            return;
-        }
-
-        ensureCalendarReadyAndSave(title, description, location, isAllDay);
-    }
-
-    private void ensureCalendarReadyAndSave(String title, String description, String location, boolean isAllDay) {
-        if (calendarId == null || calendarId.isEmpty()) {
-            calendarId = calendarIntegrationService.getCachedDefaultCalendarId(this);
-        }
-        if (calendarId != null && !calendarId.isEmpty()) {
-            saveEventWithCalendar(title, description, location, isAllDay, calendarId);
-            return;
-        }
-
-        calendarIntegrationService.ensureDefaultCalendar(this,
-                new CalendarIntegrationService.DefaultCalendarListener() {
-                    @Override
-                    public void onReady(String calendarId, List<CalendarModel> calendars) {
-                        CreateEventActivity.this.calendarId = calendarId;
-                        saveEventWithCalendar(title, description, location, isAllDay, calendarId);
-                    }
-
-                    @Override
-                    public void onError(String errorMessage) {
-                        Toast.makeText(CreateEventActivity.this,
-                                "Calendar is not ready: " + errorMessage, Toast.LENGTH_SHORT).show();
-                    }
-                });
-    }
-
-    // Lưu Offline + Đặt Alarm Manager
-    private void saveEventWithCalendar(String title, String description, String location, boolean isAllDay,
-            String calendarId) {
-
-        // 1. Khởi tạo và sinh ID tĩnh (Đồng bộ giữa Database và Alarm)
-        String generatedEventId = FirebaseFirestore.getInstance().collection("events").document().getId();
-
-        Event newEvent = new Event();
-        newEvent.setCalendarId(calendarId);
-
-        CalendarModel selectedCalendar = calendarsById.get(calendarId);
-
-        if (selectedCalendar != null) {
-            newEvent.setCalendarName(selectedCalendar.getName());
-            newEvent.setColor(selectedCalendar.getColor());
-        }
-        newEvent.setTitle(title);
-        newEvent.setDescription(description);
-        newEvent.setLocation(location);
-        newEvent.setAllDay(isAllDay);
-        newEvent.setStartTime(new Timestamp(new Date(startTime)));
-        newEvent.setEndTime(new Timestamp(new Date(endTime)));
-        applyRecurrenceToEvent(newEvent);
-
-        String userId = firebaseInitializer.getCurrentUserId();
-        if (userId != null) {
-            newEvent.setCreatedBy(userId);
-            newEvent.getParticipantId().add(userId);
-            newEvent.getParticipantStatus().put(userId, "accepted");
-        }
-
-        List<Event.EventReminder> reminders = new ArrayList<>();
-        for (Long minutes : selectedReminderMinutes) {
-            reminders.add(new Event.EventReminder(minutes, "push"));
-        }
-        newEvent.setReminders(reminders);
-
-        calendarIntegrationService.setCachedDefaultCalendarId(this, calendarId);
-
-        // 2. Ghi trực tiếp xuống Cache của Firestore (Không dùng eventsManager để đảm bảo ID không bị ghi đè)
-        FirebaseFirestore.getInstance().collection("events").document(generatedEventId).set(newEvent);
-
-        // 3. Đặt báo thức Offline cho từng mốc thời gian nhắc nhở
-        for (Long mins : selectedReminderMinutes) {
-            scheduleEventAlarm(generatedEventId, title, startTime, mins.intValue());
-        }
-
-        // Tắt màn hình ngay lập tức
-        Toast.makeText(this, "✅ Đã lưu sự kiện!", Toast.LENGTH_SHORT).show();
-        finish();
-    }
-
-    // Cập nhật Offline Fire-and-Forget
-    private void updateExistingEvent(String title, String description, String location, boolean isAllDay) {
-        if (eventId == null || eventId.isEmpty()) {
-            Toast.makeText(this, "Không tìm thấy sự kiện để cập nhật", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        if (calendarId == null || calendarId.isEmpty()) {
-            calendarId = calendarIntegrationService.getCachedDefaultCalendarId(this);
-        }
-        if (calendarId == null || calendarId.isEmpty()) {
-            calendarIntegrationService.ensureDefaultCalendar(this,
-                    new CalendarIntegrationService.DefaultCalendarListener() {
-                        @Override
-                        public void onReady(String calendarId, List<CalendarModel> calendars) {
-                            CreateEventActivity.this.calendarId = calendarId;
-                            calendarIntegrationService.setCachedDefaultCalendarId(CreateEventActivity.this, calendarId);
-                            updateExistingEvent(title, description, location, isAllDay);
-                        }
-
-                        @Override
-                        public void onError(String errorMessage) {
-                            Toast.makeText(CreateEventActivity.this,
-                                    "Calendar is not ready: " + errorMessage, Toast.LENGTH_SHORT).show();
-                        }
-                    });
-            return;
-        }
-
-        Event target = editingEvent != null ? editingEvent : new Event();
-        CalendarModel selectedCalendar = calendarsById.get(calendarId);
-
-        target.setId(eventId);
-        target.setCalendarId(calendarId);
-        if (selectedCalendar != null) {
-            target.setCalendarName(selectedCalendar.getName());
-            target.setColor(selectedCalendar.getColor());
-        }
-        target.setTitle(title);
-        target.setDescription(description);
-        target.setLocation(location);
-        target.setAllDay(isAllDay);
-        target.setStartTime(new Timestamp(new Date(startTime)));
-        target.setEndTime(new Timestamp(new Date(endTime)));
-        applyRecurrenceToEvent(target);
-
-        // Cập nhật lại list Reminder
-        List<Event.EventReminder> reminders = new ArrayList<>();
-        for (Long minutes : selectedReminderMinutes) {
-            reminders.add(new Event.EventReminder(minutes, "push"));
-        }
-        target.setReminders(reminders);
-
-        // 1. Cập nhật thẳng vào Database
-        FirebaseFirestore.getInstance().collection("events").document(eventId).set(target);
-
-        // 2. Đặt lại báo thức mới nhất
-        for (Long mins : selectedReminderMinutes) {
-            scheduleEventAlarm(eventId, title, startTime, mins.intValue());
-        }
-
-        Toast.makeText(this, "✅ Event updated!", Toast.LENGTH_SHORT).show();
-        finish();
-    }
-
-    private void applyRecurrenceToEvent(Event event) {
-        if (event == null) {
-            return;
-        }
-        if (recurrenceConfig != null && recurrenceConfig.enabled) {
-            recurrenceConfig.applyStartDefaults(startTime);
-            String rule = recurrenceConfig.toRRuleString();
-            event.setRecurrenceRule(rule != null && !rule.isEmpty() ? rule : null);
-            List<String> exceptions = new ArrayList<>();
-            if (recurrenceConfig.exceptions != null) {
-                exceptions.addAll(recurrenceConfig.exceptions);
-            }
-            event.setRecurrenceExceptions(exceptions);
-        } else {
-            event.setRecurrenceRule(null);
-            event.setRecurrenceExceptions(new ArrayList<>());
-        }
-    }
-
-    private void applyRecurrenceFromEvent(Event event) {
-        if (event == null) {
-            return;
-        }
-        String rule = event.getRecurrenceRule();
-        if (rule != null && !rule.trim().isEmpty()) {
-            recurrenceConfig = RecurrenceConfig.fromRRule(rule);
-            recurrenceConfig.enabled = true;
-        } else {
-            recurrenceConfig = RecurrenceConfig.disabled();
-        }
-        if (event.getRecurrenceExceptions() != null) {
-            recurrenceConfig.exceptions = new ArrayList<>(event.getRecurrenceExceptions());
-        }
-        updateRepeatSummary();
-    }
-
-    // 🔥 ĐÃ SỬA: Xóa Offline Fire-and-Forget
-    private void deleteEvent() {
-        if (!isEditMode() || eventId == null || eventId.isEmpty()) {
-            return;
-        }
-
-        eventsManager.deleteEvent(eventId);
-        Toast.makeText(this, "✅ Event deleted!", Toast.LENGTH_SHORT).show();
-        finish();
-    }
-
-    // 🔔 HÀM MỚI ĐƯỢC THÊM: Đặt báo thức Alarm Manager (Hoạt động offline)
-    private void scheduleEventAlarm(String eventId, String title, long eventStartTimeMs, int minutesBefore) {
-        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-        if (alarmManager == null) return;
-
-        long triggerTime = eventStartTimeMs - (minutesBefore * 60 * 1000L);
-
-        // Chỉ đặt nếu giờ báo thức nằm ở tương lai
-        if (triggerTime > System.currentTimeMillis()) {
-            Intent intent = new Intent(this, EventNotificationReceiver.class);
-            intent.setAction("com.timed.EVENT_REMINDER");
-            intent.putExtra("event_id", eventId);
-            intent.putExtra("event_title", title);
-
-            // Mã hóa ID báo thức để không bị đè nhau
-            int requestCode = (eventId + minutesBefore).hashCode();
-
-            PendingIntent pendingIntent = PendingIntent.getBroadcast(
-                    this,
-                    requestCode,
-                    intent,
-                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-            );
-
-            // Đặt báo thức tương thích với Android 12+
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                if (alarmManager.canScheduleExactAlarms()) {
-                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
-                } else {
-                    alarmManager.set(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent); // Fallback
-                }
-            } else {
-                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
-            }
-            Log.d(TAG, "⏰ Đã đặt báo thức: " + title + " trước " + minutesBefore + " phút");
-        }
-    }
-
-    // 🔍 DEBUG: Kiểm tra permissions & settings
-    private void debugNotificationSetup() {
-        Log.d(TAG, "========== DEBUG NOTIFICATION SETUP ==========");
-
-        // 1. Check POST_NOTIFICATIONS permission (Android 13+)
+    private void requestNotificationPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            int permission = ContextCompat.checkSelfPermission(this,
-                    Manifest.permission.POST_NOTIFICATIONS);
-            if (permission == PackageManager.PERMISSION_GRANTED) {
-                Log.d(TAG, "✅ POST_NOTIFICATIONS: GRANTED");
-            } else {
-                Log.e(TAG, "❌ POST_NOTIFICATIONS: DENIED - Request it!");
+            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.POST_NOTIFICATIONS},
-                    101);
+                        new String[]{Manifest.permission.POST_NOTIFICATIONS}, 101);
             }
-        } else {
-            Log.d(TAG, "✅ POST_NOTIFICATIONS: Not needed (API < 33)");
         }
-
-        // 2. Check SCHEDULE_EXACT_ALARM permission (Android 12+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            int permission = ContextCompat.checkSelfPermission(this,
-                    Manifest.permission.SCHEDULE_EXACT_ALARM);
-            if (permission == PackageManager.PERMISSION_GRANTED) {
-                Log.d(TAG, "✅ SCHEDULE_EXACT_ALARM: GRANTED");
-            } else {
-                Log.e(TAG, "❌ SCHEDULE_EXACT_ALARM: DENIED - Request it!");
+            if (checkSelfPermission(Manifest.permission.SCHEDULE_EXACT_ALARM) != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.SCHEDULE_EXACT_ALARM},
-                    102);
+                        new String[]{Manifest.permission.SCHEDULE_EXACT_ALARM}, 102);
             }
-        } else {
-            Log.d(TAG, "✅ SCHEDULE_EXACT_ALARM: Not needed (API < 31)");
         }
-
-        // 3. Check time settings
-        long nowMs = System.currentTimeMillis();
-        Log.d(TAG, "Current time: " + new Date(nowMs));
-        Log.d(TAG, "Event start time: " + new Date(startTime));
-
-        if (startTime <= nowMs) {
-            Log.e(TAG, "❌ EVENT TIME IN PAST! Set future time!");
-        } else {
-            long diffMs = startTime - nowMs;
-            long diffMins = diffMs / (60 * 1000);
-            Log.d(TAG, "✅ Event in future (" + diffMins + " minutes away)");
-        }
-
-        Log.d(TAG, "========================================");
     }
+
+    // ======================= Utils =======================
 
     private int dpToPx(int dp) {
         float density = getResources().getDisplayMetrics().density;
