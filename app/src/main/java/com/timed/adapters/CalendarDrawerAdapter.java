@@ -12,6 +12,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.timed.R;
+import com.timed.managers.UserManager;
 import com.timed.models.CalendarModel;
 
 import java.util.ArrayList;
@@ -52,6 +53,20 @@ public class CalendarDrawerAdapter extends RecyclerView.Adapter<CalendarDrawerAd
         if (ownerName != null) {
             ownerName = ownerName.trim();
         }
+        if (ownerName == null || ownerName.isEmpty()) {
+            String ownerId = calendar.getOwnerId();
+            if (ownerId != null && !ownerId.isEmpty()) {
+                String currentUserId = UserManager.getInstance().getCurrentUser() != null
+                        ? UserManager.getInstance().getCurrentUser().getUid()
+                        : null;
+                if (currentUserId != null && currentUserId.equals(ownerId)) {
+                    ownerName = "You";
+                } else {
+                    ownerName = "Unknown";
+                }
+            }
+        }
+
         if (ownerName != null && !ownerName.isEmpty()) {
             holder.tvCalendarOwner.setText("Owner: " + ownerName);
             holder.tvCalendarOwner.setVisibility(View.VISIBLE);
