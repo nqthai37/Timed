@@ -269,20 +269,19 @@ public class MainCalendarDrawerController {
             return;
         }
 
-        String[] labels = new String[colors.size()];
-        for (int i = 0; i < colors.size(); i++) {
-            CalendarColorManager.CalendarColor color = colors.get(i);
-            labels[i] = color.getName() + " (" + color.getHex() + ")";
-        }
+        View dialogView = LayoutInflater.from(activity).inflate(R.layout.dialog_color_picker, null);
+        RecyclerView rvColorPicker = dialogView.findViewById(R.id.rvColorPickerCreate);
 
-        final int[] selectedIndex = { 0 };
+        final String[] selectedColor = { colors.get(0).getHex() };
+        rvColorPicker.setLayoutManager(new LinearLayoutManager(activity, LinearLayoutManager.HORIZONTAL, false));
+        rvColorPicker.setAdapter(new ColorPickerAdapter(colors, selectedColor[0],
+                colorHex -> selectedColor[0] = colorHex));
+
         new AlertDialog.Builder(activity)
                 .setTitle("Choose color")
-                .setSingleChoiceItems(labels, selectedIndex[0], (dialog, which) -> selectedIndex[0] = which)
-                .setPositiveButton("Create", (dialog, which) -> {
-                    CalendarColorManager.CalendarColor selected = colors.get(selectedIndex[0]);
-                    createCalendarFromDrawer(name, description, selected.getHex());
-                })
+                .setView(dialogView)
+                .setPositiveButton("Create", (dialog, which) ->
+                        createCalendarFromDrawer(name, description, selectedColor[0]))
                 .setNegativeButton("Back", null)
                 .show();
     }
@@ -334,6 +333,11 @@ public class MainCalendarDrawerController {
             return;
         }
 
+        String currentUserId = UserManager.getInstance().getCurrentUser() != null
+                ? UserManager.getInstance().getCurrentUser().getUid()
+                : null;
+        boolean isOwner = currentUserId != null && currentUserId.equals(calendar.getOwnerId());
+
         View dialogView = LayoutInflater.from(activity).inflate(R.layout.dialog_edit_calendar, null);
         EditText etName = dialogView.findViewById(R.id.etCalendarName);
         EditText etDescription = dialogView.findViewById(R.id.etCalendarDescription);
@@ -350,12 +354,13 @@ public class MainCalendarDrawerController {
                     colorHex -> selectedColor[0] = colorHex));
         }
 
+        String neutralLabel = isOwner ? "Delete" : "Remove";
         AlertDialog dialog = new AlertDialog.Builder(activity)
                 .setTitle("Edit Calendar")
                 .setView(dialogView)
                 .setPositiveButton("Save", null)
                 .setNegativeButton("Cancel", null)
-                .setNeutralButton("Delete", null)
+            .setNeutralButton(neutralLabel, null)
                 .create();
 
         dialog.setOnShowListener(d -> {
@@ -395,15 +400,50 @@ public class MainCalendarDrawerController {
             });
 
             dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> {
+                if (isOwner) {
+                    new AlertDialog.Builder(activity)
+                            .setTitle("Delete Calendar")
+                            .setMessage("Are you sure you want to delete this calendar? This cannot be undone.")
+                            .setPositiveButton("Delete", (deleteDialog, which) -> {
+                                calendarIntegrationService.deleteCalendar(calendar.getId(),
+                                        new CalendarIntegrationService.CalendarSaveListener() {
+                                            @Override
+                                            public void onSuccess(String calendarId) {
+                                                Toast.makeText(activity, "Calendar deleted", Toast.LENGTH_SHORT).show();
+                                                visibleCalendarIds.remove(calendarId);
+                                                calendarIntegrationService.saveVisibleCalendarIds(activity, visibleCalendarIds);
+                                                ensureDefaultCalendarReady(() -> {
+                                                    notifyCalendarsChanged();
+                                                    dialog.dismiss();
+                                                });
+                                            }
+
+                                            @Override
+                                            public void onError(String errorMessage) {
+                                                Toast.makeText(activity, "Failed to delete calendar: " + errorMessage,
+                                                        Toast.LENGTH_SHORT).show();
+                                            }
+                                        });
+                            })
+                            .setNegativeButton("Cancel", null)
+                            .show();
+                    return;
+                }
+
+                if (currentUserId == null || currentUserId.isEmpty()) {
+                    Toast.makeText(activity, "Unable to remove calendar", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
                 new AlertDialog.Builder(activity)
-                        .setTitle("Delete Calendar")
-                        .setMessage("Are you sure you want to delete this calendar? This cannot be undone.")
-                        .setPositiveButton("Delete", (deleteDialog, which) -> {
-                            calendarIntegrationService.deleteCalendar(calendar.getId(),
+                        .setTitle("Remove Calendar")
+                        .setMessage("Remove this shared calendar from your list?")
+                        .setPositiveButton("Remove", (removeDialog, which) -> {
+                            calendarIntegrationService.removeMember(calendar.getId(), currentUserId,
                                     new CalendarIntegrationService.CalendarSaveListener() {
                                         @Override
                                         public void onSuccess(String calendarId) {
-                                            Toast.makeText(activity, "Calendar deleted", Toast.LENGTH_SHORT).show();
+                                            Toast.makeText(activity, "Calendar removed", Toast.LENGTH_SHORT).show();
                                             visibleCalendarIds.remove(calendarId);
                                             calendarIntegrationService.saveVisibleCalendarIds(activity, visibleCalendarIds);
                                             ensureDefaultCalendarReady(() -> {
@@ -414,7 +454,7 @@ public class MainCalendarDrawerController {
 
                                         @Override
                                         public void onError(String errorMessage) {
-                                            Toast.makeText(activity, "Failed to delete calendar: " + errorMessage,
+                                            Toast.makeText(activity, "Failed to remove calendar: " + errorMessage,
                                                     Toast.LENGTH_SHORT).show();
                                         }
                                     });
