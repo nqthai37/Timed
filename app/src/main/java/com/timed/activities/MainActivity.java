@@ -117,9 +117,6 @@ public class MainActivity extends AppCompatActivity {
     private boolean isFabMenuOpen = false;
 
     // Firebase instances
-    private FirebaseInitializer firebaseInitializer;
-    private FirebaseHelper firebaseHelper;
-    private FirebaseAuthManager firebaseAuthManager;
     private CalendarIntegrationService calendarIntegrationService;
     private String defaultCalendarId;
     private final List<String> visibleCalendarIds = new ArrayList<>();
@@ -145,8 +142,6 @@ public class MainActivity extends AppCompatActivity {
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_main);
 
-        // Khởi tạo Firebase
-        initializeFirebase();
         eventsManager = EventsManager.getInstance(this);
         calendarIntegrationService = new CalendarIntegrationService();
         defaultCalendarId = calendarIntegrationService.getCachedDefaultCalendarId(this);
@@ -379,7 +374,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void updateAvatarUrl(String url) {
-        String userId = firebaseInitializer.getCurrentUserId();
+        String userId = UserManager.getInstance().getCurrentUser().getUid();
         if (userId == null) {
             Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show();
             return;
@@ -410,7 +405,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        String userId = firebaseInitializer.getCurrentUserId();
+        String userId = UserManager.getInstance().getCurrentUser().getUid();
         if (userId == null) {
             return;
         }
@@ -528,70 +523,6 @@ public class MainActivity extends AppCompatActivity {
                 fabOptionReminder.setVisibility(View.INVISIBLE);
             }).start();
         }
-    }
-
-    /**
-     * Khởi tạo Firebase
-     */
-    private void initializeFirebase() {
-        try {
-            // Khởi tạo Firebase Initializer
-            firebaseInitializer = FirebaseInitializer.getInstance();
-            firebaseInitializer.initialize(this);
-
-            // Tạo Firebase Helper
-            firebaseHelper = new FirebaseHelper();
-
-            // Tạo Firebase Auth Manager
-            firebaseAuthManager = new FirebaseAuthManager();
-
-            Log.d(TAG, "Firebase initialized successfully");
-
-            // Kiểm tra kết nối Firebase
-            checkFirebaseConnection();
-
-        } catch (Exception e) {
-            Log.e(TAG, "Error initializing Firebase: " + e.getMessage(), e);
-            Toast.makeText(this, "Lỗi khởi tạo Firebase", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    /**
-     * Kiểm tra kết nối Firebase
-     */
-    private void checkFirebaseConnection() {
-        firebaseHelper.checkConnection(new FirebaseHelper.FirebaseCallback<Boolean>() {
-            @Override
-            public void onSuccess(Boolean result) {
-                Log.d(TAG, "Firebase connection verified");
-            }
-
-            @Override
-            public void onFailure(String errorMessage) {
-                Log.e(TAG, "Firebase connection failed: " + errorMessage);
-            }
-        });
-    }
-
-    /**
-     * Lấy Firebase Auth Manager
-     */
-    public FirebaseAuthManager getFirebaseAuthManager() {
-        return firebaseAuthManager;
-    }
-
-    /**
-     * Lấy Firebase Helper
-     */
-    public FirebaseHelper getFirebaseHelper() {
-        return firebaseHelper;
-    }
-
-    /**
-     * Lấy Firebase Initializer
-     */
-    public FirebaseInitializer getFirebaseInitializer() {
-        return firebaseInitializer;
     }
 
     private String getActiveCalendarId() {
