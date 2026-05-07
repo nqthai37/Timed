@@ -1,5 +1,6 @@
 package com.timed.adapters;
 
+import android.graphics.drawable.GradientDrawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,12 +13,12 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.color.MaterialColors;
 import com.timed.R;
 import com.timed.models.CalendarDay;
+import com.timed.utils.ThemeManager;
 
 import java.time.LocalDate;
 import java.util.List;
 
 public class CalendarAdapter extends RecyclerView.Adapter<CalendarAdapter.CalendarViewHolder> {
-
     private final List<CalendarDay> days;
     private final OnItemListener onItemListener;
 
@@ -26,19 +27,25 @@ public class CalendarAdapter extends RecyclerView.Adapter<CalendarAdapter.Calend
         this.onItemListener = onItemListener;
     }
 
+    public void setSelectedDate(LocalDate selectedDate) {
+        for (CalendarDay day : days) {
+            day.isSelected = day.date != null && day.isCurrentMonth && day.date.equals(selectedDate);
+        }
+        notifyDataSetChanged();
+    }
+
     @NonNull
     @Override
     public CalendarViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.item_calendar_day, parent, false);
-        return new CalendarViewHolder(view, onItemListener, days);
+        return new CalendarViewHolder(view);
     }
 
     @Override
     public void onBindViewHolder(@NonNull CalendarViewHolder holder, int position) {
         CalendarDay day = days.get(position);
         holder.tvDayNumber.setText(String.valueOf(day.date.getDayOfMonth()));
-
         holder.layoutEventIndicators.removeAllViews();
 
         if (day.isCurrentMonth) {
@@ -48,8 +55,7 @@ public class CalendarAdapter extends RecyclerView.Adapter<CalendarAdapter.Calend
                 holder.tvDayNumber.setTextColor(onPrimary);
                 holder.tvDayNumber.setBackgroundResource(R.drawable.bg_circle_selected);
             } else if (day.isToday) {
-                int primary = MaterialColors.getColor(holder.itemView,
-                        androidx.appcompat.R.attr.colorPrimary);
+                int primary = ThemeManager.getPrimaryColor(holder.itemView.getContext());
                 holder.tvDayNumber.setTextColor(primary);
                 holder.tvDayNumber.setBackgroundResource(R.drawable.bg_circle_today);
             } else {
@@ -62,14 +68,13 @@ public class CalendarAdapter extends RecyclerView.Adapter<CalendarAdapter.Calend
             int dotCount = Math.min(day.eventCount, 3);
             for (int i = 0; i < dotCount; i++) {
                 View dot = new View(holder.itemView.getContext());
-                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(12, 12); // Kích thước chấm
-                params.setMargins(4, 0, 4, 0);
+                int size = dpToPx(holder.itemView, 7);
+                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(size, size);
+                params.setMargins(dpToPx(holder.itemView, 2), 0, dpToPx(holder.itemView, 2), 0);
                 dot.setLayoutParams(params);
-                dot.setBackgroundResource(R.drawable.bg_circle_today);
-
+                dot.setBackground(makeDotDrawable(ThemeManager.getPrimaryColor(holder.itemView.getContext())));
                 holder.layoutEventIndicators.addView(dot);
             }
-
         } else {
             int onSurfaceVariant = MaterialColors.getColor(holder.itemView,
                     com.google.android.material.R.attr.colorOnSurfaceVariant);
@@ -78,7 +83,7 @@ public class CalendarAdapter extends RecyclerView.Adapter<CalendarAdapter.Calend
         }
 
         holder.itemView.setOnClickListener(v -> {
-            if (day.date != null) {
+            if (day.date != null && onItemListener != null) {
                 onItemListener.onItemClick(position, day.date);
             }
         });
@@ -93,20 +98,25 @@ public class CalendarAdapter extends RecyclerView.Adapter<CalendarAdapter.Calend
         void onItemClick(int position, LocalDate date);
     }
 
-    static class CalendarViewHolder extends RecyclerView.ViewHolder {
-        public ViewGroup layoutEventIndicators;
-        TextView tvDayNumber;
-        OnItemListener onItemListener;
-        List<CalendarDay> days;
+    private static GradientDrawable makeDotDrawable(int color) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setShape(GradientDrawable.OVAL);
+        drawable.setColor(color);
+        return drawable;
+    }
 
-        public CalendarViewHolder(@NonNull View itemView, OnItemListener onItemListener, List<CalendarDay> days) {
+    private static int dpToPx(View view, int dp) {
+        return Math.round(dp * view.getResources().getDisplayMetrics().density);
+    }
+
+    static class CalendarViewHolder extends RecyclerView.ViewHolder {
+        final ViewGroup layoutEventIndicators;
+        final TextView tvDayNumber;
+
+        CalendarViewHolder(@NonNull View itemView) {
             super(itemView);
             tvDayNumber = itemView.findViewById(R.id.tvDayNumber);
-            this.onItemListener = onItemListener;
-
             layoutEventIndicators = itemView.findViewById(R.id.layoutEventIndicators);
-
-            this.days = days;
         }
     }
 }

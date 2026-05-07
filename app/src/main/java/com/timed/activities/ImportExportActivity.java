@@ -1,6 +1,9 @@
 package com.timed.activities;
 
 import android.app.AlertDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -22,6 +25,7 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.timed.BuildConfig;
 import com.timed.R;
 import com.timed.models.CalendarModel;
 import com.google.firebase.Timestamp;
@@ -47,6 +51,17 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
+
+import org.json.JSONObject;
+
 public class ImportExportActivity extends AppCompatActivity {
 
     private final SimpleDateFormat icsDateTimeFormat = new SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'", Locale.US);
@@ -56,6 +71,7 @@ public class ImportExportActivity extends AppCompatActivity {
     private CalendarIntegrationService calendarIntegrationService;
     private FirebaseInitializer firebaseInitializer;
     private ActivityResultLauncher<String[]> openDocumentLauncher;
+    private final OkHttpClient httpClient = new OkHttpClient();
 
     private CheckBox cbExportPersonal;
     private CheckBox cbExportWork;
@@ -102,13 +118,15 @@ public class ImportExportActivity extends AppCompatActivity {
         Button btnSyncFromUrl = findViewById(R.id.btnSyncFromUrl);
         Button btnExportSelected = findViewById(R.id.btnExportSelected);
         Button btnExportAll = findViewById(R.id.btnExportAll);
+        Button btnUploadExport = findViewById(R.id.btnUploadExport);
 
         btnBackImport.setOnClickListener(v -> finish());
         btnChooseFile.setOnClickListener(v -> openDocumentLauncher
                 .launch(new String[] { "text/calendar", "text/csv", "text/plain", "application/octet-stream" }));
         btnSyncFromUrl.setOnClickListener(v -> promptSyncUrl());
-        btnExportSelected.setOnClickListener(v -> exportCalendars(false));
-        btnExportAll.setOnClickListener(v -> exportCalendars(true));
+        btnExportSelected.setOnClickListener(v -> exportCalendars(false, false));
+        btnExportAll.setOnClickListener(v -> exportCalendars(true, false));
+        btnUploadExport.setOnClickListener(v -> exportCalendars(false, true));
         loadExportCalendarOptions();
     }
 
@@ -224,7 +242,7 @@ public class ImportExportActivity extends AppCompatActivity {
                 .addOnFailureListener(e -> importSequential(items, index + 1, successCount, failureCount + 1));
     }
 
-    private void exportCalendars(boolean exportAll) {
+    private void exportCalendars(boolean exportAll, boolean uploadToCloud) {
         calendarIntegrationService.getUserCalendars(new CalendarIntegrationService.CalendarLoadListener() {
             @Override
             public void onCalendarsLoaded(List<CalendarModel> calendars) {
@@ -234,7 +252,7 @@ public class ImportExportActivity extends AppCompatActivity {
                     return;
                 }
 
-                fetchEventsForExport(selected, 0, new HashMap<>());
+                fetchEventsForExport(selected, 0, new HashMap<>(), uploadToCloud);
             }
 
             @Override
@@ -292,16 +310,17 @@ public class ImportExportActivity extends AppCompatActivity {
         return result;
     }
 
-    private void fetchEventsForExport(List<CalendarModel> calendars, int index, Map<String, List<Event>> bucket) {
+    private void fetchEventsForExport(List<CalendarModel> calendars, int index, Map<String, List<Event>> bucket,
+            boolean uploadToCloud) {
         if (index >= calendars.size()) {
-            showExportFormatChooser(bucket);
+            showExportFormatChooser(bucket, uploadToCloud);
             return;
         }
 
         CalendarModel calendar = calendars.get(index);
         String id = calendar.getId();
         if (id == null || id.isEmpty()) {
-            fetchEventsForExport(calendars, index + 1, bucket);
+            fetchEventsForExport(calendars, index + 1, bucket, uploadToCloud);
             return;
         }
 
@@ -309,12 +328,12 @@ public class ImportExportActivity extends AppCompatActivity {
                 .addOnSuccessListener(events -> {
                     String key = calendar.getName() == null || calendar.getName().isEmpty() ? id : calendar.getName();
                     bucket.put(key, events == null ? new ArrayList<>() : events);
-                    fetchEventsForExport(calendars, index + 1, bucket);
+                    fetchEventsForExport(calendars, index + 1, bucket, uploadToCloud);
                 })
-                .addOnFailureListener(e -> fetchEventsForExport(calendars, index + 1, bucket));
+                .addOnFailureListener(e -> fetchEventsForExport(calendars, index + 1, bucket, uploadToCloud));
     }
 
-    private void showExportFormatChooser(Map<String, List<Event>> data) {
+    private void showExportFormatChooser(Map<String, List<Event>> data, boolean uploadToCloud) {
         if (data.isEmpty()) {
             Toast.makeText(this, "No events to export", Toast.LENGTH_SHORT).show();
             return;
@@ -325,12 +344,20 @@ public class ImportExportActivity extends AppCompatActivity {
                 .setTitle("Choose export format")
                 .setItems(formats, (dialog, which) -> {
                     if (which == 0) {
-                        shareExport("timed-calendar.ics", buildIcs(data));
+                        handleExportResult("timed-calendar.ics", buildIcs(data), "text/calendar", uploadToCloud);
                     } else {
-                        shareExport("timed-calendar.csv", buildCsv(data));
+                        handleExportResult("timed-calendar.csv", buildCsv(data), "text/csv", uploadToCloud);
                     }
                 })
                 .show();
+    }
+
+    private void handleExportResult(String fileName, String content, String mimeType, boolean uploadToCloud) {
+        if (uploadToCloud) {
+            uploadExportToCloud(fileName, content, mimeType);
+        } else {
+            shareExport(fileName, content);
+        }
     }
 
     private void shareExport(String fileName, String content) {
@@ -339,6 +366,94 @@ public class ImportExportActivity extends AppCompatActivity {
         shareIntent.putExtra(Intent.EXTRA_SUBJECT, fileName);
         shareIntent.putExtra(Intent.EXTRA_TEXT, content);
         startActivity(Intent.createChooser(shareIntent, "Share export"));
+    }
+
+    private void uploadExportToCloud(String fileName, String content, String mimeType) {
+        if (BuildConfig.CLOUDINARY_CLOUD_NAME.isEmpty() || BuildConfig.CLOUDINARY_UPLOAD_PRESET.isEmpty()) {
+            Toast.makeText(this, "Cloudinary upload preset is not configured", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Toast.makeText(this, "Uploading export...", Toast.LENGTH_SHORT).show();
+        RequestBody fileBody = RequestBody.create(content.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                MediaType.parse(mimeType));
+        RequestBody requestBody = new MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart("file", fileName, fileBody)
+                .addFormDataPart("upload_preset", BuildConfig.CLOUDINARY_UPLOAD_PRESET)
+                .addFormDataPart("resource_type", "raw")
+                .build();
+
+        String uploadUrl = "https://api.cloudinary.com/v1_1/" + BuildConfig.CLOUDINARY_CLOUD_NAME + "/raw/upload";
+        Request request = new Request.Builder().url(uploadUrl).post(requestBody).build();
+        httpClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, java.io.IOException e) {
+                runOnUiThread(() -> Toast.makeText(ImportExportActivity.this,
+                        "Cloud upload failed", Toast.LENGTH_SHORT).show());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws java.io.IOException {
+                String body = response.body() != null ? response.body().string() : "";
+                if (!response.isSuccessful()) {
+                    runOnUiThread(() -> Toast.makeText(ImportExportActivity.this,
+                            "Cloud upload failed", Toast.LENGTH_SHORT).show());
+                    return;
+                }
+                try {
+                    String url = new JSONObject(body).optString("secure_url");
+                    runOnUiThread(() -> showCloudExportUrl(url));
+                } catch (Exception e) {
+                    runOnUiThread(() -> Toast.makeText(ImportExportActivity.this,
+                            "Invalid cloud upload response", Toast.LENGTH_SHORT).show());
+                }
+            }
+        });
+    }
+
+    private void showCloudExportUrl(String url) {
+        if (url == null || url.isEmpty()) {
+            Toast.makeText(this, "Cloud upload did not return a URL", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("Cloud export ready")
+                .setMessage(url)
+                .setPositiveButton("Copy URL", (dialog, which) -> copyToClipboard(url))
+                .setNegativeButton("Share", (dialog, which) -> shareExportUrl(url))
+                .setNeutralButton("Import URL", (dialog, which) -> importFromUrl(url))
+                .show();
+    }
+
+    private void copyToClipboard(String url) {
+        ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        if (clipboard != null) {
+            clipboard.setPrimaryClip(ClipData.newPlainText("Timed calendar export", url));
+            Toast.makeText(this, "URL copied", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void shareExportUrl(String url) {
+        Intent intent = new Intent(Intent.ACTION_SEND);
+        intent.setType("text/plain");
+        intent.putExtra(Intent.EXTRA_TEXT, url);
+        startActivity(Intent.createChooser(intent, "Share export URL"));
+    }
+
+    private void importFromUrl(String url) {
+        Toast.makeText(this, "Importing from cloud URL...", Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            try {
+                String content = fetchUrl(url);
+                List<ImportEventItem> items = parseImportContent(content);
+                runOnUiThread(() -> importItems(items));
+            } catch (Exception e) {
+                runOnUiThread(() -> Toast.makeText(this,
+                        "Import failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            }
+        }).start();
     }
 
     private void ensureCalendarReady(Runnable onReady) {

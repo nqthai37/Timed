@@ -77,7 +77,7 @@ public class WeekView extends Fragment {
                 tvDate.setTextSize(14f);
                 tvDate.setTypeface(null, android.graphics.Typeface.BOLD);
 
-                int primaryColor = resolveThemePrimaryColor();
+                int primaryColor = ThemeManager.getPrimaryColor(requireContext());
                 if (day.equals(LocalDate.now())) {
                     tvDate.setTextColor(primaryColor);
                     tvDow.setTextColor(primaryColor);
@@ -175,14 +175,4 @@ public class WeekView extends Fragment {
         return timestamp.toDate().toInstant().atZone(userZone).toLocalDate();
     }
 
-    private int resolveThemePrimaryColor() {
-        String palette = ThemeManager.getPalette(requireContext());
-        if (ThemeManager.PALETTE_EMERALD.equals(palette)) {
-            return android.graphics.Color.parseColor("#10B981");
-        }
-        if (ThemeManager.PALETTE_SUNSET.equals(palette)) {
-            return android.graphics.Color.parseColor("#F97316");
-        }
-        return android.graphics.Color.parseColor("#2563EB");
-    }
 }

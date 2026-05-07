@@ -161,6 +161,15 @@
                     app:strokeColor="@color/slate_400" />
             </LinearLayout>
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnUploadExport"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Upload Selected to Cloud"
+                app:strokeColor="@color/primary" />
+
         </LinearLayout>
     </ScrollView>
 

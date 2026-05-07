@@ -46,6 +46,8 @@ public class MonthView extends Fragment implements CalendarAdapter.OnItemListene
 
     private EventAdapter eventAdapter;
     private List<Event> currentEvents;
+    private List<CalendarDay> currentMonthDays;
+    private CalendarAdapter calendarAdapter;
     private View rootView;
 
     public MonthView(LocalDate selectedDate, List<String> visibleCalendarIds) {
@@ -71,7 +73,7 @@ public class MonthView extends Fragment implements CalendarAdapter.OnItemListene
         rvEvents.setLayoutManager(new LinearLayoutManager(requireContext()));
 
         currentEvents = new ArrayList<>();
-        eventAdapter = new EventAdapter(currentEvents, this::openEditEvent);
+        eventAdapter = new EventAdapter(currentEvents, this::openEditEvent, true);
         rvEvents.setAdapter(eventAdapter);
 
         if (btnPrevMonth != null) {
@@ -113,10 +115,10 @@ public class MonthView extends Fragment implements CalendarAdapter.OnItemListene
     }
 
     private void setMonthView() {
-        List<CalendarDay> daysInMonth = daysInMonthArray(selectedDate);
-        CalendarAdapter adapter = new CalendarAdapter(daysInMonth, this);
-        rvCalendar.setAdapter(adapter);
-        loadMonthEventIndicators(selectedDate, daysInMonth, adapter);
+        currentMonthDays = daysInMonthArray(selectedDate);
+        calendarAdapter = new CalendarAdapter(currentMonthDays, this);
+        rvCalendar.setAdapter(calendarAdapter);
+        loadMonthEventIndicators(selectedDate, currentMonthDays, calendarAdapter);
     }
 
     private List<CalendarDay> daysInMonthArray(LocalDate date) {
@@ -178,8 +180,14 @@ public class MonthView extends Fragment implements CalendarAdapter.OnItemListene
     @Override
     public void onItemClick(int position, LocalDate date) {
         if (date != null) {
+            YearMonth visibleMonth = YearMonth.from(selectedDate);
             selectedDate = date;
-            setMonthView();
+            if (YearMonth.from(date).equals(visibleMonth) && calendarAdapter != null) {
+                calendarAdapter.setSelectedDate(date);
+            } else {
+                updateMonthYearText();
+                setMonthView();
+            }
             updateEventsForDate(date);
         }
     }

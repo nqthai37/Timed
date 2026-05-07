@@ -15,6 +15,7 @@ import com.google.firebase.Timestamp;
 import com.timed.R;
 import com.timed.Setting.Timezone.TimezoneHelper;
 import com.timed.models.Event;
+import com.timed.utils.ThemeManager;
 
 import java.util.List;
 import java.util.Locale;
@@ -23,18 +24,24 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
 
     private final List<Event> events;
     private final OnEventClickListener onEventClickListener;
+    private final boolean useThemeTimeColor;
 
     public interface OnEventClickListener {
         void onEventClick(Event event);
     }
 
     public EventAdapter(List<Event> events) {
-        this(events, null);
+        this(events, null, false);
     }
 
     public EventAdapter(List<Event> events, OnEventClickListener onEventClickListener) {
+        this(events, onEventClickListener, false);
+    }
+
+    public EventAdapter(List<Event> events, OnEventClickListener onEventClickListener, boolean useThemeTimeColor) {
         this.events = events;
         this.onEventClickListener = onEventClickListener;
+        this.useThemeTimeColor = useThemeTimeColor;
     }
 
     @NonNull
@@ -99,6 +106,9 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
     }
 
     private int resolveEventTimeColor(View view, String hexColor) {
+        if (useThemeTimeColor) {
+            return ThemeManager.getPrimaryColor(view.getContext());
+        }
         if (!TextUtils.isEmpty(hexColor)) {
             try {
                 return Color.parseColor(hexColor);

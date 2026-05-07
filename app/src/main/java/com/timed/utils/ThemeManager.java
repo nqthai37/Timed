@@ -3,6 +3,7 @@ package com.timed.utils;
 import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.graphics.Color;
 
 import androidx.appcompat.app.AppCompatDelegate;
 
@@ -65,6 +66,17 @@ public final class ThemeManager {
             return R.style.Theme_Timed_Sunset;
         }
         return R.style.Theme_Timed_Blue;
+    }
+
+    public static int getPrimaryColor(Context context) {
+        String palette = getPalette(context);
+        if (PALETTE_EMERALD.equals(palette)) {
+            return Color.parseColor("#10B981");
+        }
+        if (PALETTE_SUNSET.equals(palette)) {
+            return Color.parseColor("#F97316");
+        }
+        return Color.parseColor("#2563EB");
     }
 
     private static SharedPreferences getPrefs(Context context) {
