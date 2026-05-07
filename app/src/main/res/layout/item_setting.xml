@@ -39,7 +39,7 @@
                 android:layout_width="18dp"
                 android:layout_height="18dp"
                 android:layout_gravity="center"
-                app:tint="@color/primary" />
+                app:tint="?attr/colorPrimary" />
         </FrameLayout>
 
         <LinearLayout

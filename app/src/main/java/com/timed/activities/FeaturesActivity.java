@@ -77,7 +77,6 @@ public class FeaturesActivity extends BaseBottomNavActivity {
                 FreeSlotFinderActivity.class, null));
 
         // NHÓM 2: Năng suất (Hiện tiêu đề ở item đầu tiên của nhóm này)
-        features.add(new Feature("Analytics", "...", R.drawable.ic_analytics, AnalyticsActivity.class, "Productivity"));
         features.add(new Feature("Focus Mode", "...", R.drawable.ic_focus, FocusModeActivity.class, null));
         features.add(
                 new Feature("Habit Tracker", "...", R.drawable.ic_habit_tracker, HabitTrackerActivity.class, null));

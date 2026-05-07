@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_bottom_sheet"
+    android:orientation="vertical"
+    android:paddingHorizontal="16dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="24dp">
+
+    <View
+        android:layout_width="40dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="16dp"
+        android:background="@drawable/bg_rounded"
+        android:backgroundTint="#CBD5E1" />
+
+    <TextView
+        android:id="@+id/tv_sheet_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="4dp"
+        android:text="AI is thinking..."
+        android:textColor="#0F172A"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/tv_sheet_subtitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:text="Scanning your calendar for the best times..."
+        android:textColor="#64748B"
+        android:textSize="14sp" />
+
+    <LinearLayout
+        android:id="@+id/ll_loading_state"
+        android:layout_width="match_parent"
+        android:layout_height="120dp"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:visibility="visible">
+
+        <View
+            android:id="@+id/dot_blue"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginEnd="12dp"
+            android:background="@drawable/shape_dot"
+            android:backgroundTint="#4285F4" />
+
+        <View
+            android:id="@+id/dot_yellow"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginEnd="12dp"
+            android:background="@drawable/shape_dot"
+            android:backgroundTint="#F4B400" />
+
+        <View
+            android:id="@+id/dot_red"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:background="@drawable/shape_dot"
+            android:backgroundTint="#EA4335" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/ll_results_state"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_ai_generated_slots"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:nestedScrollingEnabled="false"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
+        <Button
+            android:id="@+id/btn_confirm_ai"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="Confirm Slot"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            app:backgroundTint="#3B82F6"
+            app:cornerRadius="12dp" />
+
+        <Button
+            android:id="@+id/btn_save_template"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="8dp"
+            android:text="⭐ Save this prompt as a Template"
+            android:textAllCaps="false"
+            android:textColor="#64748B"
+            android:background="@android:color/transparent"
+            android:textSize="14sp" />
+
+    </LinearLayout>
+
+</LinearLayout>

@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.firebase.Timestamp;
 import com.google.android.material.color.MaterialColors;
 import com.timed.R;
+import com.timed.Setting.Timezone.TimezoneHelper;
 import com.timed.models.Event;
 
 import java.text.SimpleDateFormat;
@@ -21,7 +22,6 @@ import java.util.Locale;
 public class WeekEventAdapter extends RecyclerView.Adapter<WeekEventAdapter.WeekEventViewHolder> {
 
     private final List<Event> eventList;
-    private final SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
 
     public WeekEventAdapter(List<Event> eventList) {
         this.eventList = eventList;
@@ -37,7 +37,7 @@ public class WeekEventAdapter extends RecyclerView.Adapter<WeekEventAdapter.Week
     @Override
     public void onBindViewHolder(@NonNull WeekEventViewHolder holder, int position) {
         Event event = eventList.get(position);
-        holder.tvEventTime.setText(formatTime(event.getStartTime()));
+        holder.tvEventTime.setText(formatTime(holder.itemView.getContext(), event.getStartTime()));
         holder.tvEventTitle.setText(event.getTitle());
         holder.tvEventSubtitle.setText(buildDetails(event));
 
@@ -79,12 +79,11 @@ public class WeekEventAdapter extends RecyclerView.Adapter<WeekEventAdapter.Week
         return location;
     }
 
-    private String formatTime(Timestamp timestamp) {
+    private String formatTime(android.content.Context context, Timestamp timestamp) {
         if (timestamp == null) {
             return "";
         }
-        Date date = timestamp.toDate();
-        return timeFormat.format(date);
+        return TimezoneHelper.formatTime24h(context, timestamp.toDate());
     }
 
     static class WeekEventViewHolder extends RecyclerView.ViewHolder {

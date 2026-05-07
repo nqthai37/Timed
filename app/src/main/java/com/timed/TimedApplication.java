@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.app.Application;
 import android.os.Bundle;
 
+import com.timed.utils.FirebaseInitializer;
+import com.timed.utils.NetworkConnectivityMonitor;
 import com.timed.utils.ThemeManager;
 
 public class TimedApplication extends Application {
@@ -46,5 +48,9 @@ public class TimedApplication extends Application {
             public void onActivityDestroyed(Activity activity) {
             }
         });
+
+        // Initialize Firebase and connectivity monitoring for background activities.
+        FirebaseInitializer.getInstance().initialize(this);
+        NetworkConnectivityMonitor.getInstance(this);
     }
 }

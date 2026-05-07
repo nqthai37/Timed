@@ -20,6 +20,7 @@ public class ThemeActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        setTheme(ThemeManager.getThemeResId(this));
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_theme);
 

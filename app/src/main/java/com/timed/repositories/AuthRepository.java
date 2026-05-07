@@ -243,8 +243,15 @@ public class AuthRepository {
     }
 
     public Task<User> restoreSession() {
-        if (mAuth.getCurrentUser() != null) {
-            String uid = mAuth.getCurrentUser().getUid();
+        FirebaseUser firebaseUser = mAuth.getCurrentUser();
+        if (firebaseUser != null) {
+            if (firebaseUser.isAnonymous()) {
+                mAuth.signOut();
+                UserManager.getInstance().setCurrentUser(null);
+                return Tasks.forException(new Exception("Anonymous sessions cannot be restored"));
+            }
+
+            String uid = firebaseUser.getUid();
 
             return userRepository.getUser(uid).continueWith(task -> {
                 if (!task.isSuccessful()) {
@@ -252,7 +259,22 @@ public class AuthRepository {
                 }
 
                 com.google.firebase.firestore.DocumentSnapshot snapshot = task.getResult();
+                if (snapshot == null || !snapshot.exists()) {
+                    mAuth.signOut();
+                    UserManager.getInstance().setCurrentUser(null);
+                    throw new Exception("Saved user profile was not found");
+                }
+
                 User restoredUser = snapshot.toObject(User.class);
+                if (restoredUser == null) {
+                    mAuth.signOut();
+                    UserManager.getInstance().setCurrentUser(null);
+                    throw new Exception("Saved user profile could not be loaded");
+                }
+
+                if (restoredUser.getUid() == null || restoredUser.getUid().isEmpty()) {
+                    restoredUser.setUid(uid);
+                }
 
                 UserManager.getInstance().setCurrentUser(restoredUser);
                 return restoredUser;

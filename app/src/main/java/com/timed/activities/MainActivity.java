@@ -2,12 +2,19 @@ package com.timed.activities;
 
 import android.content.Intent;
 import android.app.AlertDialog;
+import android.graphics.Color;
+import android.text.Spannable;
+import android.text.SpannableString;
+import android.text.TextUtils;
+import android.text.style.ForegroundColorSpan;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.SubMenu;
+import android.view.LayoutInflater;
 import android.util.Patterns;
 import android.os.Bundle;
 import android.view.View;
@@ -29,6 +36,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.timed.R;
 import com.timed.adapters.CalendarAdapter;
+import com.timed.adapters.CalendarDrawerAdapter;
+import com.timed.adapters.ColorPickerAdapter;
 import com.timed.adapters.EventAdapter;
 import com.timed.adapters.HorizontalCalendarAdapter;
 import com.timed.adapters.WeekEventAdapter;
@@ -43,6 +52,7 @@ import com.timed.activities.FeaturesActivity;
 import com.timed.activities.SearchFilterActivity;
 import com.timed.activities.SettingsActivity;
 import com.timed.Auth.LoginActivity;
+import com.timed.managers.CalendarColorManager;
 import com.timed.managers.EventsManager;
 import com.timed.managers.InvitationManager;
 import com.timed.models.Event;
@@ -51,6 +61,7 @@ import com.timed.models.Invitation;
 import com.timed.managers.UserManager;
 import com.timed.repositories.AuthRepository;
 import com.timed.repositories.UserRepository;
+import com.timed.Setting.Timezone.TimezoneHelper;
 import com.timed.repositories.RepositoryCallback;
 import com.timed.utils.CalendarIntegrationService;
 import com.timed.utils.FirebaseAuthManager;
@@ -59,6 +70,7 @@ import com.timed.utils.FirebaseInitializer;
 import com.timed.utils.InvitationService;
 import com.timed.utils.NetworkUtils;
 import com.timed.utils.OfflineCacheManager;
+import com.timed.utils.RecurrenceUtils;
 import com.timed.dialogs.InvitationsDialog;
 import com.timed.dialogs.ShareCalendarDialog;
 import com.google.firebase.auth.FirebaseAuth;
@@ -72,14 +84,18 @@ import java.util.Date;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class MainActivity extends BaseBottomNavActivity implements CalendarAdapter.OnItemListener {
 
     private static final String TAG = "MainActivity";
+    private static final int MENU_ID_ADD_CALENDAR = 0x70001;
     private RecyclerView rvCalendar;
     private RecyclerView rvHorizontalCalendar;
 
@@ -119,6 +135,9 @@ public class MainActivity extends BaseBottomNavActivity implements CalendarAdapt
     private NavigationView navView;
     private TextView tvDrawerName;
     private final Map<Integer, String> drawerCalendarIdMap = new HashMap<>();
+    private final Map<String, CalendarModel> calendarsById = new HashMap<>();
+    private final Map<String, String> ownerNameCache = new HashMap<>();
+    private CalendarDrawerAdapter calendarDrawerAdapter;
 
     private EventsManager eventsManager;
     private InvitationManager invitationManager;
@@ -270,39 +289,18 @@ public class MainActivity extends BaseBottomNavActivity implements CalendarAdapt
                 setupWeekView();
             });
 
+        rvCalendar = findViewById(R.id.rvCalendar);
+        if (rvCalendar != null) {
+            rvCalendar.setLayoutManager(new GridLayoutManager(this, 7));
+        }
+
         TabLayout tabLayout = findViewById(R.id.tabLayout);
         if (tabLayout != null) {
-            TabLayout.Tab monthTab = tabLayout.getTabAt(3);
-            int lastTab = OfflineCacheManager.getLastTab(this);
-            TabLayout.Tab savedTab = tabLayout.getTabAt(lastTab);
-            if (savedTab != null) {
-                savedTab.select();
-            } else if (monthTab != null) {
-                monthTab.select();
-            }
-
             tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
                 @Override
                 public void onTabSelected(TabLayout.Tab tab) {
                     OfflineCacheManager.saveLastTab(MainActivity.this, tab.getPosition());
-                    layoutMonthView.setVisibility(View.GONE);
-                    layoutDayView.setVisibility(View.GONE);
-                    layout3DaysView.setVisibility(View.GONE);
-                    layoutWeekView.setVisibility(View.GONE);
-
-                    if (tab.getPosition() == 0) {
-                        layoutDayView.setVisibility(View.VISIBLE);
-                        setupHorizontalCalendar();
-                    } else if (tab.getPosition() == 1) {
-                        layout3DaysView.setVisibility(View.VISIBLE);
-                        setup3DaysView();
-                    } else if (tab.getPosition() == 2) {
-                        layoutWeekView.setVisibility(View.VISIBLE);
-                        setupWeekView();
-                    } else if (tab.getPosition() == 3) {
-                        layoutMonthView.setVisibility(View.VISIBLE);
-                        setMonthView();
-                    }
+                    applyCalendarTabSelection(tab.getPosition());
                 }
 
                 @Override
@@ -313,6 +311,16 @@ public class MainActivity extends BaseBottomNavActivity implements CalendarAdapt
                 public void onTabReselected(TabLayout.Tab tab) {
                 }
             });
+
+            int lastTab = OfflineCacheManager.getLastTab(this);
+            TabLayout.Tab savedTab = tabLayout.getTabAt(lastTab);
+            if (savedTab == null) {
+                savedTab = tabLayout.getTabAt(3);
+            }
+            if (savedTab != null) {
+                savedTab.select();
+            }
+            applyCalendarTabSelection(tabLayout.getSelectedTabPosition());
 
             layoutFabMenuOverlay = findViewById(R.id.layoutFabMenuOverlay);
             fabOptionEvent = findViewById(R.id.fabOptionEvent);
@@ -362,12 +370,9 @@ public class MainActivity extends BaseBottomNavActivity implements CalendarAdapt
             });
         }
 
-        rvCalendar = findViewById(R.id.rvCalendar);
         tvCurrentMonth = findViewById(R.id.tvCurrentMonth);
         ImageButton btnPrevMonth = findViewById(R.id.btnPrevMonth);
         ImageButton btnNextMonth = findViewById(R.id.btnNextMonth);
-
-        rvCalendar.setLayoutManager(new GridLayoutManager(this, 7));
 
         updateMonthYearText();
         setMonthView();
@@ -444,12 +449,48 @@ public class MainActivity extends BaseBottomNavActivity implements CalendarAdapt
     @Override
     protected void onResume() {
         super.onResume();
+        // Invalidate timezone cache so we pick up any changes from
+        // TimezoneSettingActivity
+        TimezoneHelper.invalidateCache();
         updateEventsForDate(selectedDate);
-        // Refresh invitation count badge when returning to activity
+
+        // 2. Cập nhật số lượng lời mời
         loadInvitationCount();
 
-        // Don't need to update bottom nav selection on resume
-        // It will maintain its state from before
+        // 3. ÉP LỊCH CHÍNH (BÊN TRÊN) TẢI LẠI NGAY LẬP TỨC TỪ BỘ NHỚ OFFLINE
+        TabLayout tabLayout = findViewById(R.id.tabLayout);
+        if (tabLayout != null) {
+            int selectedTab = tabLayout.getSelectedTabPosition();
+            if (selectedTab == TabLayout.Tab.INVALID_POSITION) {
+                selectedTab = OfflineCacheManager.getLastTab(this);
+                TabLayout.Tab restoreTab = tabLayout.getTabAt(selectedTab);
+                if (restoreTab != null) {
+                    restoreTab.select();
+                }
+            }
+            applyCalendarTabSelection(selectedTab);
+        }
+    }
+
+    private void applyCalendarTabSelection(int position) {
+        layoutMonthView.setVisibility(View.GONE);
+        layoutDayView.setVisibility(View.GONE);
+        layout3DaysView.setVisibility(View.GONE);
+        layoutWeekView.setVisibility(View.GONE);
+
+        if (position == 0) {
+            layoutDayView.setVisibility(View.VISIBLE);
+            setupHorizontalCalendar();
+        } else if (position == 1) {
+            layout3DaysView.setVisibility(View.VISIBLE);
+            setup3DaysView();
+        } else if (position == 2) {
+            layoutWeekView.setVisibility(View.VISIBLE);
+            setupWeekView();
+        } else if (position == 3) {
+            layoutMonthView.setVisibility(View.VISIBLE);
+            setMonthView();
+        }
     }
 
     private int dpToPx(int dp) {
@@ -597,21 +638,41 @@ public class MainActivity extends BaseBottomNavActivity implements CalendarAdapt
             String title = event.getTitle() != null ? event.getTitle() : "(Untitled)";
             String details = buildEventDetails(event);
             int bgRes = pickEventBackground(colorIndex++);
-            int titleColor = bgRes == R.drawable.bg_day_event_light ? onSurface : onPrimary;
-            int detailsColor = bgRes == R.drawable.bg_day_event_light ? onSurfaceVariant : onPrimary;
-            float detailsAlpha = bgRes == R.drawable.bg_day_event_light ? 1.0f : 0.85f;
+            Integer eventTint = resolveEventTintColor(event);
+            int titleColor;
+            int detailsColor;
+            float detailsAlpha;
+
+            if (eventTint != null) {
+                boolean useDarkText = !isDarkColor(eventTint);
+                titleColor = Color.parseColor(useDarkText ? "#334155" : "#FFFFFF");
+                detailsColor = Color.parseColor(useDarkText ? "#64748b" : "#E6FFFFFF");
+                detailsAlpha = 1.0f;
+            } else if (bgRes == R.drawable.bg_day_event_light) {
+                titleColor = onSurface;
+                detailsColor = onSurfaceVariant;
+                detailsAlpha = 1.0f;
+            } else {
+                titleColor = onPrimary;
+                detailsColor = onPrimary;
+                detailsAlpha = 0.85f;
+            }
 
             addEventCardToTimeline(timelineContainer, hourHeightPx, title, details, parts.startHour,
-                    parts.startMinute, parts.durationMinutes, bgRes, titleColor, detailsColor, detailsAlpha);
+                    parts.startMinute, parts.durationMinutes, bgRes, titleColor, detailsColor, detailsAlpha,
+                    eventTint);
         }
     }
 
     private void addEventCardToTimeline(android.widget.RelativeLayout container, int hourHeightPx, String title,
             String details, int startHour, int startMinute, int durationMinutes, int backgroundResId,
-            int titleColor, int detailsColor, float detailsAlpha) {
+            int titleColor, int detailsColor, float detailsAlpha, Integer tintColor) {
         android.widget.LinearLayout card = new android.widget.LinearLayout(this);
         card.setOrientation(android.widget.LinearLayout.VERTICAL);
         card.setBackgroundResource(backgroundResId);
+        if (tintColor != null && card.getBackground() != null) {
+            card.getBackground().mutate().setTint(tintColor);
+        }
         card.setPadding(dpToPx(12), dpToPx(12), dpToPx(12), dpToPx(12));
         card.setElevation(dpToPx(4));
 
@@ -755,24 +816,43 @@ public class MainActivity extends BaseBottomNavActivity implements CalendarAdapt
                 }
 
                 int bgRes = pickEventBackground(colorIndex++);
-                int titleColor = bgRes == R.drawable.bg_day_event_light ? onSurface : onPrimary;
-                int detailColor = bgRes == R.drawable.bg_day_event_light ? onSurfaceVariant : onPrimary;
-                float detailAlpha = bgRes == R.drawable.bg_day_event_light ? 1.0f : 0.85f;
+                Integer eventTint = resolveEventTintColor(event);
+                int titleColor;
+                int detailColor;
+                float detailAlpha;
+
+                if (eventTint != null) {
+                    boolean useDarkText = !isDarkColor(eventTint);
+                    titleColor = Color.parseColor(useDarkText ? "#334155" : "#FFFFFF");
+                    detailColor = Color.parseColor(useDarkText ? "#64748b" : "#E6FFFFFF");
+                    detailAlpha = 1.0f;
+                } else if (bgRes == R.drawable.bg_day_event_light) {
+                    titleColor = onSurface;
+                    detailColor = onSurfaceVariant;
+                    detailAlpha = 1.0f;
+                } else {
+                    titleColor = onPrimary;
+                    detailColor = onPrimary;
+                    detailAlpha = 0.85f;
+                }
 
                 addEventTo3Days(container, hourHeightPx, timeColumnWidth, colWidth, dayIndex,
                         event.getTitle() != null ? event.getTitle() : "(Untitled)",
                         buildEventLocation(event), parts.startHour, parts.startMinute,
-                        parts.durationMinutes, bgRes, titleColor, detailColor, detailAlpha);
+                        parts.durationMinutes, bgRes, titleColor, detailColor, detailAlpha, eventTint);
             }
         });
     }
 
     private void addEventTo3Days(android.widget.RelativeLayout container, int hourHeightPx, int timeOffset,
             int colWidth, int dayIndex, String title, String details, int startHour, int startMinute, int durationMins,
-            int bgRes, int titleColor, int detailColor, float detailAlpha) {
+            int bgRes, int titleColor, int detailColor, float detailAlpha, Integer tintColor) {
         android.widget.LinearLayout card = new android.widget.LinearLayout(this);
         card.setOrientation(android.widget.LinearLayout.VERTICAL);
         card.setBackgroundResource(bgRes);
+        if (tintColor != null && card.getBackground() != null) {
+            card.getBackground().mutate().setTint(tintColor);
+        }
         card.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8));
         card.setElevation(dpToPx(2));
 
@@ -936,33 +1016,43 @@ public class MainActivity extends BaseBottomNavActivity implements CalendarAdapt
 
                 int bgRes = pickEventBackground(colorIndex++);
                 String title = event.getTitle() != null ? event.getTitle() : "(Untitled)";
+                Integer eventTint = resolveEventTintColor(event);
                 addEventToWeekGrid(container, hourHeightPx, timeColumnWidth, colWidth, dayIndex,
-                        title, parts.startHour, parts.startMinute, parts.durationMinutes, bgRes);
+                        title, parts.startHour, parts.startMinute, parts.durationMinutes, bgRes, eventTint);
             }
         });
     }
 
     private void addEventToWeekGrid(android.widget.RelativeLayout container, int hourHeightPx, int timeOffset,
             int colWidth, int dayIndex, String shortTitle, int startHour, int startMinute, int durationMins,
-            int bgRes) {
+            int bgRes, Integer tintColor) {
         android.widget.TextView card = new android.widget.TextView(this);
         card.setBackgroundResource(bgRes);
+        if (tintColor != null && card.getBackground() != null) {
+            card.getBackground().mutate().setTint(tintColor);
+        }
         card.setText(shortTitle);
         int onPrimary = MaterialColors.getColor(card,
                 com.google.android.material.R.attr.colorOnPrimary);
         int primary = MaterialColors.getColor(card,
                 androidx.appcompat.R.attr.colorPrimary);
-        card.setTextColor(onPrimary);
+        if (tintColor != null && !isDarkColor(tintColor)) {
+            card.setTextColor(Color.parseColor("#334155"));
+        } else {
+            card.setTextColor(Color.WHITE);
+        }
+        if (tintColor == null) {
+            if (bgRes == R.drawable.bg_day_event_light) {
+                card.setTextColor(primary);
+            } else {
+                card.setTextColor(onPrimary);
+            }
+        }
         card.setTextSize(9f);
         card.setTypeface(null, android.graphics.Typeface.BOLD);
         card.setPadding(dpToPx(4), dpToPx(4), dpToPx(2), dpToPx(2));
         card.setEllipsize(android.text.TextUtils.TruncateAt.END);
         card.setMaxLines(2);
-
-        if (bgRes == R.drawable.bg_day_event_light) {
-            card.setTextColor(primary);
-        }
-
         int topMargin = (startHour * hourHeightPx) + (startMinute * hourHeightPx / 60) + dpToPx(10);
         int cardHeight = (durationMins * hourHeightPx / 60);
 
@@ -975,6 +1065,9 @@ public class MainActivity extends BaseBottomNavActivity implements CalendarAdapt
     }
 
     private void setMonthView() {
+        if (rvCalendar == null) {
+            return;
+        }
         List<CalendarDay> daysInMonth = daysInMonthArray(selectedDate);
         CalendarAdapter adapter = new CalendarAdapter(daysInMonth, this);
         rvCalendar.setAdapter(adapter);
@@ -1076,6 +1169,7 @@ public class MainActivity extends BaseBottomNavActivity implements CalendarAdapt
         }
         User currentUser = UserManager.getInstance().getCurrentUser();
         if (currentUser != null) {
+            cacheOwnerName(currentUser);
             updateDrawerHeader(currentUser);
             if (isValidAvatarUrl(currentUser.getAvatar())) {
                 loadAvatar(currentUser.getAvatar());
@@ -1093,10 +1187,14 @@ public class MainActivity extends BaseBottomNavActivity implements CalendarAdapt
                     User user = snapshot.toObject(User.class);
                     if (user != null) {
                         UserManager.getInstance().setCurrentUser(user);
+                        cacheOwnerName(user);
                         if (isValidAvatarUrl(user.getAvatar())) {
                             loadAvatar(user.getAvatar());
                         }
                         updateDrawerHeader(user);
+                        if (!calendarsById.isEmpty()) {
+                            updateDrawerCalendars(new ArrayList<>(calendarsById.values()));
+                        }
                     }
                 });
     }
@@ -1279,7 +1377,10 @@ public class MainActivity extends BaseBottomNavActivity implements CalendarAdapt
     private void openEditEvent(Event event) {
         Intent intent = new Intent(this, CreateEventActivity.class);
         intent.putExtra("mode", "edit");
-        intent.putExtra("eventId", event.getId());
+        String eventId = event.getInstanceOf() != null && !event.getInstanceOf().isEmpty()
+                ? event.getInstanceOf()
+                : event.getId();
+        intent.putExtra("eventId", eventId);
         String fallbackCalendarId = event.getCalendarId();
         if (fallbackCalendarId == null || fallbackCalendarId.isEmpty()) {
             fallbackCalendarId = getActiveCalendarId();
@@ -1400,6 +1501,10 @@ public class MainActivity extends BaseBottomNavActivity implements CalendarAdapt
         if (defaultCalendarId != null && !defaultCalendarId.isEmpty()) {
             return defaultCalendarId;
         }
+        if (!visibleCalendarIds.isEmpty()) {
+            defaultCalendarId = visibleCalendarIds.get(0);
+            return defaultCalendarId;
+        }
         if (calendarIntegrationService != null) {
             defaultCalendarId = calendarIntegrationService.getCachedDefaultCalendarId(this);
         }
@@ -1436,6 +1541,7 @@ public class MainActivity extends BaseBottomNavActivity implements CalendarAdapt
         if (!visibleCalendarIds.isEmpty()) {
             return new ArrayList<>(visibleCalendarIds);
         }
+
         String calendarId = getActiveCalendarId();
         if (calendarId != null && !calendarId.isEmpty()) {
             List<String> ids = new ArrayList<>();
@@ -1448,23 +1554,39 @@ public class MainActivity extends BaseBottomNavActivity implements CalendarAdapt
     private void updateVisibleCalendarIds(List<CalendarModel> calendars) {
         visibleCalendarIds.clear();
         if (calendars != null) {
-            // Add all owned and joined calendars to visible list
-            String userId = firebaseInitializer.getCurrentUserId();
-            for (CalendarModel calendar : calendars) {
-                if (calendar == null || calendar.getId() == null) {
-                    continue;
-                }
-                // Include owned calendars and joined calendars
-                if ((userId != null && userId.equals(calendar.getOwnerId())) ||
-                        (userId != null && calendar.getMemberIds() != null &&
-                                calendar.getMemberIds().contains(userId))) {
-                    visibleCalendarIds.add(calendar.getId());
+            List<String> resolvedVisibleIds = null;
+            if (calendarIntegrationService != null) {
+                resolvedVisibleIds = calendarIntegrationService.resolveVisibleCalendarIds(this, calendars,
+                        defaultCalendarId);
+            }
+            if (resolvedVisibleIds != null && !resolvedVisibleIds.isEmpty()) {
+                visibleCalendarIds.addAll(resolvedVisibleIds);
+            } else {
+                String userId = firebaseInitializer.getCurrentUserId();
+                for (CalendarModel calendar : calendars) {
+                    if (calendar == null || calendar.getId() == null) {
+                        continue;
+                    }
+                    if ((userId != null && userId.equals(calendar.getOwnerId())) ||
+                            (userId != null && calendar.getMemberIds() != null &&
+                                    calendar.getMemberIds().contains(userId))) {
+                        visibleCalendarIds.add(calendar.getId());
+                    }
                 }
             }
         }
-        // If no calendars found, add default calendar as fallback
+
         if (visibleCalendarIds.isEmpty() && defaultCalendarId != null && !defaultCalendarId.isEmpty()) {
             visibleCalendarIds.add(defaultCalendarId);
+        }
+
+        if (!visibleCalendarIds.isEmpty()) {
+            if (defaultCalendarId == null || defaultCalendarId.isEmpty()
+                    || !visibleCalendarIds.contains(defaultCalendarId)) {
+                defaultCalendarId = visibleCalendarIds.get(0);
+                calendarIntegrationService.setCachedDefaultCalendarId(this, defaultCalendarId);
+            }
+            calendarIntegrationService.saveVisibleCalendarIds(this, visibleCalendarIds);
         }
     }
 
@@ -1478,6 +1600,39 @@ public class MainActivity extends BaseBottomNavActivity implements CalendarAdapt
         }
         tvDrawerName = header.findViewById(R.id.tvDrawerName);
         updateDrawerHeader(UserManager.getInstance().getCurrentUser());
+
+        // Set up calendar drawer RecyclerView
+        RecyclerView rvCalendarDrawer = header.findViewById(R.id.rvDrawerCalendars);
+        if (rvCalendarDrawer != null) {
+            rvCalendarDrawer.setLayoutManager(new LinearLayoutManager(this));
+            calendarDrawerAdapter = new CalendarDrawerAdapter(
+                    new ArrayList<>(calendarsById.values()),
+                    visibleCalendarIds,
+                    new CalendarDrawerAdapter.OnCalendarActionListener() {
+                        @Override
+                        public void onCalendarToggle(CalendarModel calendar, boolean isVisible) {
+                            toggleCalendarVisibility(calendar.getId());
+                        }
+
+                        @Override
+                        public void onEditCalendar(CalendarModel calendar) {
+                            showEditCalendarDialog(calendar);
+                        }
+                    });
+            rvCalendarDrawer.setAdapter(calendarDrawerAdapter);
+        }
+
+        // Set up Add Calendar button
+        com.google.android.material.button.MaterialButton btnAddCalendar = header.findViewById(R.id.btnAddCalendar);
+        if (btnAddCalendar != null) {
+            btnAddCalendar.setOnClickListener(v -> {
+                showCreateCalendarDialog();
+                DrawerLayout drawerLayout = findViewById(R.id.drawerLayout);
+                if (drawerLayout != null) {
+                    drawerLayout.closeDrawer(GravityCompat.START);
+                }
+            });
+        }
     }
 
     private void updateDrawerHeader(User user) {
@@ -1494,21 +1649,8 @@ public class MainActivity extends BaseBottomNavActivity implements CalendarAdapt
     }
 
     private void setupDrawerSelection(DrawerLayout drawerLayout) {
-        if (navView == null) {
-            return;
-        }
-        navView.setNavigationItemSelectedListener(item -> {
-            String calendarId = drawerCalendarIdMap.get(item.getItemId());
-            if (calendarId == null) {
-                return false;
-            }
-            setSelectedCalendar(calendarId);
-            item.setChecked(true);
-            if (drawerLayout != null) {
-                drawerLayout.closeDrawer(GravityCompat.START);
-            }
-            return true;
-        });
+        // This method is now partially handled by the RecyclerView adapter
+        // The adapter manages calendar toggling and editing directly
     }
 
     private void updateDrawerCalendars(List<CalendarModel> calendars) {
@@ -1518,58 +1660,192 @@ public class MainActivity extends BaseBottomNavActivity implements CalendarAdapt
         if (navView == null || calendars == null) {
             return;
         }
-        Menu menu = navView.getMenu();
-        menu.clear();
+
         drawerCalendarIdMap.clear();
+        calendarsById.clear();
 
-        String userId = firebaseInitializer.getCurrentUserId();
-        List<CalendarModel> owned = new ArrayList<>();
-        List<CalendarModel> joined = new ArrayList<>();
-        List<CalendarModel> others = new ArrayList<>();
-
+        List<CalendarModel> sortedCalendars = new ArrayList<>();
         for (CalendarModel calendar : calendars) {
-            if (calendar == null || calendar.getId() == null) {
-                continue;
-            }
-            // Check if user is owner
-            if (userId != null && userId.equals(calendar.getOwnerId())) {
-                owned.add(calendar);
-            }
-            // Check if user is a member (participated/joined calendar)
-            else if (userId != null && calendar.getMemberIds() != null &&
-                    calendar.getMemberIds().contains(userId)) {
-                joined.add(calendar);
-            }
-            // Other calendars (public calendars not yet joined)
-            else {
-                others.add(calendar);
+            if (calendar != null && calendar.getId() != null && !calendar.getId().isEmpty()) {
+                sortedCalendars.add(calendar);
+                calendarsById.put(calendar.getId(), calendar);
             }
         }
 
-        if (!owned.isEmpty()) {
-            SubMenu myMenu = menu.addSubMenu("MY CALENDARS");
-            addCalendarMenuItems(myMenu, owned);
+        Collections.sort(sortedCalendars, (c1, c2) -> {
+            int byOrder = Integer.compare(c1.getSortOrder(), c2.getSortOrder());
+            if (byOrder != 0) {
+                return byOrder;
+            }
+            String name1 = c1.getName() != null ? c1.getName() : "";
+            String name2 = c2.getName() != null ? c2.getName() : "";
+            return name1.compareToIgnoreCase(name2);
+        });
+
+        // Update the drawer adapter with new calendars
+        if (calendarDrawerAdapter != null) {
+            calendarDrawerAdapter.updateData(sortedCalendars, visibleCalendarIds);
         }
-        if (!joined.isEmpty()) {
-            SubMenu joinedMenu = menu.addSubMenu("JOINED CALENDARS");
-            addCalendarMenuItems(joinedMenu, joined);
+
+        loadCalendarOwnerNames(sortedCalendars, () -> {
+            if (calendarDrawerAdapter != null) {
+                calendarDrawerAdapter.updateData(sortedCalendars, visibleCalendarIds);
+            }
+        });
+    }
+
+    private void cacheOwnerName(User user) {
+        if (user == null) {
+            return;
         }
-        if (!others.isEmpty()) {
-            SubMenu otherMenu = menu.addSubMenu("OTHER CALENDARS");
-            addCalendarMenuItems(otherMenu, others);
+        String userId = user.getUid();
+        String name = user.getName();
+        if (userId == null || name == null) {
+            return;
+        }
+        String normalized = name.trim();
+        if (!normalized.isEmpty()) {
+            ownerNameCache.put(userId, normalized);
         }
     }
 
-    private void addCalendarMenuItems(SubMenu menu, List<CalendarModel> calendars) {
+    private void applyOwnerNameToCalendars(List<CalendarModel> calendars, String ownerId, String ownerName) {
+        if (calendars == null || ownerId == null || ownerName == null) {
+            return;
+        }
         for (CalendarModel calendar : calendars) {
-            String name = calendar.getName() != null ? calendar.getName() : "Calendar";
-            int itemId = View.generateViewId();
-            MenuItem item = menu.add(Menu.NONE, itemId, Menu.NONE, name);
-            item.setCheckable(true);
-            if (calendar.getId().equals(defaultCalendarId)) {
-                item.setChecked(true);
+            if (calendar != null && ownerId.equals(calendar.getOwnerId())) {
+                calendar.setOwnerName(ownerName);
             }
-            drawerCalendarIdMap.put(itemId, calendar.getId());
+        }
+    }
+
+    private void loadCalendarOwnerNames(List<CalendarModel> calendars, Runnable onComplete) {
+        if (calendars == null || calendars.isEmpty()) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+
+        cacheOwnerName(UserManager.getInstance().getCurrentUser());
+
+        if (userRepository == null) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+
+        Set<String> ownerIdsToFetch = new HashSet<>();
+        for (CalendarModel calendar : calendars) {
+            if (calendar == null) {
+                continue;
+            }
+            String ownerId = calendar.getOwnerId();
+            if (ownerId == null || ownerId.isEmpty()) {
+                continue;
+            }
+            String cachedName = ownerNameCache.get(ownerId);
+            if (cachedName != null) {
+                calendar.setOwnerName(cachedName);
+            } else {
+                ownerIdsToFetch.add(ownerId);
+            }
+        }
+
+        if (ownerIdsToFetch.isEmpty()) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+
+        AtomicInteger remaining = new AtomicInteger(ownerIdsToFetch.size());
+        for (String ownerId : ownerIdsToFetch) {
+            userRepository.getUser(ownerId)
+                    .addOnSuccessListener(snapshot -> {
+                        User owner = snapshot.toObject(User.class);
+                        String ownerName = owner != null ? owner.getName() : null;
+                        if (ownerName != null) {
+                            ownerName = ownerName.trim();
+                        }
+                        if (ownerName != null && !ownerName.isEmpty()) {
+                            ownerNameCache.put(ownerId, ownerName);
+                            applyOwnerNameToCalendars(calendars, ownerId, ownerName);
+                        }
+                        if (remaining.decrementAndGet() == 0 && onComplete != null) {
+                            onComplete.run();
+                        }
+                    })
+                    .addOnFailureListener(e -> {
+                        if (remaining.decrementAndGet() == 0 && onComplete != null) {
+                            onComplete.run();
+                        }
+                    });
+        }
+    }
+
+    private void toggleCalendarVisibility(String calendarId) {
+        if (calendarId == null || calendarId.isEmpty()) {
+            return;
+        }
+
+        boolean currentlyVisible = visibleCalendarIds.contains(calendarId);
+        if (currentlyVisible && visibleCalendarIds.size() == 1) {
+            Toast.makeText(this, "At least one calendar must remain visible", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (currentlyVisible) {
+            visibleCalendarIds.remove(calendarId);
+        } else {
+            visibleCalendarIds.add(calendarId);
+            defaultCalendarId = calendarId;
+        }
+
+        if (!visibleCalendarIds.isEmpty()
+                && (defaultCalendarId == null || !visibleCalendarIds.contains(defaultCalendarId))) {
+            defaultCalendarId = visibleCalendarIds.get(0);
+        }
+
+        if (defaultCalendarId != null && !defaultCalendarId.isEmpty()) {
+            calendarIntegrationService.setCachedDefaultCalendarId(this, defaultCalendarId);
+        }
+        calendarIntegrationService.saveVisibleCalendarIds(this, visibleCalendarIds);
+
+        boolean newVisibility = !currentlyVisible;
+        calendarIntegrationService.updateCalendarVisibility(calendarId, newVisibility,
+                new CalendarIntegrationService.CalendarSaveListener() {
+                    @Override
+                    public void onSuccess(String ignoredCalendarId) {
+                        Log.d(TAG, "Calendar visibility synced: " + calendarId + " -> " + newVisibility);
+                    }
+
+                    @Override
+                    public void onError(String errorMessage) {
+                        Log.w(TAG, "Failed to sync calendar visibility: " + errorMessage);
+                    }
+                });
+
+        refreshCalendarViewsForVisibilityChange();
+    }
+
+    private void refreshCalendarViewsForVisibilityChange() {
+        setMonthView();
+        updateEventsForDate(selectedDate);
+
+        if (layoutDayView != null && layoutDayView.getVisibility() == View.VISIBLE) {
+            loadDayEvents(selectedDate);
+        }
+        if (layout3DaysView != null && layout3DaysView.getVisibility() == View.VISIBLE) {
+            loadThreeDaysEvents(startDate3Days);
+        }
+        if (layoutWeekView != null && layoutWeekView.getVisibility() == View.VISIBLE) {
+            int currentDayOfWeek = selectedWeekDate.getDayOfWeek().getValue();
+            int daysToSubtract = (currentDayOfWeek == 7) ? 0 : currentDayOfWeek;
+            LocalDate startOfWeek = selectedWeekDate.minusDays(daysToSubtract);
+            loadWeekEvents(startOfWeek);
         }
     }
 
@@ -1579,10 +1855,247 @@ public class MainActivity extends BaseBottomNavActivity implements CalendarAdapt
         }
         defaultCalendarId = calendarId;
         calendarIntegrationService.setCachedDefaultCalendarId(this, calendarId);
-        visibleCalendarIds.clear();
-        visibleCalendarIds.add(calendarId);
+        if (!visibleCalendarIds.contains(calendarId)) {
+            visibleCalendarIds.add(calendarId);
+        }
+        calendarIntegrationService.saveVisibleCalendarIds(this, visibleCalendarIds);
         setMonthView();
         updateEventsForDate(selectedDate);
+    }
+
+    private void showCreateCalendarDialog() {
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+        int padding = dpToPx(20);
+        container.setPadding(padding, dpToPx(8), padding, 0);
+
+        EditText nameInput = new EditText(this);
+        nameInput.setHint("Calendar name");
+        nameInput.setSingleLine(true);
+        container.addView(nameInput);
+
+        EditText descriptionInput = new EditText(this);
+        descriptionInput.setHint("Description (optional)");
+        descriptionInput.setMinLines(2);
+        descriptionInput.setMaxLines(3);
+        container.addView(descriptionInput);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Create Calendar")
+                .setView(container)
+                .setPositiveButton("Next", null)
+                .setNegativeButton("Cancel", null)
+                .create();
+
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String name = nameInput.getText() != null ? nameInput.getText().toString().trim() : "";
+            String description = descriptionInput.getText() != null
+                    ? descriptionInput.getText().toString().trim()
+                    : "";
+
+            if (name.isEmpty()) {
+                nameInput.setError("Calendar name is required");
+                nameInput.requestFocus();
+                return;
+            }
+            if (isDuplicateCalendarName(name)) {
+                nameInput.setError("Calendar name already exists");
+                nameInput.requestFocus();
+                return;
+            }
+
+            dialog.dismiss();
+            showColorPickerForNewCalendar(name, description);
+        }));
+
+        dialog.show();
+    }
+
+    private void showColorPickerForNewCalendar(String name, String description) {
+        List<CalendarColorManager.CalendarColor> colors = calendarIntegrationService.getPresetColors();
+        if (colors == null || colors.isEmpty()) {
+            createCalendarFromDrawer(name, description, "#2B78E4");
+            return;
+        }
+
+        String[] labels = new String[colors.size()];
+        for (int i = 0; i < colors.size(); i++) {
+            CalendarColorManager.CalendarColor color = colors.get(i);
+            labels[i] = "● " + color.getName() + " (" + color.getHex() + ")";
+        }
+
+        final int[] selectedIndex = { 0 };
+
+        new AlertDialog.Builder(this)
+                .setTitle("Choose color")
+                .setSingleChoiceItems(labels, selectedIndex[0], (dialog, which) -> selectedIndex[0] = which)
+                .setPositiveButton("Create", (dialog, which) -> {
+                    CalendarColorManager.CalendarColor selected = colors.get(selectedIndex[0]);
+                    createCalendarFromDrawer(name, description, selected.getHex());
+                })
+                .setNegativeButton("Back", null)
+                .show();
+    }
+
+    private void createCalendarFromDrawer(String name, String description, String colorHex) {
+        calendarIntegrationService.createCalendar(name, description, colorHex, false,
+                new CalendarIntegrationService.CalendarSaveListener() {
+                    @Override
+                    public void onSuccess(String calendarId) {
+                        if (calendarId == null || calendarId.isEmpty()) {
+                            Toast.makeText(MainActivity.this, "Calendar created", Toast.LENGTH_SHORT).show();
+                            ensureDefaultCalendarReady(() -> refreshCalendarViewsForVisibilityChange());
+                            return;
+                        }
+
+                        defaultCalendarId = calendarId;
+                        calendarIntegrationService.setCachedDefaultCalendarId(MainActivity.this, calendarId);
+
+                        if (!visibleCalendarIds.contains(calendarId)) {
+                            visibleCalendarIds.add(calendarId);
+                        }
+                        calendarIntegrationService.saveVisibleCalendarIds(MainActivity.this, visibleCalendarIds);
+
+                        ensureDefaultCalendarReady(() -> {
+                            Toast.makeText(MainActivity.this, "Calendar created", Toast.LENGTH_SHORT).show();
+                            refreshCalendarViewsForVisibilityChange();
+                        });
+                    }
+
+                    @Override
+                    public void onError(String errorMessage) {
+                        Toast.makeText(MainActivity.this,
+                                "Failed to create calendar: " + errorMessage,
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    private boolean isDuplicateCalendarName(String candidateName) {
+        if (candidateName == null || candidateName.trim().isEmpty()) {
+            return false;
+        }
+        String normalized = candidateName.trim();
+        for (CalendarModel calendar : calendarsById.values()) {
+            if (calendar == null || calendar.getName() == null) {
+                continue;
+            }
+            if (normalized.equalsIgnoreCase(calendar.getName().trim())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void showEditCalendarDialog(CalendarModel calendar) {
+        if (calendar == null) {
+            return;
+        }
+
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_edit_calendar, null);
+        EditText etName = dialogView.findViewById(R.id.etCalendarName);
+        EditText etDescription = dialogView.findViewById(R.id.etCalendarDescription);
+        RecyclerView rvColorPicker = dialogView.findViewById(R.id.rvColorPicker);
+
+        etName.setText(calendar.getName());
+        etDescription.setText(calendar.getDescription());
+
+        List<CalendarColorManager.CalendarColor> colors = calendarIntegrationService.getPresetColors();
+        if (colors != null && !colors.isEmpty()) {
+            rvColorPicker.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+            ColorPickerAdapter colorAdapter = new ColorPickerAdapter(
+                    colors,
+                    calendar.getColor(),
+                    colorHex -> {
+                        // Color selection handled internally
+                    });
+            rvColorPicker.setAdapter(colorAdapter);
+        }
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Edit Calendar")
+                .setView(dialogView)
+                .setPositiveButton("Save", null)
+                .setNegativeButton("Cancel", null)
+                .setNeutralButton("Delete", null)
+                .create();
+
+        dialog.setOnShowListener(d -> {
+            // Save button
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                String newName = etName.getText().toString().trim();
+                String newDescription = etDescription.getText().toString().trim();
+
+                if (newName.isEmpty()) {
+                    etName.setError("Calendar name is required");
+                    etName.requestFocus();
+                    return;
+                }
+
+                // Check for duplicate only if name changed
+                if (!newName.equalsIgnoreCase(calendar.getName())) {
+                    if (isDuplicateCalendarName(newName)) {
+                        etName.setError("Calendar name already exists");
+                        etName.requestFocus();
+                        return;
+                    }
+                }
+
+                // Get selected color from adapter (keep current for now)
+                String selectedColor = calendar.getColor();
+
+                // Update in Firestore
+                calendarIntegrationService.updateCalendar(calendar.getId(), newName, newDescription, selectedColor,
+                        false, new CalendarIntegrationService.CalendarSaveListener() {
+                            @Override
+                            public void onSuccess(String calendarId) {
+                                Toast.makeText(MainActivity.this, "Calendar updated", Toast.LENGTH_SHORT).show();
+                                updateDrawerCalendars(new ArrayList<>(calendarsById.values()));
+                                dialog.dismiss();
+                            }
+
+                            @Override
+                            public void onError(String errorMessage) {
+                                Toast.makeText(MainActivity.this,
+                                        "Failed to update calendar: " + errorMessage,
+                                        Toast.LENGTH_SHORT).show();
+                            }
+                        });
+            });
+
+            // Delete button
+            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> {
+                new AlertDialog.Builder(MainActivity.this)
+                        .setTitle("Delete Calendar")
+                        .setMessage("Are you sure you want to delete this calendar? This cannot be undone.")
+                        .setPositiveButton("Delete", (deleteDialog, which) -> {
+                            calendarIntegrationService.deleteCalendar(calendar.getId(),
+                                    new CalendarIntegrationService.CalendarSaveListener() {
+                                        @Override
+                                        public void onSuccess(String calendarId) {
+                                            Toast.makeText(MainActivity.this, "Calendar deleted", Toast.LENGTH_SHORT)
+                                                    .show();
+                                            visibleCalendarIds.remove(calendarId);
+                                            calendarIntegrationService.saveVisibleCalendarIds(MainActivity.this,
+                                                    visibleCalendarIds);
+                                            updateDrawerCalendars(new ArrayList<>(calendarsById.values()));
+                                            dialog.dismiss();
+                                        }
+
+                                        @Override
+                                        public void onError(String errorMessage) {
+                                            Toast.makeText(MainActivity.this,
+                                                    "Failed to delete calendar: " + errorMessage,
+                                                    Toast.LENGTH_SHORT).show();
+                                        }
+                                    });
+                        })
+                        .setNegativeButton("Cancel", null)
+                        .show();
+            });
+        });
+
+        dialog.show();
     }
 
     private void fetchEventsForCalendars(LocalDate startDate, LocalDate endDate, List<String> calendarIds,
@@ -1722,19 +2235,141 @@ public class MainActivity extends BaseBottomNavActivity implements CalendarAdapt
             callback.onLoaded(new ArrayList<>());
             return;
         }
-
-        Timestamp startTimestamp = toTimestamp(
-                startDate.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
-        long endMillis = endDate.plusDays(1).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
-                - 1;
-        Timestamp endTimestamp = toTimestamp(endMillis);
-
-        eventsManager.getEventsByDateRange(calendarId, startTimestamp, endTimestamp)
-                .addOnSuccessListener(callback::onLoaded)
+        eventsManager.getEventsByCalendarId(calendarId)
+                .addOnSuccessListener(events -> {
+                    List<Event> expanded = expandAndFilterEvents(events, startDate, endDate);
+                    callback.onLoaded(expanded);
+                })
                 .addOnFailureListener(e -> {
                     Log.e(TAG, "Error loading events: " + e.getMessage(), e);
                     callback.onLoaded(new ArrayList<>());
                 });
+    }
+
+    private List<Event> expandAndFilterEvents(List<Event> events, LocalDate startDate, LocalDate endDate) {
+        List<Event> results = new ArrayList<>();
+        if (events == null || events.isEmpty()) {
+            return results;
+        }
+
+        java.time.ZoneId userZone = TimezoneHelper.getSelectedZoneId(this);
+
+        for (Event event : events) {
+            if (event == null || event.getStartTime() == null) {
+                continue;
+            }
+
+            String rrule = event.getRecurrenceRule();
+            if (rrule == null || rrule.trim().isEmpty()) {
+                LocalDate eventDate = toLocalDate(event.getStartTime());
+                if (eventDate != null && !eventDate.isBefore(startDate) && !eventDate.isAfter(endDate)) {
+                    results.add(event);
+                }
+                continue;
+            }
+
+            LocalDate eventStartDate = toLocalDate(event.getStartTime());
+            if (eventStartDate == null || eventStartDate.isAfter(endDate)) {
+                continue;
+            }
+
+            RecurrenceUtils.RecurrenceRule rule = RecurrenceUtils.parseRRule(rrule);
+            List<String> exceptionList = event.getRecurrenceExceptions() != null
+                    ? new ArrayList<>(event.getRecurrenceExceptions())
+                    : new ArrayList<>();
+
+            java.util.Set<LocalDate> exceptionDates = new java.util.HashSet<>();
+            for (String raw : exceptionList) {
+                if (raw == null || raw.trim().isEmpty()) {
+                    continue;
+                }
+                try {
+                    exceptionDates.add(LocalDate.parse(raw.trim()));
+                } catch (Exception ignored) {
+                }
+            }
+
+            int occurrenceCount = 0;
+            LocalDate cursor = eventStartDate;
+            while (!cursor.isAfter(endDate)) {
+                boolean isException = exceptionDates.contains(cursor);
+                if (!isException && occursOnDate(event, rule, cursor, userZone)) {
+                    occurrenceCount++;
+                    if (rule.count > 0 && occurrenceCount > rule.count) {
+                        break;
+                    }
+                    if (!cursor.isBefore(startDate)) {
+                        results.add(buildOccurrenceEvent(event, cursor, userZone));
+                    }
+                }
+                cursor = cursor.plusDays(1);
+            }
+        }
+
+        return sortEvents(results);
+    }
+
+    private boolean occursOnDate(Event event, RecurrenceUtils.RecurrenceRule rule, LocalDate date,
+            java.time.ZoneId zoneId) {
+        if (event == null || event.getStartTime() == null || rule == null || rule.frequency == null) {
+            return false;
+        }
+
+        java.util.Calendar startCal = TimezoneHelper.getCalendarInSelectedTz(this, event.getStartTime().toDate());
+        int hour = startCal.get(java.util.Calendar.HOUR_OF_DAY);
+        int minute = startCal.get(java.util.Calendar.MINUTE);
+        int second = startCal.get(java.util.Calendar.SECOND);
+
+        long occurrenceMillis = date.atTime(hour, minute, second)
+                .atZone(zoneId)
+                .toInstant()
+                .toEpochMilli();
+
+        if (rule.until != null && occurrenceMillis > rule.until.getTime()) {
+            return false;
+        }
+
+        long startMillis = event.getStartTime().toDate().getTime();
+        return RecurrenceUtils.isOccurrence(startMillis, rule, occurrenceMillis, null);
+    }
+
+    private Event buildOccurrenceEvent(Event source, LocalDate date, java.time.ZoneId zoneId) {
+        Event copy = new Event();
+        copy.setTitle(source.getTitle());
+        copy.setDescription(source.getDescription());
+        copy.setLocation(source.getLocation());
+        copy.setAllDay(source.getAllDay());
+        copy.setCalendarId(source.getCalendarId());
+        copy.setCalendarName(source.getCalendarName());
+        copy.setColor(source.getColor());
+        copy.setRecurrenceRule(source.getRecurrenceRule());
+        copy.setRecurrenceExceptions(source.getRecurrenceExceptions());
+
+        if (source.getStartTime() != null) {
+            java.util.Calendar startCal = TimezoneHelper.getCalendarInSelectedTz(this, source.getStartTime().toDate());
+            int hour = startCal.get(java.util.Calendar.HOUR_OF_DAY);
+            int minute = startCal.get(java.util.Calendar.MINUTE);
+            int second = startCal.get(java.util.Calendar.SECOND);
+            long startMillis = date.atTime(hour, minute, second)
+                    .atZone(zoneId)
+                    .toInstant()
+                    .toEpochMilli();
+
+            long durationMillis = 0L;
+            if (source.getEndTime() != null) {
+                durationMillis = Math.max(0L,
+                        source.getEndTime().toDate().getTime() - source.getStartTime().toDate().getTime());
+            }
+
+            copy.setStartTime(new Timestamp(new java.util.Date(startMillis)));
+            copy.setEndTime(new Timestamp(new java.util.Date(startMillis + durationMillis)));
+        }
+
+        String baseId = source.getId();
+        String occurrenceId = baseId != null ? baseId + "_" + date.toString() : date.toString();
+        copy.setId(occurrenceId);
+        copy.setInstanceOf(baseId);
+        return copy;
     }
 
     private Timestamp toTimestamp(long millis) {
@@ -1745,7 +2380,8 @@ public class MainActivity extends BaseBottomNavActivity implements CalendarAdapt
         if (timestamp == null) {
             return null;
         }
-        return timestamp.toDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+        java.time.ZoneId userZone = TimezoneHelper.getSelectedZoneId(this);
+        return timestamp.toDate().toInstant().atZone(userZone).toLocalDate();
     }
 
     private EventTimeParts toTimeParts(Event event) {
@@ -1756,8 +2392,7 @@ public class MainActivity extends BaseBottomNavActivity implements CalendarAdapt
         Date start = event.getStartTime().toDate();
         Date end = event.getEndTime() != null ? event.getEndTime().toDate() : start;
 
-        Calendar startCal = Calendar.getInstance();
-        startCal.setTime(start);
+        Calendar startCal = TimezoneHelper.getCalendarInSelectedTz(this, start);
         int startHour = startCal.get(Calendar.HOUR_OF_DAY);
         int startMinute = startCal.get(Calendar.MINUTE);
 
@@ -1798,20 +2433,36 @@ public class MainActivity extends BaseBottomNavActivity implements CalendarAdapt
             return "";
         }
 
-        java.text.SimpleDateFormat formatter = new java.text.SimpleDateFormat("HH:mm", Locale.getDefault());
-        Date start = event.getStartTime().toDate();
-        String startText = formatter.format(start);
-
         if (event.getAllDay() != null && event.getAllDay()) {
             return "All day";
         }
 
+        String startText = TimezoneHelper.formatTime24h(this, event.getStartTime().toDate());
+
         if (event.getEndTime() != null) {
-            String endText = formatter.format(event.getEndTime().toDate());
+            String endText = TimezoneHelper.formatTime24h(this, event.getEndTime().toDate());
             return startText + " - " + endText;
         }
 
         return startText;
+    }
+
+    private Integer resolveEventTintColor(Event event) {
+        if (event == null || event.getColor() == null || event.getColor().trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return android.graphics.Color.parseColor(event.getColor().trim());
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
+    }
+
+    private boolean isDarkColor(int color) {
+        double darkness = 1 - (0.299 * android.graphics.Color.red(color)
+                + 0.587 * android.graphics.Color.green(color)
+                + 0.114 * android.graphics.Color.blue(color)) / 255;
+        return darkness >= 0.5;
     }
 
     private int pickEventBackground(int index) {

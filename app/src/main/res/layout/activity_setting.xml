@@ -6,7 +6,7 @@
     android:id="@+id/settingsRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background_light"
+    android:background="?attr/colorSurface"
     tools:context=".activities.SettingsActivity">
 
     <androidx.recyclerview.widget.RecyclerView
@@ -24,7 +24,7 @@
         android:id="@+id/bottomNav"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:background="@color/background_light"
+        android:background="?attr/colorSurface"
         app:itemIconTint="@color/bottom_nav_item"
         app:itemTextColor="@color/bottom_nav_item"
         app:menu="@menu/bottom_nav_menu"

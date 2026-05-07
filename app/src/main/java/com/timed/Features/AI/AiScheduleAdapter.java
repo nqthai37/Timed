@@ -13,9 +13,21 @@ import java.util.List;
 public class AiScheduleAdapter extends RecyclerView.Adapter<AiScheduleAdapter.ViewHolder> {
 
     private List<AiSchedule> scheduleList;
+    private final OnTemplateClickListener clickListener;
+    private final OnTemplateLongClickListener longClickListener;
 
-    public AiScheduleAdapter(List<AiSchedule> scheduleList) {
+    public AiScheduleAdapter(List<AiSchedule> scheduleList, OnTemplateClickListener clickListener, OnTemplateLongClickListener longClickListener) {
         this.scheduleList = scheduleList;
+        this.clickListener = clickListener;
+        this.longClickListener = longClickListener;
+    }
+
+    public interface OnTemplateClickListener {
+        void onTemplateClick(AiSchedule template);
+    }
+
+    public interface OnTemplateLongClickListener {
+        void onTemplateLongClick(AiSchedule template);
     }
 
     @NonNull
@@ -31,12 +43,16 @@ public class AiScheduleAdapter extends RecyclerView.Adapter<AiScheduleAdapter.Vi
         holder.tvTitle.setText(schedule.getTitle());
         holder.tvStatus.setText(schedule.getStatus());
 
-        // Đổi màu chữ trạng thái: Xanh nếu thành công, Đỏ/Cam nếu lỗi
-        if (schedule.isSuccess()) {
-            holder.tvStatus.setTextColor(Color.parseColor("#10B981")); // Màu xanh lá
-        } else {
-            holder.tvStatus.setTextColor(Color.parseColor("#F59E0B")); // Màu cam cảnh báo
-        }
+        holder.itemView.setOnClickListener(v -> {
+            if (clickListener != null) {
+                clickListener.onTemplateClick(schedule);
+            }
+        });
+
+        holder.itemView.setOnLongClickListener(v -> {
+            if (longClickListener != null) longClickListener.onTemplateLongClick(schedule);
+            return true;
+        });
     }
 
     @Override

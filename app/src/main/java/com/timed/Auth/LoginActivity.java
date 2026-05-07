@@ -122,8 +122,12 @@ public class LoginActivity extends AppCompatActivity {
                     startActivity(intent);
                 }).addOnFailureListener(e -> {
                     authRepository.logout();
+                    prefs.edit().putBoolean("REMEMBER_ME", false).apply();
                     btnLogin.setEnabled(true);
                     btnLogin.setText("Sign in");
+                    Toast.makeText(LoginActivity.this,
+                            "Saved session expired. Please sign in again.",
+                            Toast.LENGTH_SHORT).show();
                 });
             } else {
                 authRepository.logout();
