@@ -2,11 +2,17 @@ package com.timed.activities;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.res.ColorStateList;
+import android.view.View;
 
 import androidx.annotation.IdRes;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.color.MaterialColors;
 import com.timed.R;
 import com.timed.utils.ThemeManager;
 
@@ -24,7 +30,7 @@ public abstract class BaseBottomNavActivity extends AppCompatActivity {
             return;
         }
 
-        bottomNav.setSelectedItemId(getNavigationMenuItemId());
+        applyBottomNavigationStyle(bottomNav);
         bottomNav.setOnItemSelectedListener(item -> {
             int itemId = item.getItemId();
             if (itemId == getNavigationMenuItemId()) {
@@ -41,6 +47,41 @@ public abstract class BaseBottomNavActivity extends AppCompatActivity {
             startActivity(intent);
             finish();
             return true;
+        });
+        bottomNav.setSelectedItemId(getNavigationMenuItemId());
+        if (bottomNav.getMenu().findItem(getNavigationMenuItemId()) != null) {
+            bottomNav.getMenu().findItem(getNavigationMenuItemId()).setChecked(true);
+        }
+    }
+
+    private void applyBottomNavigationStyle(BottomNavigationView bottomNav) {
+        int primary = MaterialColors.getColor(bottomNav, androidx.appcompat.R.attr.colorPrimary);
+        int onSurfaceVariant = MaterialColors.getColor(bottomNav,
+                com.google.android.material.R.attr.colorOnSurfaceVariant);
+        int surface = MaterialColors.getColor(bottomNav, com.google.android.material.R.attr.colorSurface);
+        int transparent = android.graphics.Color.TRANSPARENT;
+        int[][] states = new int[][] {
+                new int[] { android.R.attr.state_checked },
+                new int[] {}
+        };
+
+        bottomNav.setBackgroundColor(surface);
+        bottomNav.setItemIconTintList(new ColorStateList(states, new int[] { primary, onSurfaceVariant }));
+        bottomNav.setItemTextColor(new ColorStateList(states, new int[] { primary, onSurfaceVariant }));
+        bottomNav.setItemActiveIndicatorColor(new ColorStateList(states, new int[] { transparent, transparent }));
+        bottomNav.setLabelVisibilityMode(com.google.android.material.navigation.NavigationBarView.LABEL_VISIBILITY_LABELED);
+        applyBottomNavigationInsets(bottomNav);
+    }
+
+    private void applyBottomNavigationInsets(View bottomNav) {
+        final int baseLeft = bottomNav.getPaddingLeft();
+        final int baseTop = bottomNav.getPaddingTop();
+        final int baseRight = bottomNav.getPaddingRight();
+        final int baseBottom = bottomNav.getPaddingBottom();
+        ViewCompat.setOnApplyWindowInsetsListener(bottomNav, (v, insets) -> {
+            Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(baseLeft + bars.left, baseTop, baseRight + bars.right, baseBottom + bars.bottom);
+            return insets;
         });
     }
 

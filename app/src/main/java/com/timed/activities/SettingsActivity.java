@@ -51,7 +51,7 @@ public class SettingsActivity extends BaseBottomNavActivity {
         ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
             Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(baseLeft + bars.left, baseTop + bars.top,
-                    baseRight + bars.right, baseBottom + bars.bottom);
+                    baseRight + bars.right, baseBottom);
             return insets;
         });
     }
