@@ -3,6 +3,7 @@ package com.timed;
 import android.app.Activity;
 import android.app.Application;
 import android.os.Bundle;
+import android.util.Log;
 
 import com.timed.utils.FirebaseInitializer;
 import com.timed.utils.NetworkConnectivityMonitor;
@@ -49,8 +50,12 @@ public class TimedApplication extends Application {
             }
         });
 
-        // Initialize Firebase and connectivity monitoring for background activities.
-        FirebaseInitializer.getInstance().initialize(this);
-        NetworkConnectivityMonitor.getInstance(this);
+        try {
+            FirebaseInitializer.getInstance().initialize(this);
+            NetworkConnectivityMonitor.getInstance(this);
+            Log.d("TimedApp", "Global infrastructure initialized");
+        } catch (Exception e) {
+            Log.e("TimedApp", "Global infrastructure initialization failed", e);
+        }
     }
 }
