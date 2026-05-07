@@ -68,6 +68,10 @@ public class RecurrenceUtils {
             }
         }
 
+        if (params.containsKey("BYSETPOS")) {
+            rule.setPos = parseInt(params.get("BYSETPOS"), 0);
+        }
+
         return rule;
     }
 
@@ -155,17 +159,32 @@ public class RecurrenceUtils {
     }
 
     private static boolean isOccurrenceWeekly(Calendar start, Calendar target, RecurrenceRule rule) {
-        if (rule.byDay == null || rule.byDay.isEmpty()) {
-            long diff = (target.getTimeInMillis() - start.getTimeInMillis()) / (1000 * 60 * 60 * 24 * 7);
-            return diff >= 0 && diff % rule.interval == 0;
+        long diffWeeks = (target.getTimeInMillis() - start.getTimeInMillis()) / (1000 * 60 * 60 * 24 * 7);
+        if (diffWeeks < 0 || diffWeeks % rule.interval != 0) {
+            return false;
         }
 
-        // Check if target day matches any byDay
         String targetDay = getDayOfWeek(target);
+        if (rule.byDay == null || rule.byDay.isEmpty()) {
+            String startDay = getDayOfWeek(start);
+            return startDay.equals(targetDay);
+        }
+
         return rule.byDay.contains(targetDay);
     }
 
     private static boolean isOccurrenceMonthly(Calendar start, Calendar target, RecurrenceRule rule) {
+        int diffMonths = (target.get(Calendar.YEAR) - start.get(Calendar.YEAR)) * 12
+                + (target.get(Calendar.MONTH) - start.get(Calendar.MONTH));
+        if (diffMonths < 0 || diffMonths % rule.interval != 0) {
+            return false;
+        }
+
+        if (rule.setPos != 0 && rule.byDay != null && !rule.byDay.isEmpty()) {
+            String dayCode = rule.byDay.get(0);
+            return isNthWeekdayOfMonth(target, rule.setPos, dayCode);
+        }
+
         if (rule.byMonthDay == null || rule.byMonthDay.isEmpty()) {
             return target.get(Calendar.DAY_OF_MONTH) == start.get(Calendar.DAY_OF_MONTH);
         }
@@ -174,8 +193,13 @@ public class RecurrenceUtils {
     }
 
     private static boolean isOccurrenceYearly(Calendar start, Calendar target, RecurrenceRule rule) {
-        return target.get(Calendar.MONTH) == start.get(Calendar.MONTH) &&
-               target.get(Calendar.DAY_OF_MONTH) == start.get(Calendar.DAY_OF_MONTH);
+        int diffYears = target.get(Calendar.YEAR) - start.get(Calendar.YEAR);
+        if (diffYears < 0 || diffYears % rule.interval != 0) {
+            return false;
+        }
+
+        return target.get(Calendar.MONTH) == start.get(Calendar.MONTH)
+                && target.get(Calendar.DAY_OF_MONTH) == start.get(Calendar.DAY_OF_MONTH);
     }
 
     private static String getDayOfWeek(Calendar calendar) {
@@ -208,6 +232,61 @@ public class RecurrenceUtils {
         }
     }
 
+    private static int dayCodeToCalendar(String dayCode) {
+        if (dayCode == null) {
+            return -1;
+        }
+        switch (dayCode) {
+            case "SU":
+                return Calendar.SUNDAY;
+            case "MO":
+                return Calendar.MONDAY;
+            case "TU":
+                return Calendar.TUESDAY;
+            case "WE":
+                return Calendar.WEDNESDAY;
+            case "TH":
+                return Calendar.THURSDAY;
+            case "FR":
+                return Calendar.FRIDAY;
+            case "SA":
+                return Calendar.SATURDAY;
+            default:
+                return -1;
+        }
+    }
+
+    private static boolean isNthWeekdayOfMonth(Calendar target, int setPos, String dayCode) {
+        int targetDow = dayCodeToCalendar(dayCode);
+        if (targetDow == -1) {
+            return false;
+        }
+
+        int targetDay = target.get(Calendar.DAY_OF_MONTH);
+        Calendar cursor = (Calendar) target.clone();
+        cursor.set(Calendar.DAY_OF_MONTH, 1);
+
+        int firstDow = cursor.get(Calendar.DAY_OF_WEEK);
+        int offset = (targetDow - firstDow + 7) % 7;
+        int firstOccurrence = 1 + offset;
+
+        if (setPos > 0) {
+            int day = firstOccurrence + (setPos - 1) * 7;
+            return day == targetDay;
+        }
+
+        if (setPos < 0) {
+            int daysInMonth = cursor.getActualMaximum(Calendar.DAY_OF_MONTH);
+            cursor.set(Calendar.DAY_OF_MONTH, daysInMonth);
+            int lastDow = cursor.get(Calendar.DAY_OF_WEEK);
+            int backOffset = (lastDow - targetDow + 7) % 7;
+            int lastOccurrence = daysInMonth - backOffset;
+            return lastOccurrence == targetDay;
+        }
+
+        return false;
+    }
+
     private static Date parseDate(String dateString) {
         try {
             SimpleDateFormat format = new SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'");
@@ -227,6 +306,7 @@ public class RecurrenceUtils {
         public Date until;
         public List<String> byDay; // ["MO", "WE", "FR"]
         public List<Integer> byMonthDay; // [15, 20]
+        public int setPos = 0;
 
         @Override
         public String toString() {
@@ -243,6 +323,9 @@ public class RecurrenceUtils {
             }
             if (byDay != null && !byDay.isEmpty()) {
                 sb.append(";BYDAY=").append(String.join(",", byDay));
+            }
+            if (setPos != 0) {
+                sb.append(";BYSETPOS=").append(setPos);
             }
             if (byMonthDay != null && !byMonthDay.isEmpty()) {
                 StringBuilder days = new StringBuilder();
