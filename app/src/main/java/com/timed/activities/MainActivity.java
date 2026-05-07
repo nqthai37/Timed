@@ -70,6 +70,7 @@ import com.timed.utils.FirebaseAuthManager;
 import com.timed.utils.FirebaseHelper;
 import com.timed.utils.FirebaseInitializer;
 import com.timed.utils.InvitationService;
+import com.timed.utils.RecurrenceUtils;
 import com.timed.dialogs.InvitationsDialog;
 import com.timed.dialogs.ShareCalendarDialog;
 import com.google.firebase.auth.FirebaseAuth;
@@ -1160,7 +1161,10 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
     private void openEditEvent(Event event) {
         Intent intent = new Intent(this, CreateEventActivity.class);
         intent.putExtra("mode", "edit");
-        intent.putExtra("eventId", event.getId());
+        String eventId = event.getInstanceOf() != null && !event.getInstanceOf().isEmpty()
+                ? event.getInstanceOf()
+                : event.getId();
+        intent.putExtra("eventId", eventId);
         String fallbackCalendarId = event.getCalendarId();
         if (fallbackCalendarId == null || fallbackCalendarId.isEmpty()) {
             fallbackCalendarId = getActiveCalendarId();
@@ -1950,20 +1954,141 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             callback.onLoaded(new ArrayList<>());
             return;
         }
-
-        java.time.ZoneId userZone = TimezoneHelper.getSelectedZoneId(this);
-        Timestamp startTimestamp = toTimestamp(
-                startDate.atStartOfDay(userZone).toInstant().toEpochMilli());
-        long endMillis = endDate.plusDays(1).atStartOfDay(userZone).toInstant().toEpochMilli()
-                - 1;
-        Timestamp endTimestamp = toTimestamp(endMillis);
-
-        eventsManager.getEventsByDateRange(calendarId, startTimestamp, endTimestamp)
-                .addOnSuccessListener(callback::onLoaded)
+        eventsManager.getEventsByCalendarId(calendarId)
+                .addOnSuccessListener(events -> {
+                    List<Event> expanded = expandAndFilterEvents(events, startDate, endDate);
+                    callback.onLoaded(expanded);
+                })
                 .addOnFailureListener(e -> {
                     Log.e(TAG, "Error loading events: " + e.getMessage(), e);
                     callback.onLoaded(new ArrayList<>());
                 });
+    }
+
+    private List<Event> expandAndFilterEvents(List<Event> events, LocalDate startDate, LocalDate endDate) {
+        List<Event> results = new ArrayList<>();
+        if (events == null || events.isEmpty()) {
+            return results;
+        }
+
+        java.time.ZoneId userZone = TimezoneHelper.getSelectedZoneId(this);
+
+        for (Event event : events) {
+            if (event == null || event.getStartTime() == null) {
+                continue;
+            }
+
+            String rrule = event.getRecurrenceRule();
+            if (rrule == null || rrule.trim().isEmpty()) {
+                LocalDate eventDate = toLocalDate(event.getStartTime());
+                if (eventDate != null && !eventDate.isBefore(startDate) && !eventDate.isAfter(endDate)) {
+                    results.add(event);
+                }
+                continue;
+            }
+
+            LocalDate eventStartDate = toLocalDate(event.getStartTime());
+            if (eventStartDate == null || eventStartDate.isAfter(endDate)) {
+                continue;
+            }
+
+            RecurrenceUtils.RecurrenceRule rule = RecurrenceUtils.parseRRule(rrule);
+            List<String> exceptionList = event.getRecurrenceExceptions() != null
+                    ? new ArrayList<>(event.getRecurrenceExceptions())
+                    : new ArrayList<>();
+
+            java.util.Set<LocalDate> exceptionDates = new java.util.HashSet<>();
+            for (String raw : exceptionList) {
+                if (raw == null || raw.trim().isEmpty()) {
+                    continue;
+                }
+                try {
+                    exceptionDates.add(LocalDate.parse(raw.trim()));
+                } catch (Exception ignored) {
+                }
+            }
+
+            int occurrenceCount = 0;
+            LocalDate cursor = eventStartDate;
+            while (!cursor.isAfter(endDate)) {
+                boolean isException = exceptionDates.contains(cursor);
+                if (!isException && occursOnDate(event, rule, cursor, userZone)) {
+                    occurrenceCount++;
+                    if (rule.count > 0 && occurrenceCount > rule.count) {
+                        break;
+                    }
+                    if (!cursor.isBefore(startDate)) {
+                        results.add(buildOccurrenceEvent(event, cursor, userZone));
+                    }
+                }
+                cursor = cursor.plusDays(1);
+            }
+        }
+
+        return sortEvents(results);
+    }
+
+    private boolean occursOnDate(Event event, RecurrenceUtils.RecurrenceRule rule, LocalDate date,
+            java.time.ZoneId zoneId) {
+        if (event == null || event.getStartTime() == null || rule == null || rule.frequency == null) {
+            return false;
+        }
+
+        java.util.Calendar startCal = TimezoneHelper.getCalendarInSelectedTz(this, event.getStartTime().toDate());
+        int hour = startCal.get(java.util.Calendar.HOUR_OF_DAY);
+        int minute = startCal.get(java.util.Calendar.MINUTE);
+        int second = startCal.get(java.util.Calendar.SECOND);
+
+        long occurrenceMillis = date.atTime(hour, minute, second)
+                .atZone(zoneId)
+                .toInstant()
+                .toEpochMilli();
+
+        if (rule.until != null && occurrenceMillis > rule.until.getTime()) {
+            return false;
+        }
+
+        long startMillis = event.getStartTime().toDate().getTime();
+        return RecurrenceUtils.isOccurrence(startMillis, rule, occurrenceMillis, null);
+    }
+
+    private Event buildOccurrenceEvent(Event source, LocalDate date, java.time.ZoneId zoneId) {
+        Event copy = new Event();
+        copy.setTitle(source.getTitle());
+        copy.setDescription(source.getDescription());
+        copy.setLocation(source.getLocation());
+        copy.setAllDay(source.getAllDay());
+        copy.setCalendarId(source.getCalendarId());
+        copy.setCalendarName(source.getCalendarName());
+        copy.setColor(source.getColor());
+        copy.setRecurrenceRule(source.getRecurrenceRule());
+        copy.setRecurrenceExceptions(source.getRecurrenceExceptions());
+
+        if (source.getStartTime() != null) {
+            java.util.Calendar startCal = TimezoneHelper.getCalendarInSelectedTz(this, source.getStartTime().toDate());
+            int hour = startCal.get(java.util.Calendar.HOUR_OF_DAY);
+            int minute = startCal.get(java.util.Calendar.MINUTE);
+            int second = startCal.get(java.util.Calendar.SECOND);
+            long startMillis = date.atTime(hour, minute, second)
+                    .atZone(zoneId)
+                    .toInstant()
+                    .toEpochMilli();
+
+            long durationMillis = 0L;
+            if (source.getEndTime() != null) {
+                durationMillis = Math.max(0L,
+                        source.getEndTime().toDate().getTime() - source.getStartTime().toDate().getTime());
+            }
+
+            copy.setStartTime(new Timestamp(new java.util.Date(startMillis)));
+            copy.setEndTime(new Timestamp(new java.util.Date(startMillis + durationMillis)));
+        }
+
+        String baseId = source.getId();
+        String occurrenceId = baseId != null ? baseId + "_" + date.toString() : date.toString();
+        copy.setId(occurrenceId);
+        copy.setInstanceOf(baseId);
+        return copy;
     }
 
     private Timestamp toTimestamp(long millis) {

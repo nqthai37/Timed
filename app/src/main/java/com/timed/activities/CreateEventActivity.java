@@ -40,6 +40,10 @@ import com.timed.repositories.EventsRepository;
 import com.timed.utils.CalendarIntegrationService;
 import com.timed.utils.FirebaseInitializer;
 import com.timed.dialogs.ReminderPickerDialog;
+import com.timed.dialogs.RecurrenceRuleBottomSheet;
+import com.timed.utils.RecurrenceConfig;
+import com.timed.utils.RecurrenceTextFormatter;
+import com.timed.utils.RecurrenceUtils;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -74,6 +78,8 @@ public class CreateEventActivity extends AppCompatActivity {
     private Button btnSave, btnCancel;
     private TextView tvDeleteEvent, tvScreenTitle, tvCalendarValue, tvAlertValue;
     private View layoutCalendarSelector;
+    private View layoutRepeatRow;
+    private TextView tvRepeatValue;
 
     private long startTime = 0;
     private long endTime = 0;
@@ -94,6 +100,8 @@ public class CreateEventActivity extends AppCompatActivity {
     // 🔔 REMINDERS: Track user-selected reminders
     private List<Long> selectedReminderMinutes = new ArrayList<>();
 
+    private RecurrenceConfig recurrenceConfig = RecurrenceConfig.disabled();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -110,6 +118,7 @@ public class CreateEventActivity extends AppCompatActivity {
         selectedReminderMinutes.add(10L);
         selectedReminderMinutes.add(30L);
         updateReminderDisplay();
+        updateRepeatSummary();
 
         // 🔍 DEBUG: Check notification permissions & settings
         debugNotificationSetup();
@@ -171,6 +180,8 @@ public class CreateEventActivity extends AppCompatActivity {
         tvCalendarValue = findViewById(R.id.tvCalendarValue);
         tvAlertValue = findViewById(R.id.tvAlertValue);
         layoutCalendarSelector = findViewById(R.id.layoutCalendarSelector);
+        layoutRepeatRow = findViewById(R.id.layoutRepeatRow);
+        tvRepeatValue = findViewById(R.id.tvRepeatValue);
     }
 
     /**
@@ -239,6 +250,7 @@ public class CreateEventActivity extends AppCompatActivity {
                         updateEndDateButton();
                         updateEndTimeButton();
                         updateCalendarLabel();
+                        applyRecurrenceFromEvent(event);
                     })
                     .addOnFailureListener(e -> Log.w(TAG, "Cannot load event detail for edit: " + e.getMessage()));
         }
@@ -343,6 +355,9 @@ public class CreateEventActivity extends AppCompatActivity {
         }
         if (layoutCalendarSelector != null) {
             layoutCalendarSelector.setOnClickListener(v -> showCalendarLabelPicker());
+        }
+        if (layoutRepeatRow != null) {
+            layoutRepeatRow.setOnClickListener(v -> showRepeatPicker());
         }
         // 🔔 ADD REMINDER PICKER LISTENER
         if (tvAlertValue != null) {
@@ -580,7 +595,7 @@ public class CreateEventActivity extends AppCompatActivity {
             startTime = System.currentTimeMillis();
         }
 
-        if (endTime <= startTime) {
+        if (endTime < startTime) {
             endTime = startTime + AUTO_FIX_END_DURATION_MS;
         }
     }
@@ -764,6 +779,59 @@ public class CreateEventActivity extends AppCompatActivity {
         Log.d(TAG, "📌 Reminders: " + text);
     }
 
+    private void showRepeatPicker() {
+        String[] options = new String[]{"Hàng ngày", "Hàng tuần", "Hàng tháng", "Hàng năm", "Tùy chỉnh"};
+        new AlertDialog.Builder(this)
+                .setTitle("Lặp lại")
+                .setItems(options, (dialog, which) -> {
+                    if (which == 4) {
+                        showRecurrenceSheet();
+                        return;
+                    }
+                    applyQuickRecurrence(which);
+                })
+                .show();
+    }
+
+    private void showRecurrenceSheet() {
+        RecurrenceRuleBottomSheet sheet = RecurrenceRuleBottomSheet.newInstance(recurrenceConfig, startTime);
+        sheet.setOnConfirmedListener(config -> {
+            recurrenceConfig = config;
+            updateRepeatSummary();
+        });
+        sheet.show(getSupportFragmentManager(), "recurrence_rule");
+    }
+
+    private void applyQuickRecurrence(int index) {
+        RecurrenceConfig config = new RecurrenceConfig();
+        config.enabled = true;
+        config.interval = 1;
+        config.endType = RecurrenceConfig.EndType.NEVER;
+        config.exceptions = new ArrayList<>();
+
+        if (index == 0) {
+            config.frequency = RecurrenceUtils.FREQ_DAILY;
+        } else if (index == 1) {
+            config.frequency = RecurrenceUtils.FREQ_WEEKLY;
+        } else if (index == 2) {
+            config.frequency = RecurrenceUtils.FREQ_MONTHLY;
+        } else {
+            config.frequency = RecurrenceUtils.FREQ_YEARLY;
+        }
+
+        config.applyStartDefaults(startTime);
+        recurrenceConfig = config;
+        updateRepeatSummary();
+    }
+
+    private void updateRepeatSummary() {
+        if (tvRepeatValue == null) {
+            return;
+        }
+        String summary = RecurrenceTextFormatter.formatSummary(recurrenceConfig, startTime, false);
+        tvRepeatValue.setText(summary);
+    }
+
     /**
      * Lưu sự kiện
      */
@@ -780,7 +848,7 @@ public class CreateEventActivity extends AppCompatActivity {
 
         ensureValidTimeRange();
 
-        if (startTime >= endTime) {
+        if (startTime > endTime) {
             return;
         }
 
@@ -882,6 +950,7 @@ public class CreateEventActivity extends AppCompatActivity {
         newEvent.setAllDay(isAllDay);
         newEvent.setStartTime(new Timestamp(new Date(startTime)));
         newEvent.setEndTime(new Timestamp(new Date(endTime)));
+        applyRecurrenceToEvent(newEvent);
 
         String userId = firebaseInitializer.getCurrentUserId();
         if (userId != null) {
@@ -955,6 +1024,7 @@ public class CreateEventActivity extends AppCompatActivity {
         target.setAllDay(isAllDay);
         target.setStartTime(new Timestamp(new Date(startTime)));
         target.setEndTime(new Timestamp(new Date(endTime)));
+        applyRecurrenceToEvent(target);
 
         // Cập nhật lại list Reminder
         List<Event.EventReminder> reminders = new ArrayList<>();
@@ -973,6 +1043,42 @@ public class CreateEventActivity extends AppCompatActivity {
 
         Toast.makeText(this, "✅ Event updated!", Toast.LENGTH_SHORT).show();
         finish();
+    }
+
+    private void applyRecurrenceToEvent(Event event) {
+        if (event == null) {
+            return;
+        }
+        if (recurrenceConfig != null && recurrenceConfig.enabled) {
+            recurrenceConfig.applyStartDefaults(startTime);
+            String rule = recurrenceConfig.toRRuleString();
+            event.setRecurrenceRule(rule != null && !rule.isEmpty() ? rule : null);
+            List<String> exceptions = new ArrayList<>();
+            if (recurrenceConfig.exceptions != null) {
+                exceptions.addAll(recurrenceConfig.exceptions);
+            }
+            event.setRecurrenceExceptions(exceptions);
+        } else {
+            event.setRecurrenceRule(null);
+            event.setRecurrenceExceptions(new ArrayList<>());
+        }
+    }
+
+    private void applyRecurrenceFromEvent(Event event) {
+        if (event == null) {
+            return;
+        }
+        String rule = event.getRecurrenceRule();
+        if (rule != null && !rule.trim().isEmpty()) {
+            recurrenceConfig = RecurrenceConfig.fromRRule(rule);
+            recurrenceConfig.enabled = true;
+        } else {
+            recurrenceConfig = RecurrenceConfig.disabled();
+        }
+        if (event.getRecurrenceExceptions() != null) {
+            recurrenceConfig.exceptions = new ArrayList<>(event.getRecurrenceExceptions());
+        }
+        updateRepeatSummary();
     }
 
     // 🔥 ĐÃ SỬA: Xóa Offline Fire-and-Forget
