@@ -42,6 +42,8 @@ import com.timed.adapters.ColorPickerAdapter;
 import com.timed.adapters.EventAdapter;
 import com.timed.adapters.HorizontalCalendarAdapter;
 import com.timed.adapters.WeekEventAdapter;
+import com.timed.managers.CalendarDialogManager;
+import com.timed.managers.EventSyncManager;
 import com.timed.models.CalendarDay;
 import com.timed.models.CalendarModel;
 
@@ -74,6 +76,7 @@ import com.timed.dialogs.InvitationsDialog;
 import com.timed.dialogs.ShareCalendarDialog;
 import com.google.firebase.auth.FirebaseAuth;
 import com.bumptech.glide.Glide;
+import com.timed.utils.TimelineRenderer;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -96,6 +99,8 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
     private static final int MENU_ID_ADD_CALENDAR = 0x70001;
     private RecyclerView rvCalendar;
     private RecyclerView rvHorizontalCalendar;
+
+    private EventSyncManager eventSyncManager;
 
     private LocalDate selectedDate;
     private LocalDate startDate3Days;
@@ -159,6 +164,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         invitationManager = InvitationManager.getInstance(this);
         invitationService = new InvitationService(this);
         firebaseAuth = FirebaseAuth.getInstance();
+        eventSyncManager = new EventSyncManager(this);
         
         // Tải số lượng lời mời khi app mở
         loadInvitationCount();
@@ -426,11 +432,6 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         }
     }
 
-    private int dpToPx(int dp) {
-        float density = getResources().getDisplayMetrics().density;
-        return Math.round((float) dp * density);
-    }
-
     private void setupHorizontalCalendar() {
         if (rvHorizontalCalendar.getLayoutManager() == null) {
             rvHorizontalCalendar.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
@@ -469,7 +470,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
 
         timelineContainer.removeAllViews();
         int hourHeightDp = 80;
-        int hourHeightPx = dpToPx(hourHeightDp);
+        int hourHeightPx = TimelineRenderer.dpToPx(this, hourHeightDp);
         timelineContainer.setMinimumHeight(hourHeightPx * 24);
 
         for (int i = 0; i < 24; i++) {
@@ -481,16 +482,16 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             tvTime.setTypeface(null, android.graphics.Typeface.BOLD);
 
             android.widget.RelativeLayout.LayoutParams timeParams = new android.widget.RelativeLayout.LayoutParams(
-                    dpToPx(56), android.widget.RelativeLayout.LayoutParams.WRAP_CONTENT);
+                    TimelineRenderer.dpToPx(this, 56), android.widget.RelativeLayout.LayoutParams.WRAP_CONTENT);
             timeParams.topMargin = i * hourHeightPx;
             timelineContainer.addView(tvTime, timeParams);
 
             View line = new View(this);
             line.setBackgroundColor(android.graphics.Color.parseColor("#1A741CE9"));
             android.widget.RelativeLayout.LayoutParams lineParams = new android.widget.RelativeLayout.LayoutParams(
-                    android.widget.RelativeLayout.LayoutParams.MATCH_PARENT, dpToPx(1));
+                    android.widget.RelativeLayout.LayoutParams.MATCH_PARENT, TimelineRenderer.dpToPx(this, 1));
             lineParams.addRule(android.widget.RelativeLayout.RIGHT_OF, tvTime.getId());
-            lineParams.topMargin = i * hourHeightPx + dpToPx(8);
+            lineParams.topMargin = i * hourHeightPx + TimelineRenderer.dpToPx(this, 8);
             timelineContainer.addView(line, lineParams);
         }
 
@@ -509,52 +510,16 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             String details = buildEventDetails(event);
             int bgRes = pickEventBackground(colorIndex++);
             Integer eventTint = resolveEventTintColor(event);
-            boolean useDarkText = eventTint != null && !isDarkColor(eventTint);
+            boolean useDarkText = eventTint != null && !TimelineRenderer.isDarkColor(eventTint);
             String titleColor = useDarkText ? "#334155" : "#FFFFFF";
             String detailsColor = useDarkText ? "#64748b" : "#E6FFFFFF";
 
-            addEventCardToTimeline(timelineContainer, hourHeightPx, title, details, parts.startHour,
+            TimelineRenderer.addEventCardToTimeline(this, timelineContainer, hourHeightPx, title, details, parts.startHour,
                     parts.startMinute, parts.durationMinutes, bgRes, titleColor, detailsColor, eventTint);
         }
     }
 
-    private void addEventCardToTimeline(android.widget.RelativeLayout container, int hourHeightPx, String title,
-            String details, int startHour, int startMinute, int durationMinutes, int backgroundResId,
-            String titleColorHex, String detailsColorHex, Integer tintColor) {
-        android.widget.LinearLayout card = new android.widget.LinearLayout(this);
-        card.setOrientation(android.widget.LinearLayout.VERTICAL);
-        card.setBackgroundResource(backgroundResId);
-        if (tintColor != null && card.getBackground() != null) {
-            card.getBackground().mutate().setTint(tintColor);
-        }
-        card.setPadding(dpToPx(12), dpToPx(12), dpToPx(12), dpToPx(12));
-        card.setElevation(dpToPx(4));
 
-        TextView tvTitle = new TextView(this);
-        tvTitle.setText(title);
-        tvTitle.setTextColor(android.graphics.Color.parseColor(titleColorHex));
-        tvTitle.setTextSize(14f);
-        tvTitle.setTypeface(null, android.graphics.Typeface.BOLD);
-        card.addView(tvTitle);
-
-        TextView tvDetails = new TextView(this);
-        tvDetails.setText(details);
-        tvDetails.setTextColor(android.graphics.Color.parseColor(detailsColorHex));
-        tvDetails.setTextSize(12f);
-        tvDetails.setPadding(0, dpToPx(4), 0, 0);
-        card.addView(tvDetails);
-
-        int topMargin = (startHour * hourHeightPx) + (startMinute * hourHeightPx / 60);
-        int cardHeight = (durationMinutes * hourHeightPx / 60);
-
-        android.widget.RelativeLayout.LayoutParams params = new android.widget.RelativeLayout.LayoutParams(
-                android.widget.RelativeLayout.LayoutParams.MATCH_PARENT, cardHeight);
-        params.topMargin = topMargin;
-        params.leftMargin = dpToPx(60);
-        params.rightMargin = dpToPx(16);
-
-        container.addView(card, params);
-    }
 
     private void setup3DaysView() {
         DateTimeFormatter dowFormatter = DateTimeFormatter.ofPattern("EEE", Locale.ENGLISH);
@@ -594,10 +559,10 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
 
         container.post(() -> {
             container.removeAllViews();
-            int hourHeightPx = dpToPx(80);
+            int hourHeightPx = TimelineRenderer.dpToPx(this, 80);
             container.setMinimumHeight(hourHeightPx * 24);
 
-            int timeColumnWidth = dpToPx(50);
+            int timeColumnWidth = TimelineRenderer.dpToPx(this, 50);
             int totalGridWidth = container.getWidth() - timeColumnWidth;
             int colWidth = totalGridWidth / 3;
 
@@ -611,15 +576,15 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
 
                 android.widget.RelativeLayout.LayoutParams timeParams = new android.widget.RelativeLayout.LayoutParams(
                         timeColumnWidth, android.widget.RelativeLayout.LayoutParams.WRAP_CONTENT);
-                timeParams.topMargin = i * hourHeightPx + dpToPx(8);
+                timeParams.topMargin = i * hourHeightPx + TimelineRenderer.dpToPx(this, 8);
                 container.addView(tvTime, timeParams);
 
                 View line = new View(this);
                 line.setBackgroundColor(android.graphics.Color.parseColor("#0D741CE9"));
                 android.widget.RelativeLayout.LayoutParams lineParams = new android.widget.RelativeLayout.LayoutParams(
-                        android.widget.RelativeLayout.LayoutParams.MATCH_PARENT, dpToPx(1));
+                        android.widget.RelativeLayout.LayoutParams.MATCH_PARENT, TimelineRenderer.dpToPx(this, 1));
                 lineParams.leftMargin = timeColumnWidth;
-                lineParams.topMargin = i * hourHeightPx + dpToPx(16);
+                lineParams.topMargin = i * hourHeightPx + TimelineRenderer.dpToPx(this, 16);
                 container.addView(line, lineParams);
             }
 
@@ -627,7 +592,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                 View verticalLine = new View(this);
                 verticalLine.setBackgroundColor(android.graphics.Color.parseColor("#0D741CE9"));
                 android.widget.RelativeLayout.LayoutParams vParams = new android.widget.RelativeLayout.LayoutParams(
-                        dpToPx(1), android.widget.RelativeLayout.LayoutParams.MATCH_PARENT);
+                        TimelineRenderer.dpToPx(this, 1), android.widget.RelativeLayout.LayoutParams.MATCH_PARENT);
                 vParams.leftMargin = timeColumnWidth + (i * colWidth);
                 container.addView(verticalLine, vParams);
             }
@@ -654,54 +619,16 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
 
                 int bgRes = pickEventBackground(colorIndex++);
                 Integer eventTint = resolveEventTintColor(event);
-                boolean useDarkText = eventTint != null && !isDarkColor(eventTint);
+                boolean useDarkText = eventTint != null && !TimelineRenderer.isDarkColor(eventTint);
                 String titleColor = useDarkText ? "#334155" : "#FFFFFF";
                 String detailColor = useDarkText ? "#64748b" : "#E6FFFFFF";
 
-                addEventTo3Days(container, hourHeightPx, timeColumnWidth, colWidth, dayIndex,
+                TimelineRenderer.addEventTo3Days(this, container, hourHeightPx, timeColumnWidth, colWidth, dayIndex,
                         event.getTitle() != null ? event.getTitle() : "(Untitled)",
                         buildEventLocation(event), parts.startHour, parts.startMinute,
                     parts.durationMinutes, bgRes, titleColor, detailColor, eventTint);
             }
         });
-    }
-
-    private void addEventTo3Days(android.widget.RelativeLayout container, int hourHeightPx, int timeOffset,
-            int colWidth, int dayIndex, String title, String details, int startHour, int startMinute, int durationMins,
-            int bgRes, String titleHex, String detailHex, Integer tintColor) {
-        android.widget.LinearLayout card = new android.widget.LinearLayout(this);
-        card.setOrientation(android.widget.LinearLayout.VERTICAL);
-        card.setBackgroundResource(bgRes);
-        if (tintColor != null && card.getBackground() != null) {
-            card.getBackground().mutate().setTint(tintColor);
-        }
-        card.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8));
-        card.setElevation(dpToPx(2));
-
-        TextView tvTitle = new TextView(this);
-        tvTitle.setText(title);
-        tvTitle.setTextColor(android.graphics.Color.parseColor(titleHex));
-        tvTitle.setTextSize(11f);
-        tvTitle.setTypeface(null, android.graphics.Typeface.BOLD);
-        card.addView(tvTitle);
-
-        if (!details.isEmpty()) {
-            TextView tvDetails = new TextView(this);
-            tvDetails.setText(details);
-            tvDetails.setTextColor(android.graphics.Color.parseColor(detailHex));
-            tvDetails.setTextSize(9f);
-            card.addView(tvDetails);
-        }
-
-        int topMargin = (startHour * hourHeightPx) + (startMinute * hourHeightPx / 60) + dpToPx(16);
-        int cardHeight = (durationMins * hourHeightPx / 60);
-
-        android.widget.RelativeLayout.LayoutParams params = new android.widget.RelativeLayout.LayoutParams(
-                colWidth - dpToPx(4), cardHeight);
-        params.topMargin = topMargin;
-        params.leftMargin = timeOffset + (dayIndex * colWidth) + dpToPx(2);
-
-        container.addView(card, params);
     }
 
     private void setupWeekView() {
@@ -727,7 +654,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                 dayCol.setGravity(android.view.Gravity.CENTER);
                 dayCol.setLayoutParams(new android.widget.LinearLayout.LayoutParams(0,
                         android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-                dayCol.setPadding(0, dpToPx(8), 0, dpToPx(8));
+                dayCol.setPadding(0, TimelineRenderer.dpToPx(this, 8), 0, TimelineRenderer.dpToPx(this, 8));
 
                 TextView tvDow = new TextView(this);
                 tvDow.setText(day.format(dowFormatter).toUpperCase().substring(0, 1));
@@ -762,10 +689,10 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
 
         container.post(() -> {
             container.removeAllViews();
-            int hourHeightPx = dpToPx(60);
+            int hourHeightPx = TimelineRenderer.dpToPx(this, 60);
             container.setMinimumHeight(hourHeightPx * 24);
 
-            int timeColumnWidth = dpToPx(40);
+            int timeColumnWidth = TimelineRenderer.dpToPx(this, 40);
             int totalGridWidth = container.getWidth() - timeColumnWidth;
             int colWidth = totalGridWidth / 7;
 
@@ -779,15 +706,15 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
 
                 android.widget.RelativeLayout.LayoutParams timeParams = new android.widget.RelativeLayout.LayoutParams(
                         timeColumnWidth, android.widget.RelativeLayout.LayoutParams.WRAP_CONTENT);
-                timeParams.topMargin = i * hourHeightPx + dpToPx(4);
+                timeParams.topMargin = i * hourHeightPx + TimelineRenderer.dpToPx(this, 4);
                 container.addView(tvTime, timeParams);
 
                 View line = new View(this);
                 line.setBackgroundColor(android.graphics.Color.parseColor("#0D741CE9"));
                 android.widget.RelativeLayout.LayoutParams lineParams = new android.widget.RelativeLayout.LayoutParams(
-                        android.widget.RelativeLayout.LayoutParams.MATCH_PARENT, dpToPx(1));
+                        android.widget.RelativeLayout.LayoutParams.MATCH_PARENT, TimelineRenderer.dpToPx(this, 1));
                 lineParams.leftMargin = timeColumnWidth;
-                lineParams.topMargin = i * hourHeightPx + dpToPx(10);
+                lineParams.topMargin = i * hourHeightPx + TimelineRenderer.dpToPx(this, 10);
                 container.addView(line, lineParams);
             }
 
@@ -795,7 +722,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                 View verticalLine = new View(this);
                 verticalLine.setBackgroundColor(android.graphics.Color.parseColor("#0D741CE9"));
                 android.widget.RelativeLayout.LayoutParams vParams = new android.widget.RelativeLayout.LayoutParams(
-                        dpToPx(1), android.widget.RelativeLayout.LayoutParams.MATCH_PARENT);
+                        TimelineRenderer.dpToPx(this, 1), android.widget.RelativeLayout.LayoutParams.MATCH_PARENT);
                 vParams.leftMargin = timeColumnWidth + (i * colWidth);
                 container.addView(verticalLine, vParams);
             }
@@ -823,41 +750,10 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
                 int bgRes = pickEventBackground(colorIndex++);
                 String title = event.getTitle() != null ? event.getTitle() : "(Untitled)";
                 Integer eventTint = resolveEventTintColor(event);
-                addEventToWeekGrid(container, hourHeightPx, timeColumnWidth, colWidth, dayIndex,
+                TimelineRenderer.addEventToWeekGrid(this, container, hourHeightPx, timeColumnWidth, colWidth, dayIndex,
                         title, parts.startHour, parts.startMinute, parts.durationMinutes, bgRes, eventTint);
             }
         });
-    }
-
-    private void addEventToWeekGrid(android.widget.RelativeLayout container, int hourHeightPx, int timeOffset,
-            int colWidth, int dayIndex, String shortTitle, int startHour, int startMinute, int durationMins,
-            int bgRes, Integer tintColor) {
-        android.widget.TextView card = new android.widget.TextView(this);
-        card.setBackgroundResource(bgRes);
-        if (tintColor != null && card.getBackground() != null) {
-            card.getBackground().mutate().setTint(tintColor);
-        }
-        card.setText(shortTitle);
-        if (tintColor != null && !isDarkColor(tintColor)) {
-            card.setTextColor(android.graphics.Color.parseColor("#334155"));
-        } else {
-            card.setTextColor(android.graphics.Color.WHITE);
-        }
-        card.setTextSize(9f);
-        card.setTypeface(null, android.graphics.Typeface.BOLD);
-        card.setPadding(dpToPx(4), dpToPx(4), dpToPx(2), dpToPx(2));
-        card.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        card.setMaxLines(2);
-
-        int topMargin = (startHour * hourHeightPx) + (startMinute * hourHeightPx / 60) + dpToPx(10);
-        int cardHeight = (durationMins * hourHeightPx / 60);
-
-        android.widget.RelativeLayout.LayoutParams params = new android.widget.RelativeLayout.LayoutParams(
-                colWidth - dpToPx(2), cardHeight);
-        params.topMargin = topMargin;
-        params.leftMargin = timeOffset + (dayIndex * colWidth) + dpToPx(1);
-
-        container.addView(card, params);
     }
 
     private void setMonthView() {
@@ -877,7 +773,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         LocalDate startOfMonth = month.withDayOfMonth(1);
         LocalDate endOfMonth = month.withDayOfMonth(month.lengthOfMonth());
 
-        fetchEventsForCalendars(startOfMonth, endOfMonth, calendarIds, events -> {
+        eventSyncManager.fetchEventsForCalendars(startOfMonth, endOfMonth, calendarIds, events -> {
             Map<LocalDate, Integer> counts = new HashMap<>();
             for (Event event : events) {
                 if (event == null || event.getStartTime() == null) {
@@ -916,29 +812,6 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             return false;
         });
         menu.show();
-    }
-
-    private void showChangeAvatarDialog() {
-        EditText input = new EditText(this);
-        input.setHint("https://...");
-        User currentUser = UserManager.getInstance().getCurrentUser();
-        if (currentUser != null && currentUser.getAvatar() != null) {
-            input.setText(currentUser.getAvatar());
-        }
-
-        new AlertDialog.Builder(this)
-                .setTitle("Update avatar")
-                .setView(input)
-                .setPositiveButton("Save", (dialog, which) -> {
-                    String url = input.getText() != null ? input.getText().toString().trim() : "";
-                    if (!isValidAvatarUrl(url)) {
-                        Toast.makeText(this, "Invalid image URL", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    updateAvatarUrl(url);
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
     }
 
     private void updateAvatarUrl(String url) {
@@ -1008,15 +881,6 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
 
     private boolean isValidAvatarUrl(String url) {
         return url != null && !url.isEmpty() && Patterns.WEB_URL.matcher(url).matches();
-    }
-
-    private void showSignOutDialog() {
-        new AlertDialog.Builder(this)
-                .setTitle("Sign out")
-                .setMessage("Do you want to sign out?")
-                .setPositiveButton("Sign out", (dialog, which) -> handleSignOut())
-                .setNegativeButton("Cancel", null)
-                .show();
     }
 
     private void handleSignOut() {
@@ -1149,7 +1013,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             ensureDefaultCalendarReady(() -> updateEventsForDate(date));
             return;
         }
-        fetchEventsForCalendars(date, date, calendarIds, events -> {
+        eventSyncManager.fetchEventsForCalendars(date, date, calendarIds, events -> {
             currentEvents.clear();
             currentEvents.addAll(events);
             eventAdapter.notifyDataSetChanged();
@@ -1617,51 +1481,14 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
     }
 
     private void showCreateCalendarDialog() {
-        LinearLayout container = new LinearLayout(this);
-        container.setOrientation(LinearLayout.VERTICAL);
-        int padding = dpToPx(20);
-        container.setPadding(padding, dpToPx(8), padding, 0);
-
-        EditText nameInput = new EditText(this);
-        nameInput.setHint("Calendar name");
-        nameInput.setSingleLine(true);
-        container.addView(nameInput);
-
-        EditText descriptionInput = new EditText(this);
-        descriptionInput.setHint("Description (optional)");
-        descriptionInput.setMinLines(2);
-        descriptionInput.setMaxLines(3);
-        container.addView(descriptionInput);
-
-        AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Create Calendar")
-                .setView(container)
-                .setPositiveButton("Next", null)
-                .setNegativeButton("Cancel", null)
-                .create();
-
-        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-            String name = nameInput.getText() != null ? nameInput.getText().toString().trim() : "";
-            String description = descriptionInput.getText() != null
-                    ? descriptionInput.getText().toString().trim()
-                    : "";
-
-            if (name.isEmpty()) {
-                nameInput.setError("Calendar name is required");
-                nameInput.requestFocus();
-                return;
-            }
+        CalendarDialogManager.showCreateCalendarDialog(this, (name, description) -> {
             if (isDuplicateCalendarName(name)) {
-                nameInput.setError("Calendar name already exists");
-                nameInput.requestFocus();
+                Toast.makeText(this, "Calendar name already exists", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            dialog.dismiss();
             showColorPickerForNewCalendar(name, description);
-        }));
-
-        dialog.show();
+        });
     }
 
     private void showColorPickerForNewCalendar(String name, String description) {
@@ -1848,80 +1675,13 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         dialog.show();
     }
 
-    private void fetchEventsForCalendars(LocalDate startDate, LocalDate endDate, List<String> calendarIds,
-            EventsLoadCallback callback) {
-        if (calendarIds == null || calendarIds.isEmpty()) {
-            callback.onLoaded(new ArrayList<>());
-            return;
-        }
-        List<Event> merged = new ArrayList<>();
-        fetchEventsForCalendarsSequential(startDate, endDate, calendarIds, 0, merged, callback);
-    }
-
-    private void fetchEventsForCalendarsSequential(LocalDate startDate, LocalDate endDate, List<String> calendarIds,
-            int index, List<Event> merged, EventsLoadCallback callback) {
-        if (index >= calendarIds.size()) {
-            callback.onLoaded(sortEvents(merged));
-            return;
-        }
-
-        String calendarId = calendarIds.get(index);
-        fetchEventsForRange(startDate, endDate, calendarId, events -> {
-            mergeEvents(merged, events);
-            fetchEventsForCalendarsSequential(startDate, endDate, calendarIds, index + 1, merged, callback);
-        });
-    }
-
-    private void mergeEvents(List<Event> target, List<Event> incoming) {
-        if (incoming == null || incoming.isEmpty()) {
-            return;
-        }
-
-        Map<String, Event> map = new HashMap<>();
-        for (Event event : target) {
-            if (event != null && event.getId() != null) {
-                map.put(event.getId(), event);
-            }
-        }
-
-        for (Event event : incoming) {
-            if (event == null) {
-                continue;
-            }
-            String id = event.getId();
-            if (id == null || !map.containsKey(id)) {
-                target.add(event);
-                if (id != null) {
-                    map.put(id, event);
-                }
-            }
-        }
-    }
-
-    private List<Event> sortEvents(List<Event> events) {
-        if (events == null || events.size() <= 1) {
-            return events == null ? new ArrayList<>() : events;
-        }
-
-        Collections.sort(events, (a, b) -> {
-            if (a == null || a.getStartTime() == null) {
-                return -1;
-            }
-            if (b == null || b.getStartTime() == null) {
-                return 1;
-            }
-            return a.getStartTime().toDate().compareTo(b.getStartTime().toDate());
-        });
-        return events;
-    }
-
     private void loadDayEvents(LocalDate date) {
         List<String> calendarIds = getVisibleCalendarIds();
         if (calendarIds.isEmpty()) {
             ensureDefaultCalendarReady(() -> loadDayEvents(date));
             return;
         }
-        fetchEventsForCalendars(date, date, calendarIds, events -> renderDayViewTimeline(date, events));
+        eventSyncManager.fetchEventsForCalendars(date, date, calendarIds, events -> renderDayViewTimeline(date, events));
     }
 
     private void loadThreeDaysEvents(LocalDate startDate) {
@@ -1930,7 +1690,7 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             ensureDefaultCalendarReady(() -> loadThreeDaysEvents(startDate));
             return;
         }
-        fetchEventsForCalendars(startDate, startDate.plusDays(2), calendarIds,
+        eventSyncManager.fetchEventsForCalendars(startDate, startDate.plusDays(2), calendarIds,
                 events -> render3DaysTimeline(startDate, events));
     }
 
@@ -1940,34 +1700,8 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             ensureDefaultCalendarReady(() -> loadWeekEvents(startOfWeek));
             return;
         }
-        fetchEventsForCalendars(startOfWeek, startOfWeek.plusDays(6), calendarIds,
+        eventSyncManager.fetchEventsForCalendars(startOfWeek, startOfWeek.plusDays(6), calendarIds,
                 events -> renderWeekGridTimeline(startOfWeek, events));
-    }
-
-    private void fetchEventsForRange(LocalDate startDate, LocalDate endDate, String calendarId,
-            EventsLoadCallback callback) {
-        if (eventsManager == null) {
-            callback.onLoaded(new ArrayList<>());
-            return;
-        }
-
-        java.time.ZoneId userZone = TimezoneHelper.getSelectedZoneId(this);
-        Timestamp startTimestamp = toTimestamp(
-                startDate.atStartOfDay(userZone).toInstant().toEpochMilli());
-        long endMillis = endDate.plusDays(1).atStartOfDay(userZone).toInstant().toEpochMilli()
-                - 1;
-        Timestamp endTimestamp = toTimestamp(endMillis);
-
-        eventsManager.getEventsByDateRange(calendarId, startTimestamp, endTimestamp)
-                .addOnSuccessListener(callback::onLoaded)
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "Error loading events: " + e.getMessage(), e);
-                    callback.onLoaded(new ArrayList<>());
-                });
-    }
-
-    private Timestamp toTimestamp(long millis) {
-        return new Timestamp(new Date(millis));
     }
 
     private LocalDate toLocalDate(Timestamp timestamp) {
@@ -2052,13 +1786,6 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
         }
     }
 
-    private boolean isDarkColor(int color) {
-        double darkness = 1 - (0.299 * android.graphics.Color.red(color)
-                + 0.587 * android.graphics.Color.green(color)
-                + 0.114 * android.graphics.Color.blue(color)) / 255;
-        return darkness >= 0.5;
-    }
-
     private int pickEventBackground(int index) {
         int mod = index % 3;
         if (mod == 1) {
@@ -2068,10 +1795,6 @@ public class MainActivity extends AppCompatActivity implements CalendarAdapter.O
             return R.drawable.bg_day_event_light;
         }
         return R.drawable.bg_day_event_primary;
-    }
-
-    private interface EventsLoadCallback {
-        void onLoaded(List<Event> events);
     }
 
     private static class EventTimeParts {
