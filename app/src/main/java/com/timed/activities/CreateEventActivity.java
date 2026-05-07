@@ -15,6 +15,10 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.ArrayAdapter;
+import android.widget.ProgressBar;
+import android.widget.Spinner;
+import android.widget.AdapterView;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -32,11 +36,15 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.timed.managers.EventsManager;
 import com.timed.managers.UserManager;
 import com.timed.models.CalendarModel;
+import com.timed.models.CreateMeetingRoomRequest;
+import com.timed.models.CreateMeetingRoomResponse;
 import com.timed.models.Event;
 import com.timed.models.User;
 import com.timed.repositories.UserRepository;
 import com.timed.services.EventNotificationReceiver;
 import com.timed.repositories.EventsRepository;
+import com.timed.services.MeetingRoomAPI;
+import com.timed.services.RetrofitClient;
 import com.timed.utils.CalendarIntegrationService;
 import com.timed.utils.FirebaseInitializer;
 import com.timed.dialogs.ReminderPickerDialog;
@@ -56,6 +64,21 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignInClient;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.common.api.ApiException;
+import com.google.android.gms.common.api.Scope;
+import com.google.android.gms.tasks.Task;
+import com.timed.models.AuthCodeRequest;
+import com.timed.models.AuthResponse;
+
 import android.Manifest;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -87,6 +110,7 @@ public class CreateEventActivity extends AppCompatActivity {
     private FirebaseInitializer firebaseInitializer;
     private CalendarIntegrationService calendarIntegrationService;
     private ActivityResultLauncher<Intent> conflictResolverLauncher;
+    private ActivityResultLauncher<Intent> googleCalendarAuthLauncher;
     private EventsRepository eventsRepository;
     private String mode = "create";
     private String eventId;
@@ -101,6 +125,14 @@ public class CreateEventActivity extends AppCompatActivity {
     private List<Long> selectedReminderMinutes = new ArrayList<>();
 
     private RecurrenceConfig recurrenceConfig = RecurrenceConfig.disabled();
+
+    // 📞 MEETING ROOM: UI elements and meeting room type
+    private Spinner spinnerMeetingType;
+    private ProgressBar progressBarMeetingCreation;
+    private TextView tvMeetingRoomStatus;
+    private String selectedMeetingType = "NONE"; // NONE, GOOGLE_MEET, ZOOM_MEETING
+    private static final String[] MEETING_TYPES = {"No Meeting", "Google Meet", "Zoom Meeting"};
+    private static final String[] MEETING_TYPE_VALUES = {"NONE", "GOOGLE_MEET", "ZOOM_MEETING"};
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -157,6 +189,29 @@ public class CreateEventActivity extends AppCompatActivity {
                 }
         );
 
+        googleCalendarAuthLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == RESULT_OK) {
+                        Intent data = result.getData();
+                        Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
+                        try {
+                            GoogleSignInAccount account = task.getResult(ApiException.class);
+                            String authCode = account.getServerAuthCode();
+                            if (authCode != null) {
+                                exchangeAuthCodeForToken(authCode);
+                            }
+                        } catch (ApiException e) {
+                            Log.w(TAG, "Google sign in failed", e);
+                            Toast.makeText(this, "Google Sign In failed", Toast.LENGTH_SHORT).show();
+                            spinnerMeetingType.setSelection(0); // reset
+                        }
+                    } else {
+                        spinnerMeetingType.setSelection(0); // reset
+                    }
+                }
+        );
+
         configureModeUI();
         loadCalendars();
     }
@@ -182,6 +237,37 @@ public class CreateEventActivity extends AppCompatActivity {
         layoutCalendarSelector = findViewById(R.id.layoutCalendarSelector);
         layoutRepeatRow = findViewById(R.id.layoutRepeatRow);
         tvRepeatValue = findViewById(R.id.tvRepeatValue);
+
+        // Meeting room UI elements
+        spinnerMeetingType = findViewById(R.id.spinnerMeetingType);
+        progressBarMeetingCreation = findViewById(R.id.progressBarMeetingCreation);
+        tvMeetingRoomStatus = findViewById(R.id.tvMeetingRoomStatus);
+        
+        setupMeetingRoomSpinner();
+    }
+
+    private void setupMeetingRoomSpinner() {
+        if (spinnerMeetingType == null) return;
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, MEETING_TYPES);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerMeetingType.setAdapter(adapter);
+
+        spinnerMeetingType.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                selectedMeetingType = MEETING_TYPE_VALUES[position];
+                if ("GOOGLE_MEET".equals(selectedMeetingType) && getStoredRefreshToken() == null) {
+                    requestGoogleCalendarAccess();
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                selectedMeetingType = "NONE";
+            }
+        });
     }
 
     /**
@@ -838,6 +924,17 @@ public class CreateEventActivity extends AppCompatActivity {
     private void saveEvent() {
         String title = etTitle != null ? etTitle.getText().toString().trim() : "";
 
+        // Ensure Google Calendar is linked if Google Meet is selected
+        if ("GOOGLE_MEET".equals(selectedMeetingType) && getStoredRefreshToken() == null) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Google Calendar Required")
+                    .setMessage("You need to link your Google account to create a Google Meet. Would you like to link it now?")
+                    .setPositiveButton("Link Account", (dialog, which) -> requestGoogleCalendarAccess())
+                    .setNegativeButton("Cancel", null)
+                    .show();
+            return;
+        }
+
         if (title.isEmpty()) {
             if (etTitle != null) {
                 etTitle.setError("Vui lòng nhập tiêu đề sự kiện");
@@ -932,10 +1029,9 @@ public class CreateEventActivity extends AppCompatActivity {
     private void saveEventWithCalendar(String title, String description, String location, boolean isAllDay,
             String calendarId) {
 
-        // 1. Khởi tạo và sinh ID tĩnh (Đồng bộ giữa Database và Alarm)
-        String generatedEventId = FirebaseFirestore.getInstance().collection("events").document().getId();
+        final String generatedEventId = FirebaseFirestore.getInstance().collection("events").document().getId();
 
-        Event newEvent = new Event();
+        final Event newEvent = new Event();
         newEvent.setCalendarId(calendarId);
 
         CalendarModel selectedCalendar = calendarsById.get(calendarId);
@@ -953,6 +1049,9 @@ public class CreateEventActivity extends AppCompatActivity {
         applyRecurrenceToEvent(newEvent);
 
         String userId = firebaseInitializer.getCurrentUserId();
+        String userEmail = UserManager.getInstance().getCurrentUser() != null ? UserManager.getInstance().getCurrentUser().getEmail() : "";
+        String userName = UserManager.getInstance().getCurrentUser() != null ? UserManager.getInstance().getCurrentUser().getName() : "";
+        
         if (userId != null) {
             newEvent.setCreatedBy(userId);
             newEvent.getParticipantId().add(userId);
@@ -967,16 +1066,101 @@ public class CreateEventActivity extends AppCompatActivity {
 
         calendarIntegrationService.setCachedDefaultCalendarId(this, calendarId);
 
-        // 2. Ghi trực tiếp xuống Cache của Firestore (Không dùng eventsManager để đảm bảo ID không bị ghi đè)
+        if (!"NONE".equals(selectedMeetingType)) {
+            createMeetingRoom(newEvent, generatedEventId, userId, userEmail, userName, false);
+        } else {
+            finalizeSaveEvent(generatedEventId, newEvent);
+        }
+    }
+
+    private void createMeetingRoom(final Event event, final String eventId, String userId, String userEmail, String userName, final boolean isUpdate) {
+        if (progressBarMeetingCreation != null) progressBarMeetingCreation.setVisibility(View.VISIBLE);
+        if (tvMeetingRoomStatus != null) {
+            tvMeetingRoomStatus.setVisibility(View.VISIBLE);
+            tvMeetingRoomStatus.setText("Creating meeting room...");
+        }
+        if (btnSave != null) btnSave.setEnabled(false);
+
+        CreateMeetingRoomRequest request = new CreateMeetingRoomRequest(
+                eventId,
+                event.getTitle(),
+                event.getDescription(),
+                startTime,
+                endTime,
+                userId,
+                userEmail,
+                userName,
+                selectedMeetingType,
+                getStoredRefreshToken()
+        );
+
+        RetrofitClient.getMeetingRoomAPI().createMeetingRoom(request).enqueue(new Callback<CreateMeetingRoomResponse>() {
+            @Override
+            public void onResponse(Call<CreateMeetingRoomResponse> call, Response<CreateMeetingRoomResponse> response) {
+                if (progressBarMeetingCreation != null) progressBarMeetingCreation.setVisibility(View.GONE);
+                
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    String meetingUrl = response.body().getMeetingUrl();
+                    if (meetingUrl != null && !meetingUrl.isEmpty()) {
+                        String currentDesc = event.getDescription() != null ? event.getDescription() : "";
+                        event.setDescription(currentDesc + "\n\nMeeting Link: " + meetingUrl);
+                        if (tvMeetingRoomStatus != null) tvMeetingRoomStatus.setText("Meeting created!");
+                    }
+                } else {
+                    String errorMsg = "Failed to create meeting room";
+                    if (response.body() != null && response.body().getMessage() != null) {
+                        errorMsg = response.body().getMessage();
+                    }
+                    Toast.makeText(CreateEventActivity.this, errorMsg, Toast.LENGTH_SHORT).show();
+                    if (tvMeetingRoomStatus != null) tvMeetingRoomStatus.setText("Meeting creation failed, saving event anyway.");
+                }
+
+                if (isUpdate) {
+                    finalizeUpdateEvent(eventId, event);
+                } else {
+                    finalizeSaveEvent(eventId, event);
+                }
+            }
+
+            @Override
+            public void onFailure(Call<CreateMeetingRoomResponse> call, Throwable t) {
+                if (progressBarMeetingCreation != null) progressBarMeetingCreation.setVisibility(View.GONE);
+                Toast.makeText(CreateEventActivity.this, "Network error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                if (tvMeetingRoomStatus != null) tvMeetingRoomStatus.setText("Network error, saving event anyway.");
+                
+                if (isUpdate) {
+                    finalizeUpdateEvent(eventId, event);
+                } else {
+                    finalizeSaveEvent(eventId, event);
+                }
+            }
+        });
+    }
+
+    private void finalizeSaveEvent(String generatedEventId, Event newEvent) {
+        // 2. Ghi trực tiếp xuống Cache của Firestore
         FirebaseFirestore.getInstance().collection("events").document(generatedEventId).set(newEvent);
 
         // 3. Đặt báo thức Offline cho từng mốc thời gian nhắc nhở
         for (Long mins : selectedReminderMinutes) {
-            scheduleEventAlarm(generatedEventId, title, startTime, mins.intValue());
+            scheduleEventAlarm(generatedEventId, newEvent.getTitle(), startTime, mins.intValue());
         }
 
         // Tắt màn hình ngay lập tức
         Toast.makeText(this, "✅ Đã lưu sự kiện!", Toast.LENGTH_SHORT).show();
+        finish();
+    }
+
+    private void finalizeUpdateEvent(String eventId, Event target) {
+        // 1. Cập nhật thẳng vào Database
+        FirebaseFirestore.getInstance().collection("events").document(eventId).set(target);
+
+        // 2. Đặt lại báo thức mới nhất
+        for (Long mins : selectedReminderMinutes) {
+            scheduleEventAlarm(eventId, target.getTitle(), startTime, mins.intValue());
+        }
+
+        Toast.makeText(this, "✅ Event updated!", Toast.LENGTH_SHORT).show();
         finish();
     }
 
@@ -1033,16 +1217,15 @@ public class CreateEventActivity extends AppCompatActivity {
         }
         target.setReminders(reminders);
 
-        // 1. Cập nhật thẳng vào Database
-        FirebaseFirestore.getInstance().collection("events").document(eventId).set(target);
+        String userId = firebaseInitializer.getCurrentUserId();
+        String userEmail = UserManager.getInstance().getCurrentUser() != null ? UserManager.getInstance().getCurrentUser().getEmail() : "";
+        String userName = UserManager.getInstance().getCurrentUser() != null ? UserManager.getInstance().getCurrentUser().getName() : "";
 
-        // 2. Đặt lại báo thức mới nhất
-        for (Long mins : selectedReminderMinutes) {
-            scheduleEventAlarm(eventId, title, startTime, mins.intValue());
+        if (!"NONE".equals(selectedMeetingType)) {
+            createMeetingRoom(target, eventId, userId, userEmail, userName, true);
+        } else {
+            finalizeUpdateEvent(eventId, target);
         }
-
-        Toast.makeText(this, "✅ Event updated!", Toast.LENGTH_SHORT).show();
-        finish();
     }
 
     private void applyRecurrenceToEvent(Event event) {
@@ -1185,5 +1368,63 @@ public class CreateEventActivity extends AppCompatActivity {
     private int dpToPx(int dp) {
         float density = getResources().getDisplayMetrics().density;
         return Math.round(dp * density);
+    }
+
+    private String getStoredRefreshToken() {
+        android.content.SharedPreferences prefs = getSharedPreferences("auth_prefs", MODE_PRIVATE);
+        return prefs.getString("user_refresh_token", null);
+    }
+
+    private void requestGoogleCalendarAccess() {
+        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestScopes(new Scope("https://www.googleapis.com/auth/calendar.events"))
+                .requestServerAuthCode(getString(R.string.default_web_client_id), true)
+                .requestEmail()
+                .build();
+        GoogleSignInClient mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
+        
+        // Cần sign out trước để bắt buộc chọn account và lấy refresh token mới
+        mGoogleSignInClient.signOut().addOnCompleteListener(this, task -> {
+            Intent signInIntent = mGoogleSignInClient.getSignInIntent();
+            googleCalendarAuthLauncher.launch(signInIntent);
+        });
+    }
+
+    private void exchangeAuthCodeForToken(String authCode) {
+        if (progressBarMeetingCreation != null) progressBarMeetingCreation.setVisibility(View.VISIBLE);
+        if (tvMeetingRoomStatus != null) {
+            tvMeetingRoomStatus.setVisibility(View.VISIBLE);
+            tvMeetingRoomStatus.setText("Linking Google Calendar...");
+        }
+
+        AuthCodeRequest request = new AuthCodeRequest(authCode);
+        RetrofitClient.getCalendarApiService().exchangeAuthCode(request).enqueue(new Callback<AuthResponse>() {
+            @Override
+            public void onResponse(Call<AuthResponse> call, Response<AuthResponse> response) {
+                if (progressBarMeetingCreation != null) progressBarMeetingCreation.setVisibility(View.GONE);
+                
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    String refreshToken = response.body().getRefreshToken();
+                    if (refreshToken != null) {
+                        getSharedPreferences("auth_prefs", MODE_PRIVATE).edit().putString("user_refresh_token", refreshToken).apply();
+                        Toast.makeText(CreateEventActivity.this, "Google Calendar linked!", Toast.LENGTH_SHORT).show();
+                        if (tvMeetingRoomStatus != null) tvMeetingRoomStatus.setText("Google Calendar ready");
+                    } else {
+                        Toast.makeText(CreateEventActivity.this, "Failed to get refresh token. Revoke access and try again.", Toast.LENGTH_LONG).show();
+                        if (tvMeetingRoomStatus != null) tvMeetingRoomStatus.setText("Failed to get refresh token");
+                    }
+                } else {
+                    Toast.makeText(CreateEventActivity.this, "Failed to link Google Calendar", Toast.LENGTH_SHORT).show();
+                    if (tvMeetingRoomStatus != null) tvMeetingRoomStatus.setText("Failed to link calendar");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<AuthResponse> call, Throwable t) {
+                if (progressBarMeetingCreation != null) progressBarMeetingCreation.setVisibility(View.GONE);
+                Toast.makeText(CreateEventActivity.this, "Network error", Toast.LENGTH_SHORT).show();
+                if (tvMeetingRoomStatus != null) tvMeetingRoomStatus.setText("Network error");
+            }
+        });
     }
 }

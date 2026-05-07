@@ -27,6 +27,9 @@ android {
         val properties =  Properties()
         properties.load(project.rootProject.file("local.properties").inputStream())
         buildConfigField("String", "GEMINI_API_KEY", "\"${properties.getProperty("GEMINI_API_KEY")}\"")
+        buildConfigField("String", "ZOOM_CLIENT_ID", "\"${properties.getProperty("ZOOM_CLIENT_ID")}\"")
+        buildConfigField("String", "ZOOM_CLIENT_SECRET", "\"${properties.getProperty("ZOOM_CLIENT_SECRET")}\"")
+        buildConfigField("String", "BACKEND_URL", "\"${properties.getProperty("BACKEND_URL", "http://localhost:3000/api/")}\"")
     }
 
     buildTypes {
@@ -53,6 +56,12 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:34.11.0"))
     implementation("com.google.firebase:firebase-auth")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    
+    // Retrofit2 for HTTP requests
+    implementation("com.squareup.retrofit2:retrofit:2.10.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.10.0")
+    
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.code.gson:gson:2.10.1")
@@ -71,8 +80,14 @@ dependencies {
     // WorkManager
     implementation("androidx.work:work-runtime:2.8.1")
     
-    // Network connectivity
-    implementation("androidx.work:work-runtime:2.8.1")
+    // ViewModel and LiveData
+    implementation("androidx.lifecycle:lifecycle-viewmodel:2.6.2")
+    implementation("androidx.lifecycle:lifecycle-livedata:2.6.2")
+    implementation("androidx.lifecycle:lifecycle-extensions:2.2.0")
+    
+    // Google Play Services - for Google Sign-In
+    implementation("com.google.android.gms:play-services-auth:21.0.0")
+    implementation("com.google.android.gms:play-services-auth-api-phone:18.0.0")
     
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)

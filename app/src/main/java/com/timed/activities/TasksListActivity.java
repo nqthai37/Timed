@@ -6,7 +6,7 @@ import android.util.Log;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import android.widget.ImageButton;
+import android.view.View;
 import android.widget.Toast;
 
 import com.google.firebase.auth.FirebaseAuth;
@@ -43,8 +43,8 @@ public class TasksListActivity extends AppCompatActivity {
 
     private void initViews() {
         rvTasks = findViewById(R.id.rvTasks);
-        ImageButton btnBack = findViewById(R.id.btnBackTasks);
-        ImageButton btnAddTask = findViewById(R.id.btnAddTask);
+        View btnBack = findViewById(R.id.btnBackTasks);
+        View btnAddTask = findViewById(R.id.btnAddTask);
 
         if (btnBack != null) {
             btnBack.setOnClickListener(v -> finish());
@@ -104,27 +104,11 @@ public class TasksListActivity extends AppCompatActivity {
         tasksManager.getPendingTasks(userId)
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     taskList.clear();
-                    queryDocumentSnapshots.toObjects(Task.class).forEach(task -> {
-                        if (task.getId() == null) {
-                            // Set document ID from snapshot
-                            for (int i = 0; i < queryDocumentSnapshots.getDocuments().size(); i++) {
-                                Task t = queryDocumentSnapshots.getDocuments().get(i).toObject(Task.class);
-                                if (t != null) {
-                                    t.setId(queryDocumentSnapshots.getDocuments().get(i).getId());
-                                    taskList.add(t);
-                                }
-                            }
-                        } else {
-                            taskList.add(task);
-                        }
-                    });
-
-                    // Fix: properly set IDs from snapshots
                     for (int i = 0; i < queryDocumentSnapshots.getDocuments().size(); i++) {
                         Task task = queryDocumentSnapshots.getDocuments().get(i).toObject(Task.class);
                         if (task != null) {
                             task.setId(queryDocumentSnapshots.getDocuments().get(i).getId());
-                            taskList.set(i, task);
+                            taskList.add(task);
                         }
                     }
 
