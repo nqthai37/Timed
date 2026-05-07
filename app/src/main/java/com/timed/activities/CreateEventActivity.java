@@ -428,6 +428,19 @@ public class CreateEventActivity extends AppCompatActivity {
         if (ownerName != null) {
             ownerName = ownerName.trim();
         }
+        if (ownerName == null || ownerName.isEmpty()) {
+            String ownerId = calendar.getOwnerId();
+            if (ownerId != null && !ownerId.isEmpty()) {
+                String currentUserId = UserManager.getInstance().getCurrentUser() != null
+                        ? UserManager.getInstance().getCurrentUser().getUid()
+                        : null;
+                if (currentUserId != null && currentUserId.equals(ownerId)) {
+                    ownerName = "You";
+                } else {
+                    ownerName = "Shared";
+                }
+            }
+        }
         if (ownerName != null && !ownerName.isEmpty()) {
             return name + " - " + ownerName;
         }
