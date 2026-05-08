@@ -12,28 +12,28 @@ public class CreateMeetingRoomResponse {
     @SerializedName("message")
     private String message;
 
-    @SerializedName("event_id")
+    @SerializedName(value = "event_id", alternate = {"eventId"})
     private String eventId;
 
-    @SerializedName("meeting_type")
+    @SerializedName(value = "meeting_type", alternate = {"meetingType"})
     private String meetingType;
 
-    @SerializedName("meeting_url")
+    @SerializedName(value = "meeting_url", alternate = {"meetingUrl", "hangoutLink"})
     private String meetingUrl;
 
-    @SerializedName("meeting_id")
+    @SerializedName(value = "meeting_id", alternate = {"meetingId"})
     private String meetingId;
 
-    @SerializedName("meeting_code")
+    @SerializedName(value = "meeting_code", alternate = {"meetingCode"})
     private String meetingCode;
 
-    @SerializedName("created_at")
+    @SerializedName(value = "created_at", alternate = {"createdAt"})
     private long createdAt;
 
     @SerializedName("error")
     private String error;
 
-    @SerializedName("error_code")
+    @SerializedName(value = "error_code", alternate = {"errorCode"})
     private int errorCode;
 
     public CreateMeetingRoomResponse() {}

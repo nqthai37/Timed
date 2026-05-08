@@ -1149,6 +1149,8 @@ public class CreateEventActivity extends AppCompatActivity {
                     String errorMsg = "Failed to create meeting room";
                     if (response.body() != null && response.body().getMessage() != null) {
                         errorMsg = response.body().getMessage();
+                    } else if (response.body() != null && response.body().getError() != null) {
+                        errorMsg = response.body().getError();
                     }
                     Toast.makeText(CreateEventActivity.this, errorMsg, Toast.LENGTH_SHORT).show();
                     if (tvMeetingRoomStatus != null) tvMeetingRoomStatus.setText("Meeting creation failed, saving event anyway.");

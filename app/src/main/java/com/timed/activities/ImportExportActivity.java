@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.InputType;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -30,6 +31,7 @@ import com.timed.R;
 import com.timed.models.CalendarModel;
 import com.google.firebase.Timestamp;
 import com.timed.managers.EventsManager;
+import com.timed.managers.UserManager;
 import com.timed.models.Event;
 import com.timed.utils.CalendarIntegrationService;
 import com.timed.utils.CalendarPermissionUtils;
@@ -63,6 +65,7 @@ import okhttp3.Response;
 import org.json.JSONObject;
 
 public class ImportExportActivity extends AppCompatActivity {
+    private static final String TAG = "ImportExportActivity";
 
     private final SimpleDateFormat icsDateTimeFormat = new SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'", Locale.US);
     private final SimpleDateFormat icsDateFormat = new SimpleDateFormat("yyyyMMdd", Locale.US);
@@ -80,6 +83,7 @@ public class ImportExportActivity extends AppCompatActivity {
     private final Map<CheckBox, CalendarModel> exportCalendarOptions = new HashMap<>();
 
     private String calendarId;
+    private String importCalendarName;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -216,12 +220,12 @@ public class ImportExportActivity extends AppCompatActivity {
             return;
         }
 
-        ensureCalendarReady(() -> importSequential(items, 0, 0, 0));
+        prepareImportedCalendar(() -> importSequential(items, 0, 0, 0));
     }
 
     private void importSequential(List<ImportEventItem> items, int index, int successCount, int failureCount) {
         if (index >= items.size()) {
-            Toast.makeText(this, "Import done: " + successCount + " success, " + failureCount + " failed",
+            Toast.makeText(this, "Import done: " + successCount + " events imported, " + failureCount + " events failed",
                     Toast.LENGTH_LONG).show();
             return;
         }
@@ -229,6 +233,8 @@ public class ImportExportActivity extends AppCompatActivity {
         ImportEventItem item = items.get(index);
         Event event = new Event();
         event.setCalendarId(calendarId);
+        event.setCalendarName(importCalendarName);
+        event.setColor("#741ce9");
         event.setTitle(item.title);
         event.setDescription(item.description);
         event.setLocation(item.location);
@@ -236,10 +242,98 @@ public class ImportExportActivity extends AppCompatActivity {
         event.setRecurrenceRule(item.recurrenceRule);
         event.setStartTime(new Timestamp(new Date(item.startTime)));
         event.setEndTime(new Timestamp(new Date(item.endTime)));
+        applyImportOwnership(event);
 
         eventsManager.createEvent(event)
                 .addOnSuccessListener(docRef -> importSequential(items, index + 1, successCount + 1, failureCount))
-                .addOnFailureListener(e -> importSequential(items, index + 1, successCount, failureCount + 1));
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Failed to import event: " + item.title, e);
+                    importSequential(items, index + 1, successCount, failureCount + 1);
+                });
+    }
+
+    private void applyImportOwnership(Event event) {
+        String userId = firebaseInitializer.getCurrentUserId();
+        if ((userId == null || userId.isEmpty()) && UserManager.getInstance().getCurrentUser() != null) {
+            userId = UserManager.getInstance().getCurrentUser().getUid();
+        }
+
+        if (userId == null || userId.isEmpty()) {
+            Log.w(TAG, "Importing event without current user ownership");
+            return;
+        }
+
+        event.setCreatedBy(userId);
+        if (!event.getParticipantId().contains(userId)) {
+            event.getParticipantId().add(userId);
+        }
+        event.getParticipantStatus().put(userId, "accepted");
+    }
+
+    private void prepareImportedCalendar(Runnable onReady) {
+        calendarIntegrationService.getUserCalendars(new CalendarIntegrationService.CalendarLoadListener() {
+            @Override
+            public void onCalendarsLoaded(List<CalendarModel> calendars) {
+                createImportedCalendar(nextImportedCalendarName(calendars), onReady);
+            }
+
+            @Override
+            public void onError(String errorMessage) {
+                Log.w(TAG, "Could not load calendars before import: " + errorMessage);
+                createImportedCalendar("Imported Calendar 1", onReady);
+            }
+        });
+    }
+
+    private void createImportedCalendar(String name, Runnable onReady) {
+        calendarIntegrationService.createCalendar(name, "Imported events", "#741ce9", false,
+                new CalendarIntegrationService.CalendarSaveListener() {
+                    @Override
+                    public void onSuccess(String createdCalendarId) {
+                        calendarId = createdCalendarId;
+                        importCalendarName = name;
+                        calendarIntegrationService.setCalendarVisibility(ImportExportActivity.this, createdCalendarId,
+                                true);
+                        onReady.run();
+                    }
+
+                    @Override
+                    public void onError(String errorMessage) {
+                        Toast.makeText(ImportExportActivity.this, "Cannot create import calendar: " + errorMessage,
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    private String nextImportedCalendarName(List<CalendarModel> calendars) {
+        int maxNumber = 0;
+        if (calendars != null) {
+            for (CalendarModel calendar : calendars) {
+                String name = calendar == null ? null : calendar.getName();
+                int number = importedCalendarNumber(name);
+                if (number > maxNumber) {
+                    maxNumber = number;
+                }
+            }
+        }
+        return "Imported Calendar " + (maxNumber + 1);
+    }
+
+    private int importedCalendarNumber(String name) {
+        if (name == null) {
+            return 0;
+        }
+
+        String prefix = "Imported Calendar ";
+        if (!name.startsWith(prefix)) {
+            return 0;
+        }
+
+        try {
+            return Integer.parseInt(name.substring(prefix.length()).trim());
+        } catch (NumberFormatException ignored) {
+            return 0;
+        }
     }
 
     private void exportCalendars(boolean exportAll, boolean uploadToCloud) {

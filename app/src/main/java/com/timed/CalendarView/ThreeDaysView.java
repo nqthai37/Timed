@@ -1,5 +1,6 @@
 package com.timed.CalendarView;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -14,6 +15,7 @@ import androidx.fragment.app.Fragment;
 import com.google.firebase.Timestamp;
 import com.timed.R;
 import com.timed.Setting.Timezone.TimezoneHelper;
+import com.timed.activities.CreateEventActivity;
 import com.timed.managers.EventSyncManager;
 import com.timed.models.Event;
 import com.timed.utils.CalendarViewHelper;
@@ -147,9 +149,23 @@ public class ThreeDaysView extends Fragment {
                 TimelineRenderer.addEventTo3Days(requireContext(), container, hourHeightPx, timeColumnWidth, colWidth, dayIndex,
                         event.getTitle() != null ? event.getTitle() : "(Untitled)",
                         CalendarViewHelper.buildEventLocation(event), parts.startHour, parts.startMinute,
-                        parts.durationMinutes, bgRes, titleColor, detailColor, eventTint);
+                        parts.durationMinutes, bgRes, titleColor, detailColor, eventTint, v -> openEditEvent(event));
             }
         });
+    }
+
+    private void openEditEvent(Event event) {
+        String eventId = event == null ? null : event.getInstanceOf();
+        if (eventId == null || eventId.isEmpty()) {
+            eventId = event == null ? null : event.getId();
+        }
+        if (eventId == null || eventId.isEmpty()) {
+            return;
+        }
+
+        Intent intent = new Intent(requireContext(), CreateEventActivity.class);
+        intent.putExtra("eventId", eventId);
+        startActivity(intent);
     }
 
     private LocalDate toLocalDate(Timestamp timestamp) {

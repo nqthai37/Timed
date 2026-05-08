@@ -19,6 +19,7 @@ import com.timed.models.CalendarModel;
 import com.timed.repositories.CalendarRepository;
 import com.timed.repositories.EventsRepository;
 import com.timed.repositories.RepositoryCallback;
+import com.timed.utils.SystemBarInsets;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -58,6 +59,7 @@ public class FreeSlotFinderActivity extends AppCompatActivity {
         
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_free_slot_finder);
+        SystemBarInsets.applyTo(this, findViewById(R.id.freeSlotFinderRoot));
 
         findViewById(R.id.iv_back).setOnClickListener(v -> finish());
 

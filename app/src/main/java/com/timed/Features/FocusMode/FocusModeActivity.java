@@ -23,6 +23,7 @@ import java.util.Locale;
 import com.google.android.material.progressindicator.CircularProgressIndicator;
 import com.timed.R;
 import com.timed.repositories.FocusPresetRepository;
+import com.timed.utils.SystemBarInsets;
 
 public class FocusModeActivity extends AppCompatActivity {
 
@@ -47,6 +48,7 @@ public class FocusModeActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_focus_mode);
+        SystemBarInsets.applyTo(this, findViewById(R.id.focusModeRoot));
 
         currentSelectedMinutes = getSharedPreferences("FocusPrefs", MODE_PRIVATE).getInt("SAVED_MINUTES", 25);
         currentSelectedSeconds = getSharedPreferences("FocusPrefs", MODE_PRIVATE).getInt("SAVED_SECONDS", 0);

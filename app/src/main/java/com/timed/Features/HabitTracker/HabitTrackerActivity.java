@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.timed.R;
+import com.timed.utils.SystemBarInsets;
 
 public class HabitTrackerActivity extends AppCompatActivity {
 
@@ -19,6 +20,7 @@ public class HabitTrackerActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
          super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_habit_tracker);
+        SystemBarInsets.applyTo(this, findViewById(R.id.habitTrackerRoot));
         // Back button
         findViewById(R.id.iv_back).setOnClickListener(v -> finish());
 

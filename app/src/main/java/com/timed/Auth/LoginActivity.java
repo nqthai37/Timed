@@ -22,6 +22,8 @@ import com.google.android.material.checkbox.MaterialCheckBox;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.timed.managers.UserManager;
 import com.timed.models.User;
 import com.timed.utils.NetworkUtils;
 import com.timed.utils.OfflineCacheManager;
@@ -98,20 +100,25 @@ public class LoginActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
 
+        boolean wantsToBeRemembered = prefs.getBoolean("REMEMBER_ME", false);
+        FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
+
         if (!NetworkUtils.isOnline(this)) {
-            if (OfflineCacheManager.hasAnyCache(this)) {
+            if (firebaseUser != null && wantsToBeRemembered && OfflineCacheManager.hasAnyCache(this)) {
+                restoreOfflineUser(firebaseUser);
                 Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                 intent.putExtra(OfflineCacheManager.EXTRA_OFFLINE_MODE, true);
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                 startActivity(intent);
                 return;
             }
-            Toast.makeText(this, "No internet connection", Toast.LENGTH_SHORT).show();
+            if (firebaseUser != null && !wantsToBeRemembered) {
+                authRepository.logout();
+            }
+            return;
         }
 
-        boolean wantsToBeRemembered = prefs.getBoolean("REMEMBER_ME", false);
-
-        if (FirebaseAuth.getInstance().getCurrentUser() != null) {
+        if (firebaseUser != null) {
             if (wantsToBeRemembered) {
                 btnLogin.setEnabled(false);
                 btnLogin.setText("Restoring Session...");
@@ -133,6 +140,20 @@ public class LoginActivity extends AppCompatActivity {
                 authRepository.logout();
             }
         }
+    }
+
+    private void restoreOfflineUser(FirebaseUser firebaseUser) {
+        User cachedUser = new User();
+        cachedUser.setUid(firebaseUser.getUid());
+        cachedUser.setEmail(firebaseUser.getEmail());
+        cachedUser.setName(firebaseUser.getDisplayName() != null && !firebaseUser.getDisplayName().isEmpty()
+                ? firebaseUser.getDisplayName()
+                : firebaseUser.getEmail());
+        cachedUser.setEmailVerified(firebaseUser.isEmailVerified());
+        if (firebaseUser.getPhotoUrl() != null) {
+            cachedUser.setAvatar(firebaseUser.getPhotoUrl().toString());
+        }
+        UserManager.getInstance().setCurrentUser(cachedUser);
     }
 
     private void setupClickListeners() {

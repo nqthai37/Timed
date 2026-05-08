@@ -1,5 +1,6 @@
 package com.timed.CalendarView;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -15,6 +16,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.timed.R;
 import com.timed.Setting.Timezone.TimezoneHelper;
+import com.timed.activities.CreateEventActivity;
 import com.timed.adapters.HorizontalCalendarAdapter;
 import com.timed.managers.EventSyncManager;
 import com.timed.models.Event;
@@ -140,10 +142,25 @@ public class DayView extends Fragment {
                         bgRes,
                         titleColor,
                         detailsColor,
-                        eventTint
+                        eventTint,
+                        v -> openEditEvent(event)
                 );
             }
         });
+    }
+
+    private void openEditEvent(Event event) {
+        String eventId = event == null ? null : event.getInstanceOf();
+        if (eventId == null || eventId.isEmpty()) {
+            eventId = event == null ? null : event.getId();
+        }
+        if (eventId == null || eventId.isEmpty()) {
+            return;
+        }
+
+        Intent intent = new Intent(requireContext(), CreateEventActivity.class);
+        intent.putExtra("eventId", eventId);
+        startActivity(intent);
     }
 
     private int withAlpha(int color, float alpha) {

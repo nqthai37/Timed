@@ -27,15 +27,18 @@ async function createCalendarEventWithMeet(params, options = {}) {
     startTime,
     endTime,
     userRefreshToken,
+    description: paramDescription,
+    location: paramLocation,
+    attendees: paramAttendees,
   } = params;
 
   const {
     clientId,
     clientSecret,
     redirectUrl,
-    description = '',
-    location = '',
-    attendees = [],
+    description = paramDescription || '',
+    location = paramLocation || '',
+    attendees = paramAttendees || [],
   } = options;
 
   // Validate required parameters
@@ -85,7 +88,7 @@ async function createCalendarEventWithMeet(params, options = {}) {
         createRequest: {
           requestId: `meet-${Date.now()}`,
           conferenceSolutionKey: {
-            key: 'hangoutsMeet',
+            type: 'hangoutsMeet',
           },
         },
       },

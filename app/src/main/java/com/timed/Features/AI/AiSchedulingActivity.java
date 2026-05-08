@@ -38,6 +38,7 @@ import com.timed.repositories.CalendarRepository;
 import com.timed.repositories.EventsRepository;
 import com.timed.repositories.RepositoryCallback;
 import com.timed.repositories.TemplateRepository;
+import com.timed.utils.SystemBarInsets;
 
 public class AiSchedulingActivity extends AppCompatActivity {
 
@@ -64,6 +65,7 @@ public class AiSchedulingActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_ai_scheduling);
+        SystemBarInsets.applyTo(this, findViewById(R.id.aiSchedulingRoot));
 
         findViewById(R.id.iv_back).setOnClickListener(v -> finish());
 
