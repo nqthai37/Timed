@@ -144,7 +144,7 @@ public class RecurrenceUtils {
                 return isOccurrenceDaily(start, target, rule);
             case FREQ_WEEKLY:
                 return isOccurrenceWeekly(start, target, rule);
-            case FREQ_MONTHLY:
+            case FREQ_MONTHLY:  
                 return isOccurrenceMonthly(start, target, rule);
             case FREQ_YEARLY:
                 return isOccurrenceYearly(start, target, rule);
