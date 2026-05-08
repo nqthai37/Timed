@@ -1,0 +1,15 @@
+##
+POST http://localhost:3000/api/meeting-rooms/create
+Content-Type: application/json
+
+  {
+    "end_time": 1778214408654,
+    "event_description": "",
+    "event_id": "Tlcz3HO55atZ7YUxqXwl",
+    "event_title": "645445",
+    "meeting_type": "GOOGLE_MEET",
+    "organizer_email": "nqt372005@gmail.com",
+    "organizer_id": "PhZoFAvdMAMfLNAFTsPga0hGTem2",
+    "organizer_name": "jonathan",
+    "start_time": 1778210808654
+  }
