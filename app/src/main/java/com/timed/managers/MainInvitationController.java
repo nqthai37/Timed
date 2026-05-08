@@ -13,12 +13,15 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.timed.dialogs.InvitationsDialog;
 import com.timed.dialogs.ShareCalendarDialog;
+import com.timed.models.CalendarModel;
 import com.timed.models.Invitation;
 import com.timed.models.User;
+import com.timed.repositories.CalendarRepository;
 import com.timed.repositories.RepositoryCallback;
 import com.timed.repositories.UserRepository;
 import com.timed.utils.InvitationService;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class MainInvitationController {
@@ -37,6 +40,7 @@ public class MainInvitationController {
     private final InvitationManager invitationManager;
     private final InvitationService invitationService;
     private final UserRepository userRepository;
+    private final CalendarRepository calendarRepository;
     private final CalendarRefreshCallbacks callbacks;
 
     private Dialog currentInvitationsDialog;
@@ -51,6 +55,7 @@ public class MainInvitationController {
         this.invitationManager = invitationManager;
         this.invitationService = invitationService;
         this.userRepository = userRepository;
+        this.calendarRepository = new CalendarRepository();
         this.callbacks = callbacks;
     }
 
@@ -114,18 +119,43 @@ public class MainInvitationController {
             return;
         }
 
-        ShareCalendarDialog.createShareCalendarDialog(activity,
-                new ShareCalendarDialog.OnShareListener() {
-                    @Override
-                    public void onShare(String email, String role, String message) {
-                        shareCalendarWithUser(email, role, message);
+        String currentUserId = firebaseAuth.getCurrentUser().getUid();
+        calendarRepository.getOwnedCalendars(currentUserId, new RepositoryCallback<List<CalendarModel>>() {
+            @Override
+            public void onSuccess(List<CalendarModel> calendars) {
+                List<CalendarModel> shareableCalendars = new ArrayList<>();
+                if (calendars != null) {
+                    for (CalendarModel calendar : calendars) {
+                        if (calendar != null && currentUserId.equals(calendar.getOwnerId())) {
+                            shareableCalendars.add(calendar);
+                        }
                     }
+                }
 
-                    @Override
-                    public void onCancel() {
-                        Toast.makeText(activity, "Sharing canceled", Toast.LENGTH_SHORT).show();
-                    }
-                }).show();
+                if (shareableCalendars.isEmpty()) {
+                    Toast.makeText(activity, "You can only share calendars you own", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                ShareCalendarDialog.createShareCalendarDialog(activity, shareableCalendars,
+                        new ShareCalendarDialog.OnShareListener() {
+                            @Override
+                            public void onShare(CalendarModel calendar, String email, String role, String message) {
+                                shareCalendarWithUser(calendar, email, role, message);
+                            }
+
+                            @Override
+                            public void onCancel() {
+                                Toast.makeText(activity, "Sharing canceled", Toast.LENGTH_SHORT).show();
+                            }
+                        }).show();
+            }
+
+            @Override
+            public void onFailure(String errorMessage) {
+                Toast.makeText(activity, "Cannot load owned calendars: " + errorMessage, Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     public void showPendingInvitations() {
@@ -167,7 +197,7 @@ public class MainInvitationController {
                 });
     }
 
-    private void shareCalendarWithUser(String toUserEmail, String role, String message) {
+    private void shareCalendarWithUser(CalendarModel calendar, String toUserEmail, String role, String message) {
         if (firebaseAuth.getCurrentUser() == null) {
             Toast.makeText(activity, "Please sign in", Toast.LENGTH_SHORT).show();
             return;
@@ -176,15 +206,26 @@ public class MainInvitationController {
         String currentUserId = firebaseAuth.getCurrentUser().getUid();
         String currentUserEmail = firebaseAuth.getCurrentUser().getEmail();
         String currentUserName = firebaseAuth.getCurrentUser().getDisplayName();
-        String calendarId = callbacks.getCalendarId();
+        if (calendar == null || calendar.getId() == null || calendar.getId().isEmpty()) {
+            Toast.makeText(activity, "Choose a calendar to share", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (!currentUserId.equals(calendar.getOwnerId())) {
+            Toast.makeText(activity, "Only the calendar owner can share this calendar", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         convertEmailToUserId(toUserEmail, userId -> {
             if (userId == null) {
                 Toast.makeText(activity, "No user found with this email", Toast.LENGTH_SHORT).show();
                 return;
             }
+            if (currentUserId.equals(userId)) {
+                Toast.makeText(activity, "You already own this calendar", Toast.LENGTH_SHORT).show();
+                return;
+            }
 
-            invitationManager.inviteToCalendar(calendarId, toUserEmail, userId, role, message,
+            invitationManager.inviteToCalendar(calendar.getId(), toUserEmail, userId, role, message,
                     currentUserId, currentUserName, currentUserEmail,
                     new RepositoryCallback<String>() {
                         @Override

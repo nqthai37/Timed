@@ -6,7 +6,6 @@ import android.graphics.Paint;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -49,7 +48,6 @@ public class TasksActivity extends BaseBottomNavActivity {
         tasksContainer = findViewById(R.id.tasksContainer);
 
         setupInsets();
-        setupTopBar();
         setupBottomNavigation();
         setupActions();
         anchorFabAboveBottomNavigation(R.id.fabAddTask);
@@ -79,23 +77,6 @@ public class TasksActivity extends BaseBottomNavActivity {
         });
     }
 
-    private void setupTopBar() {
-        TextView title = findViewById(R.id.tvTopTitle);
-        if (title != null) {
-            title.setText("");
-        }
-
-        ImageButton btnMenu = findViewById(R.id.btnMenu);
-        if (btnMenu != null) {
-            btnMenu.setOnClickListener(v -> openSchedule());
-        }
-
-        ImageButton btnSearch = findViewById(R.id.btnSearch);
-        if (btnSearch != null) {
-            btnSearch.setOnClickListener(v -> startActivity(new Intent(this, SearchFilterActivity.class)));
-        }
-    }
-
     private void setupActions() {
         View fabAddTask = findViewById(R.id.fabAddTask);
         if (fabAddTask != null) {
@@ -106,13 +87,6 @@ public class TasksActivity extends BaseBottomNavActivity {
     @Override
     protected int getNavigationMenuItemId() {
         return R.id.nav_tasks;
-    }
-
-    private void openSchedule() {
-        Intent intent = new Intent(this, MainActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        startActivity(intent);
-        finish();
     }
 
     private void loadTasks() {

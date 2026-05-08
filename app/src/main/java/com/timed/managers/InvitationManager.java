@@ -71,6 +71,23 @@ public class InvitationManager {
                     calendarRepository.getCalendarById(calendarId, new RepositoryCallback<CalendarModel>() {
                         @Override
                         public void onSuccess(CalendarModel calendar) {
+                            if (calendar == null || calendar.getId() == null) {
+                                callback.onFailure("Calendar not found");
+                                return;
+                            }
+                            if (fromUserId == null || !fromUserId.equals(calendar.getOwnerId())) {
+                                callback.onFailure("Only the calendar owner can share this calendar");
+                                return;
+                            }
+                            if (!"editor".equals(role) && !"viewer".equals(role)) {
+                                callback.onFailure("Invalid calendar permission");
+                                return;
+                            }
+                            if (calendar.getMemberIds() != null && calendar.getMemberIds().contains(toUserId)) {
+                                callback.onFailure("User already has access to this calendar");
+                                return;
+                            }
+
                             Invitation invitation = new Invitation(
                                     calendarId,
                                     fromUserId,
@@ -86,11 +103,22 @@ public class InvitationManager {
                                 invitation.setMessage(message);
                             }
 
-                            invitationRepository.createInvitation(invitation, 
-                                    new RepositoryCallback<String>() {
+                            calendarManager.addMember(calendarId, toUserId, role,
+                                    new RepositoryCallback<Void>() {
                                         @Override
-                                        public void onSuccess(String result) {
-                                            callback.onSuccess("Invitation sent");
+                                        public void onSuccess(Void result) {
+                                            invitationRepository.createInvitation(invitation,
+                                                    new RepositoryCallback<String>() {
+                                                        @Override
+                                                        public void onSuccess(String result) {
+                                                            callback.onSuccess("Invitation sent");
+                                                        }
+
+                                                        @Override
+                                                        public void onFailure(String errorMessage) {
+                                                            callback.onFailure(errorMessage);
+                                                        }
+                                                    });
                                         }
 
                                         @Override
@@ -196,31 +224,44 @@ public class InvitationManager {
                     String calendarId = invitation.getCalendarId();
                     String role = invitation.getRole();
 
-                    // Add user to calendar with the specified role
-                    calendarManager.addMember(calendarId, userId, role,
-                            new RepositoryCallback<Void>() {
-                                @Override
-                                public void onSuccess(Void result) {
-                                    // Update invitation status
-                                    invitationRepository.updateInvitationStatus(invitationId, "accepted",
-                                            new RepositoryCallback<Void>() {
-                                                @Override
-                                                public void onSuccess(Void result2) {
-                                                    callback.onSuccess("Calendar invitation accepted");
-                                                }
+                    calendarRepository.getCalendarById(calendarId, new RepositoryCallback<CalendarModel>() {
+                        @Override
+                        public void onSuccess(CalendarModel calendar) {
+                            if (calendar == null || calendar.getMemberIds() == null
+                                    || !calendar.getMemberIds().contains(userId)) {
+                                callback.onFailure("Calendar access was not granted by the owner");
+                                return;
+                            }
 
-                                                @Override
-                                                public void onFailure(String error) {
-                                                    callback.onFailure(error);
-                                                }
-                                            });
-                                }
+                            String grantedRole = calendar.getMemberRole(userId);
+                            if (role != null && grantedRole != null && !role.equals(grantedRole)) {
+                                callback.onFailure("Calendar permission does not match this invitation");
+                                return;
+                            }
 
-                                @Override
-                                public void onFailure(String errorMessage) {
-                                    callback.onFailure(errorMessage);
-                                }
-                            });
+                            invitationRepository.updateInvitationStatus(invitationId, "accepted",
+                                    new RepositoryCallback<Void>() {
+                                        @Override
+                                        public void onSuccess(Void result2) {
+                                            callback.onSuccess("Calendar invitation accepted");
+                                        }
+
+                                        @Override
+                                        public void onFailure(String error) {
+                                            callback.onFailure(error);
+                                        }
+                                    });
+                        }
+
+                        @Override
+                        public void onFailure(String errorMessage) {
+                            callback.onFailure(errorMessage);
+                        }
+                    });
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error accepting calendar invitation", e);
+                    callback.onFailure("Error: " + e.getMessage());
                 });
     }
 
