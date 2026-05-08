@@ -229,7 +229,7 @@ public class InvitationManager {
                         public void onSuccess(CalendarModel calendar) {
                             if (calendar == null || calendar.getMemberIds() == null
                                     || !calendar.getMemberIds().contains(userId)) {
-                                callback.onFailure("Calendar access was not granted by the owner");
+                                callback.onFailure("Calendar access was not granted by the owner. Please ask them to resend the invitation.");
                                 return;
                             }
 
