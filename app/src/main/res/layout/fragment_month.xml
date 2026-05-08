@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#FFF8FAFC"
+    android:background="@color/background_light"
     android:padding="16dp">
 
     <RelativeLayout
@@ -25,7 +25,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
-            android:textColor="#0F172A"
+            android:textColor="@color/slate_900"
             android:textSize="18sp"
             android:textStyle="bold"
             android:text="Month Year" />
@@ -46,13 +46,13 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:layout_marginBottom="8dp">
-        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="S" android:textAlignment="center" android:textColor="#64748B" android:textSize="12sp" android:textStyle="bold"/>
-        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="M" android:textAlignment="center" android:textColor="#64748B" android:textSize="12sp" android:textStyle="bold"/>
-        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="T" android:textAlignment="center" android:textColor="#64748B" android:textSize="12sp" android:textStyle="bold"/>
-        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="W" android:textAlignment="center" android:textColor="#64748B" android:textSize="12sp" android:textStyle="bold"/>
-        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="T" android:textAlignment="center" android:textColor="#64748B" android:textSize="12sp" android:textStyle="bold"/>
-        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="F" android:textAlignment="center" android:textColor="#64748B" android:textSize="12sp" android:textStyle="bold"/>
-        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="S" android:textAlignment="center" android:textColor="#64748B" android:textSize="12sp" android:textStyle="bold"/>
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="S" android:textAlignment="center" android:textColor="@color/slate_500" android:textSize="12sp" android:textStyle="bold"/>
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="M" android:textAlignment="center" android:textColor="@color/slate_500" android:textSize="12sp" android:textStyle="bold"/>
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="T" android:textAlignment="center" android:textColor="@color/slate_500" android:textSize="12sp" android:textStyle="bold"/>
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="W" android:textAlignment="center" android:textColor="@color/slate_500" android:textSize="12sp" android:textStyle="bold"/>
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="T" android:textAlignment="center" android:textColor="@color/slate_500" android:textSize="12sp" android:textStyle="bold"/>
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="F" android:textAlignment="center" android:textColor="@color/slate_500" android:textSize="12sp" android:textStyle="bold"/>
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="S" android:textAlignment="center" android:textColor="@color/slate_500" android:textSize="12sp" android:textStyle="bold"/>
     </LinearLayout>
 
     <androidx.recyclerview.widget.RecyclerView
@@ -68,7 +68,7 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="8dp"
         android:text="UPCOMING FOR DEC 12"
-        android:textColor="#64748B"
+        android:textColor="@color/slate_500"
         android:textSize="12sp"
         android:textStyle="bold" />
 

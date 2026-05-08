@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FFF8FAFC">
+    android:background="@color/background_light">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/clHeader"
@@ -98,7 +98,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:background="@drawable/bg_rounded"
-                android:backgroundTint="#FFFFFF"
+                android:backgroundTint="@color/slate_100"
                 android:elevation="1dp"
                 android:orientation="vertical"
                 android:paddingVertical="8dp">

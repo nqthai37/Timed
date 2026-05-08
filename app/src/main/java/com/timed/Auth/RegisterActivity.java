@@ -118,7 +118,7 @@ public class RegisterActivity extends AppCompatActivity {
     }
 
     private void updateRequirementState(TextView tv, boolean isMet) {
-        int color = isMet ? android.graphics.Color.parseColor("#10B981") : android.graphics.Color.parseColor("#94A3B8");
+        int color = isMet ? getColor(R.color.green_500) : getColor(R.color.slate_500);
 
         tv.setTextColor(color);
 

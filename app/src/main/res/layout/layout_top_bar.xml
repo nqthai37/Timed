@@ -66,7 +66,7 @@
             android:layout_gravity="top|end"
             android:background="@drawable/bg_invite_count"
             android:gravity="center"
-            android:textColor="@android:color/white"
+            android:textColor="@color/timed_on_primary"
             android:textSize="10sp"
             android:textStyle="bold"
             android:visibility="gone" />

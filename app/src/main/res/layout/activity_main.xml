@@ -61,7 +61,7 @@
             android:layout_marginEnd="24dp"
             android:layout_marginBottom="16dp"
             android:backgroundTint="@color/primary"
-            app:tint="@android:color/white"
+            app:tint="@color/timed_on_primary"
             android:src="@drawable/ic_add"
             app:elevation="8dp"
             app:fabSize="normal"
@@ -89,7 +89,7 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Timed.CircularFab"
-            app:tint="@android:color/white" />
+            app:tint="@color/timed_on_primary" />
 
             <LinearLayout
                 android:id="@+id/fabOptionEvent"
@@ -106,7 +106,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="12dp"
-                    android:background="@color/white"
+                    android:background="@color/slate_100"
                     android:paddingHorizontal="12dp"
                     android:paddingVertical="6dp"
                     android:text="Event"
@@ -118,7 +118,7 @@
                     android:id="@+id/btnFabEvent"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:backgroundTint="@android:color/white"
+                    android:backgroundTint="@color/slate_100"
                     android:src="@drawable/ic_calendar"
                     app:elevation="6dp"
                     app:fabSize="mini"
@@ -140,7 +140,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="12dp"
-                    android:background="@color/white"
+                    android:background="@color/slate_100"
                     android:paddingHorizontal="12dp"
                     android:paddingVertical="6dp"
                     android:text="Task"
@@ -152,7 +152,7 @@
                     android:id="@+id/btnFabTask"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:backgroundTint="@android:color/white"
+                    android:backgroundTint="@color/slate_100"
                     android:src="@drawable/ic_check"
                     app:elevation="6dp"
                     app:fabSize="mini"

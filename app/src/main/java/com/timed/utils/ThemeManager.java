@@ -3,8 +3,6 @@ package com.timed.utils;
 import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.graphics.Color;
-
 import androidx.appcompat.app.AppCompatDelegate;
 
 import com.timed.R;
@@ -37,7 +35,6 @@ public final class ThemeManager {
     }
 
     public static void applyTheme(Activity activity) {
-        applyNightMode(activity);
         activity.setTheme(getThemeResId(activity));
     }
 
@@ -71,12 +68,12 @@ public final class ThemeManager {
     public static int getPrimaryColor(Context context) {
         String palette = getPalette(context);
         if (PALETTE_EMERALD.equals(palette)) {
-            return Color.parseColor("#10B981");
+            return context.getColor(R.color.timed_emerald_primary);
         }
         if (PALETTE_SUNSET.equals(palette)) {
-            return Color.parseColor("#F97316");
+            return context.getColor(R.color.timed_sunset_primary);
         }
-        return Color.parseColor("#2563EB");
+        return context.getColor(R.color.timed_blue_primary);
     }
 
     private static SharedPreferences getPrefs(Context context) {

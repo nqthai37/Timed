@@ -19,6 +19,7 @@ import com.timed.adapters.HorizontalCalendarAdapter;
 import com.timed.managers.EventSyncManager;
 import com.timed.models.Event;
 import com.timed.utils.CalendarViewHelper;
+import com.timed.utils.ThemeManager;
 import com.timed.utils.TimelineRenderer;
 
 import java.time.LocalDate;
@@ -92,7 +93,8 @@ public class DayView extends Fragment {
                 TextView tvTime = new TextView(requireContext());
                 tvTime.setId(View.generateViewId());
                 tvTime.setText(String.format("%02d:00", i));
-                tvTime.setTextColor(android.graphics.Color.parseColor("#99741CE9"));
+                int primaryColor = ThemeManager.getPrimaryColor(requireContext());
+                tvTime.setTextColor(withAlpha(primaryColor, 0.72f));
                 tvTime.setTextSize(12f);
 
                 RelativeLayout.LayoutParams timeParams = new RelativeLayout.LayoutParams(
@@ -101,7 +103,7 @@ public class DayView extends Fragment {
                 timelineContainer.addView(tvTime, timeParams);
 
                 View line = new View(requireContext());
-                line.setBackgroundColor(android.graphics.Color.parseColor("#1A741CE9"));
+                line.setBackgroundColor(withAlpha(primaryColor, 0.18f));
                 RelativeLayout.LayoutParams lineParams = new RelativeLayout.LayoutParams(
                         RelativeLayout.LayoutParams.MATCH_PARENT, TimelineRenderer.dpToPx(requireContext(), 1));
                 lineParams.addRule(RelativeLayout.RIGHT_OF, tvTime.getId());
@@ -142,5 +144,10 @@ public class DayView extends Fragment {
                 );
             }
         });
+    }
+
+    private int withAlpha(int color, float alpha) {
+        int alphaByte = Math.round(255 * alpha);
+        return (color & 0x00FFFFFF) | (alphaByte << 24);
     }
 }

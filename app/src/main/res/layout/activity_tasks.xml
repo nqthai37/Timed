@@ -43,7 +43,7 @@
         app:elevation="8dp"
         app:fabSize="normal"
         app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Timed.CircularFab"
-        app:tint="@android:color/white" />
+        app:tint="@color/timed_on_primary" />
 
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottomNav"

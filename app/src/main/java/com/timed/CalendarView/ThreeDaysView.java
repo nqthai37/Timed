@@ -64,7 +64,7 @@ public class ThreeDaysView extends Fragment {
                 if (day.equals(LocalDate.now())) {
                     dateTvs[i].setTextColor(primaryColor);
                 } else {
-                    dateTvs[i].setTextColor(android.graphics.Color.parseColor("#0f172a"));
+                    dateTvs[i].setTextColor(requireContext().getColor(R.color.slate_900));
                 }
             }
         }
@@ -100,7 +100,7 @@ public class ThreeDaysView extends Fragment {
                 TextView tvTime = new TextView(requireContext());
                 tvTime.setId(View.generateViewId());
                 tvTime.setText(String.format(Locale.getDefault(), "%02d:00", i));
-                tvTime.setTextColor(android.graphics.Color.parseColor("#94a3b8"));
+                tvTime.setTextColor(requireContext().getColor(R.color.slate_500));
                 tvTime.setTextSize(10f);
                 tvTime.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
 

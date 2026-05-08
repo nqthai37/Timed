@@ -5,7 +5,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white"
+    android:background="@color/background_light"
     android:padding="24dp"
     tools:context=".Auth.LoginActivity">
 
@@ -78,8 +78,8 @@
         app:boxCornerRadiusTopEnd="8dp"
         app:boxCornerRadiusBottomStart="8dp"
         app:boxCornerRadiusBottomEnd="8dp"
-        app:boxBackgroundColor="#F8FAFC"
-        app:boxStrokeColor="#E2E8F0"
+        app:boxBackgroundColor="@color/slate_100"
+        app:boxStrokeColor="@color/slate_400"
         app:hintEnabled="false"
         app:layout_constraintTop_toBottomOf="@+id/tvEmailLabel">
 
@@ -89,7 +89,8 @@
             android:layout_height="wrap_content"
             android:hint="name@example.com"
             android:inputType="textEmailAddress"
-            android:textColorHint="#757575"/>
+            android:textColor="@color/slate_900"
+            android:textColorHint="@color/slate_500"/>
     </com.google.android.material.textfield.TextInputLayout>
 
     <TextView
@@ -113,11 +114,11 @@
         app:boxCornerRadiusTopEnd="8dp"
         app:boxCornerRadiusBottomStart="8dp"
         app:boxCornerRadiusBottomEnd="8dp"
-        app:boxBackgroundColor="#F8FAFC"
-        app:boxStrokeColor="#E2E8F0"
+        app:boxBackgroundColor="@color/slate_100"
+        app:boxStrokeColor="@color/slate_400"
         app:hintEnabled="false"
         app:passwordToggleEnabled="true"
-        app:passwordToggleTint="#64748B"
+        app:passwordToggleTint="@color/slate_500"
         app:layout_constraintTop_toBottomOf="@+id/tvPasswordLabel">
 
         <com.google.android.material.textfield.TextInputEditText
@@ -126,7 +127,8 @@
             android:layout_height="wrap_content"
             android:hint="Enter your password"
             android:inputType="textPassword"
-            android:textColorHint="#757575"/>
+            android:textColor="@color/slate_900"
+            android:textColorHint="@color/slate_500"/>
     </com.google.android.material.textfield.TextInputLayout>
 
     <com.google.android.material.checkbox.MaterialCheckBox
@@ -135,7 +137,7 @@
         android:layout_height="wrap_content"
         android:text="Remember me"
         android:textColor="@color/slate_500"
-        app:buttonTint="#757575"
+        app:buttonTint="@color/slate_500"
         android:layout_marginTop="8dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/tilPassword"/>
@@ -176,7 +178,7 @@
             android:layout_width="0dp"
             android:layout_height="1dp"
             android:layout_weight="1"
-            android:background="#E2E8F0"/>
+            android:background="@color/slate_400"/>
 
         <TextView
             android:layout_width="wrap_content"
@@ -190,7 +192,7 @@
             android:layout_width="0dp"
             android:layout_height="1dp"
             android:layout_weight="1"
-            android:background="#E2E8F0"/>
+            android:background="@color/slate_400"/>
     </LinearLayout>
 
     <LinearLayout
@@ -208,8 +210,8 @@
             android:layout_width="match_parent"
             android:layout_height="56dp"
             app:cornerRadius="8dp"
-            app:backgroundTint="#F8FAFC"
-            app:strokeColor="#E2E8F0"
+            app:backgroundTint="@color/slate_100"
+            app:strokeColor="@color/slate_400"
             android:text="Google"
             android:textColor="@color/slate_900"
             android:textSize="16sp"
@@ -226,7 +228,7 @@
         android:text="@string/legal_agreement"
         android:textAlignment="center"
         android:textSize="12sp"
-        android:textColor="#6B7280"
+        android:textColor="@color/slate_500"
         android:layout_marginTop="32dp"
         app:layout_constraintTop_toBottomOf="@+id/llSocial"
         app:layout_constraintBottom_toBottomOf="parent"

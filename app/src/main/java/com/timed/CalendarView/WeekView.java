@@ -70,7 +70,7 @@ public class WeekView extends Fragment {
                 TextView tvDow = new TextView(requireContext());
                 tvDow.setText(day.format(dowFormatter).toUpperCase().substring(0, 1));
                 tvDow.setTextSize(10f);
-                tvDow.setTextColor(android.graphics.Color.parseColor("#94a3b8"));
+                tvDow.setTextColor(requireContext().getColor(R.color.slate_500));
 
                 TextView tvDate = new TextView(requireContext());
                 tvDate.setText(String.valueOf(day.getDayOfMonth()));
@@ -82,7 +82,7 @@ public class WeekView extends Fragment {
                     tvDate.setTextColor(primaryColor);
                     tvDow.setTextColor(primaryColor);
                 } else {
-                    tvDate.setTextColor(android.graphics.Color.parseColor("#0f172a"));
+                    tvDate.setTextColor(requireContext().getColor(R.color.slate_900));
                 }
 
                 dayCol.addView(tvDow);
@@ -122,7 +122,7 @@ public class WeekView extends Fragment {
                 TextView tvTime = new TextView(requireContext());
                 tvTime.setId(View.generateViewId());
                 tvTime.setText(String.format(Locale.getDefault(), "%02d", i));
-                tvTime.setTextColor(android.graphics.Color.parseColor("#94a3b8"));
+                tvTime.setTextColor(requireContext().getColor(R.color.slate_500));
                 tvTime.setTextSize(10f);
                 tvTime.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
 

@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FFF8FAFC"
+    android:background="@color/background_light"
     android:orientation="vertical"
     tools:context=".Features.FreeSlotFinder.FreeSlotFinderActivity">
 
@@ -126,7 +126,7 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#FFFFFF"
+        android:background="@color/slate_100"
         android:elevation="20dp"
         android:paddingHorizontal="16dp"
         android:paddingTop="12dp"

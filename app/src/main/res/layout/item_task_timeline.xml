@@ -5,7 +5,7 @@
     android:layout_height="wrap_content"
     android:layout_marginStart="16dp"
     android:layout_marginBottom="12dp"
-    app:cardBackgroundColor="@color/white"
+    app:cardBackgroundColor="@color/slate_100"
     app:cardCornerRadius="12dp"
     app:cardElevation="2dp">
 
@@ -33,7 +33,7 @@
             app:layout_constraintEnd_toEndOf="@id/viewCheckbox"
             app:layout_constraintStart_toStartOf="@id/viewCheckbox"
             app:layout_constraintTop_toTopOf="@id/viewCheckbox"
-            app:tint="@color/white" />
+            app:tint="@color/timed_on_primary" />
 
         <LinearLayout
             android:layout_width="0dp"

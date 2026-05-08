@@ -190,7 +190,7 @@ public class TasksActivity extends BaseBottomNavActivity {
         tasksContainer.removeAllViews();
         TextView emptyView = new TextView(this);
         emptyView.setText(message);
-        emptyView.setTextColor(Color.parseColor("#64748b"));
+        emptyView.setTextColor(getColor(R.color.slate_500));
         emptyView.setTextSize(14f);
         emptyView.setPadding(0, dpToPx(32), 0, 0);
         tasksContainer.addView(emptyView);
@@ -205,7 +205,7 @@ public class TasksActivity extends BaseBottomNavActivity {
         tvLabel.setText(label);
         tvDay.setText(day);
         if (!isPrimary) {
-            tvLabel.setTextColor(Color.parseColor("#94a3b8"));
+            tvLabel.setTextColor(getColor(R.color.slate_400));
         }
         tasksContainer.addView(groupView);
     }
