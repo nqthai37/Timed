@@ -23,6 +23,11 @@
     <string name="habit_tracker">Habit Tracker</string>
     <string name="habit_tracker_txt">Track daily habits</string>
 
+    <string name="todays_habits">Today\'s Habits</string>
+    <string name="this_week">This Week</string>
+    <string name="completed_today">Completed Today</string>
+    <string name="new_habit">+ New Habit</string>
+
     <string name="analytics">Analytics</string>
     <string name="analytics_txt">View productivity statistics</string>
 
